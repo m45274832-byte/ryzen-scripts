@@ -1,0 +1,30 @@
+---- Ryzen Visual Suite v2.0
+local Players=game:GetService("Players")
+local LP=Players.LocalPlayer
+local Char=LP.Character or LP.CharacterAdded:Wait()
+local HRP=Char:WaitForChild("HumanoidRootPart")
+local RunService=game:GetService("RunService")
+local function Optimize()
+for _,v in pairs(game:GetDescendants())do pcall(function()if v:IsA("Texture")or v:IsA("Decal")then v.Texture="rbxassetid://4322737890"elseif v:IsA("Part")or v:IsA("MeshPart")then v.Material=Enum.Material.Plastic v.Reflectance=0 elseif v:IsA("Terrain")then v.WaterWaveSize=0 v.WaterReflectance=0 v.WaterTransparency=1 end end)end
+game.Lighting.GlobalShadows=false game.Lighting.Brightness=1 game.Lighting.ClockTime=14 print("[Ryzen] OK")
+end
+local HitboxFolder=Instance.new("Folder") HitboxFolder.Name="RyzenHitboxes" HitboxFolder.Parent=workspace
+local function CreateHitbox(p)if not p:IsA("BasePart")then return end local b=Instance.new("BoxHandleAdornment")b.Adornee=p b.Color3=Color3.fromRGB(255,0,0)b.Transparency=0.5 b.Size=p.Size b.AlwaysOnTop=true b.ZIndex=10 b.Parent=HitboxFolder end
+local function UpdateHitboxes()for _,v in pairs(HitboxFolder:GetChildren())do v:Destroy()end for _,v in pairs(workspace:GetDescendants())do if v:IsA("BasePart")and v.Parent and v.Parent:FindFirstChild("Humanoid")then CreateHitbox(v)end end end
+local MirrorChar=Instance.new("Model")MirrorChar.Name="RyzenMirror"MirrorChar.Parent=workspace
+local function UpdateMirror()for _,v in pairs(MirrorChar:GetChildren())do v:Destroy()end local clone=LP.Character:Clone()clone.Name="MirrorDummy"clone.Parent=MirrorChar for _,v in pairs(clone:GetDescendants())do if v:IsA("BasePart")then v.Transparency=0.4 v.Material=Enum.Material.Glass end end local w=Instance.new("Weld")w.Part0=HRP w.Part1=clone.HumanoidRootPart w.C0=CFrame.new(0,0,-6)*CFrame.Angles(0,math.rad(180),0)w.Parent=clone.HumanoidRootPart local pl=Instance.new("BillboardGui")pl.Size=UDim2.new(0,200,0,50)pl.Adornee=clone.HumanoidRootPart pl.Parent=clone.HumanoidRootPart local pt=Instance.new("TextLabel")pt.Size=UDim2.new(1,0,1,0)pt.BackgroundTransparency=1 pt.TextScaled=true pt.TextColor3=Color3.fromRGB(0,255,0)pt.Parent=pl RunService.Heartbeat:Connect(function()local ping=game:GetService("Stats"):FindFirstChild("Network")and game:GetService("Stats").Network:FindFirstChild("ServerStatsItem")and game:GetService("Stats").Network.ServerStatsItem:FindFirstChild("Ping")or{Value=0}pt.Text="PING: "..tostring(ping.Value).."ms"end)end
+local function Menu()
+local s=Instance.new("ScreenGui")s.Name="RyzenMenu"s.Parent=game.CoreGui
+local m=Instance.new("Frame")m.Size=UDim2.new(0,450,0,350)m.Position=UDim2.new(0.5,-225,0.5,-175)m.BackgroundColor3=Color3.fromRGB(20,20,30)m.BackgroundTransparency=0.15 m.BorderSizePixel=0 m.Active=true m.Draggable=true m.Parent=s
+local b=Instance.new("BlurEffect")b.Size=8 b.Parent=game.Lighting
+local t=Instance.new("TextLabel")t.Size=UDim2.new(1,0,0,40)t.BackgroundTransparency=1 t.Text="RYZEN VISUAL SUITE"t.TextColor3=Color3.fromRGB(0,255,255)t.TextScaled=true t.Font=Enum.Font.GothamBold t.Parent=m
+local tabs={"Optimize","Hitboxes","Mirror"}local y=50 local btns={}
+for i,tab in ipairs(tabs)do local btn=Instance.new("TextButton")btn.Size=UDim2.new(0.3,-10,0,40)btn.Position=UDim2.new(0.05+(i-1)*0.33,0,0,y)btn.BackgroundColor3=Color3.fromRGB(40,40,60)btn.Text=tab btn.TextColor3=Color3.fromRGB(255,255,255)btn.Parent=m btns[tab]=btn end
+local c=Instance.new("Frame")c.Size=UDim2.new(0.9,0,0.6,0)c.Position=UDim2.new(0.05,0,0.3,0)c.BackgroundTransparency=1 c.Parent=m
+btns["Optimize"].MouseButton1Click:Connect(function()c:ClearAllChildren()local l=Instance.new("TextLabel")l.Size=UDim2.new(1,0,0.5,0)l.BackgroundTransparency=1 l.Text="OPTIMIZATION DONE"l.TextColor3=Color3.fromRGB(100,255,100)l.TextScaled=true l.Parent=c Optimize()end)
+btns["Hitboxes"].MouseButton1Click:Connect(function()c:ClearAllChildren()UpdateHitboxes()local l=Instance.new("TextLabel")l.Size=UDim2.new(1,0,0.5,0)l.BackgroundTransparency=1 l.Text="HITBOXES ACTIVE"l.TextColor3=Color3.fromRGB(255,100,100)l.TextScaled=true l.Parent=c end)
+btns["Mirror"].MouseButton1Click:Connect(function()c:ClearAllChildren()UpdateMirror()local l=Instance.new("TextLabel")l.Size=UDim2.new(1,0,0.5,0)l.BackgroundTransparency=1 l.Text="MIRROR ACTIVE"l.TextColor3=Color3.fromRGB(100,200,255)l.TextScaled=true l.Parent=c end)
+local cl=Instance.new("TextButton")cl.Size=UDim2.new(0,30,0,30)cl.Position=UDim2.new(1,-35,0,5)cl.BackgroundColor3=Color3.fromRGB(200,50,50)cl.Text="X"cl.TextColor3=Color3.fromRGB(255,255,255)cl.Parent=m cl.MouseButton1Click:Connect(function()s:Destroy()b:Destroy()end)
+end
+Menu()
+print("Ryzen loaded")
