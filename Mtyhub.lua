@@ -37,7 +37,8 @@ local guiSettings = {
     JumpCircleFadeTime = 1.5,
     TrailLength = 50,
     AntiAimMode = "Spin",
-    FakeLagAmount = 5
+    FakeLagAmount = 5,
+    StretchValue = 0.65
 }
 
 -- ===== ПЕРЕМЕННЫЕ =====
@@ -525,7 +526,7 @@ local function CreateTrail()
     end
 end
 
--- ===== PARTICLE =====
+-- ===== PARTICLES =====
 local function ToggleParticles()
     particlesEnabled = not particlesEnabled
     if particlesEnabled then
@@ -557,6 +558,7 @@ local function CreateChineseHat()
     if hatBrim then hatBrim:Destroy() hatBrim = nil end
     if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
     if hatTassel then hatTassel:Destroy() hatTassel = nil end
+    
     currentHat = Instance.new("Part")
     currentHat.Size = Vector3.new(4, 0.1, 4)
     currentHat.Anchored = true
@@ -565,5 +567,324 @@ local function CreateChineseHat()
     currentHat.BrickColor = BrickColor.new(guiSettings.HatColor)
     currentHat.Transparency = 0.05
     currentHat.Parent = workspace
+    
     local cone = Instance.new("SpecialMesh")
-    cone.MeshType = 
+    cone.MeshType = Enum.MeshType.Cone
+    cone.Scale = Vector3.new(4, 2.2, 4)
+    cone.Parent = currentHat
+    
+    hatBrim = Instance.new("Part")
+    hatBrim.Size = Vector3.new(4.8, 0.05, 4.8)
+    hatBrim.Anchored = true
+    hatBrim.CanCollide = false
+    hatBrim.Material = Enum.Material.Neon
+    hatBrim.BrickColor = BrickColor.new(guiSettings.HatColor)
+    hatBrim.Transparency = 0.05
+    hatBrim.Parent = workspace
+    
+    local ring = Instance.new("SpecialMesh")
+    ring.MeshType = Enum.MeshType.Cylinder
+    ring.Scale = Vector3.new(1, 0.05, 1)
+    ring.Parent = hatBrim
+    
+    hatTopRing = Instance.new("Part")
+    hatTopRing.Size = Vector3.new(1, 0.05, 1)
+    hatTopRing.Anchored = true
+    hatTopRing.CanCollide = false
+    hatTopRing.Material = Enum.Material.Neon
+    hatTopRing.BrickColor = BrickColor.new(guiSettings.HatColor)
+    hatTopRing.Transparency = 0.05
+    hatTopRing.Parent = workspace
+    
+    local topRing = Instance.new("SpecialMesh")
+    topRing.MeshType = Enum.MeshType.Cylinder
+    topRing.Scale = Vector3.new(1, 0.05, 1)
+    topRing.Parent = hatTopRing
+    
+    hatTassel = Instance.new("Part")
+    hatTassel.Size = Vector3.new(0.3, 1.5, 0.3)
+    hatTassel.Anchored = true
+    hatTassel.CanCollide = false
+    hatTassel.Material = Enum.Material.Neon
+    hatTassel.BrickColor = BrickColor.new(Color3.fromRGB(255, 50, 50))
+    hatTassel.Transparency = 0.1
+    hatTassel.Parent = workspace
+    
+    local tasselMesh = Instance.new("SpecialMesh")
+    tasselMesh.MeshType = Enum.MeshType.Sphere
+    tasselMesh.Scale = Vector3.new(1, 1, 1)
+    tasselMesh.Parent = hatTassel
+    
+    if hatConnection then hatConnection:Disconnect() end
+    hatConnection = RunService.Heartbeat:Connect(function()
+        if currentHat and hatBrim and hatTopRing and hatTassel and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local root = LP.Character.HumanoidRootPart
+            local pos = root.CFrame * CFrame.new(0, 3.0, 0)
+            currentHat.CFrame = pos
+            hatBrim.CFrame = pos * CFrame.new(0, -1.0, 0)
+            hatTopRing.CFrame = pos * CFrame.new(0, 1.0, 0)
+            hatTassel.CFrame = pos * CFrame.new(0, 1.6, 0)
+        end
+    end)
+end
+
+-- ===== CROSSHAIR =====
+local function CreateCrosshair()
+    if crosshairGui then crosshairGui:Destroy() end
+    crosshairGui = Instance.new("ScreenGui")
+    crosshairGui.Name = "MTY_Crosshair"
+    crosshairGui.Parent = game.CoreGui
+    crosshairGui.ResetOnSpawn = false
+    
+    local size = 25
+    local gap = 10
+    local color = crosshairColor
+    local thick = 2
+    
+    local top = Instance.new("Frame")
+    top.Size = UDim2.new(0, thick, 0, size)
+    top.Position = UDim2.new(0.5, -thick / 2, 0.5, -gap - size)
+    top.BackgroundColor3 = color
+    top.BorderSizePixel = 0
+    top.Parent = crosshairGui
+    
+    local bottom = Instance.new("Frame")
+    bottom.Size = UDim2.new(0, thick, 0, size)
+    bottom.Position = UDim2.new(0.5, -thick / 2, 0.5, gap)
+    bottom.BackgroundColor3 = color
+    bottom.BorderSizePixel = 0
+    bottom.Parent = crosshairGui
+    
+    local left = Instance.new("Frame")
+    left.Size = UDim2.new(0, size, 0, thick)
+    left.Position = UDim2.new(0.5, -gap - size, 0.5, -thick / 2)
+    left.BackgroundColor3 = color
+    left.BorderSizePixel = 0
+    left.Parent = crosshairGui
+    
+    local right = Instance.new("Frame")
+    right.Size = UDim2.new(0, size, 0, thick)
+    right.Position = UDim2.new(0.5, gap, 0.5, -thick / 2)
+    right.BackgroundColor3 = color
+    right.BorderSizePixel = 0
+    right.Parent = crosshairGui
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 3, 0, 3)
+    dot.Position = UDim2.new(0.5, -1.5, 0.5, -1.5)
+    dot.BackgroundColor3 = color
+    dot.BorderSizePixel = 0
+    dot.Parent = crosshairGui
+end
+
+-- ===== SHIFTLOCK =====
+local function CreateShiftlockButton()
+    if shiftlockButton then return end
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "MTY_Shiftlock"
+    sg.Parent = game.CoreGui
+    sg.ResetOnSpawn = false
+    
+    local btn = Instance.new("ImageButton")
+    btn.Size = UDim2.new(0, 50, 0, 50)
+    btn.Position = UDim2.new(0.92, 0, 0.55, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundTransparency = 1
+    btn.Image = "http://www.roblox.com/asset/?id=182223762"
+    btn.Parent = sg
+    btn.Draggable = true
+    shiftlockButton = btn
+    btn.MouseButton1Click:Connect(function() ToggleShiftlock() end)
+end
+
+local function ToggleShiftlock()
+    shiftlockActive = not shiftlockActive
+    if shiftlockActive then
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.AutoRotate = false
+        end
+        if shiftlockConnection then shiftlockConnection:Disconnect() end
+        shiftlockConnection = RunService.RenderStepped:Connect(function()
+            if not shiftlockActive then return end
+            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                local root = LP.Character.HumanoidRootPart
+                local look = Camera.CFrame.LookVector
+                local pos = root.Position
+                root.CFrame = CFrame.new(pos, Vector3.new(look.X * 99999, pos.Y, look.Z * 99999))
+            end
+        end)
+        if shiftlockButton then shiftlockButton.Image = "rbxasset://textures/ui/mouseLock_on@2x.png" end
+        ShowMessage("Shiftlock ON")
+    else
+        if shiftlockConnection then shiftlockConnection:Disconnect() shiftlockConnection = nil end
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.AutoRotate = true
+        end
+        if shiftlockButton then shiftlockButton.Image = "rbxasset://textures/ui/mouseLock_off@2x.png" end
+        ShowMessage("Shiftlock OFF")
+    end
+end
+
+-- ===== C BUTTON =====
+local function CreateCButton()
+    if cButtonGui then cButtonGui:Destroy() cButtonGui = nil end
+    cButtonGui = Instance.new("ScreenGui")
+    cButtonGui.Name = "MTY_CButton"
+    cButtonGui.Parent = game.CoreGui
+    cButtonGui.ResetOnSpawn = false
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 58, 0, 58)
+    btn.Position = UDim2.new(0.9, 0, 0.8, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    btn.Text = "C"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = cButtonGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 3
+    stroke.Color = Color3.fromRGB(80, 180, 255)
+    stroke.Parent = btn
+    
+    local origPos = btn.Position
+    
+    local function setPressed(p)
+        if p then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 100, 220)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 100)
+            btn.Position = origPos + UDim2.new(0, 0, 0, 4)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Position = origPos
+        end
+    end
+    
+    btn.MouseButton1Down:Connect(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+        setPressed(true)
+    end)
+    btn.MouseButton1Up:Connect(function()
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+        setPressed(false)
+    end)
+    
+    local drag = false
+    local dStart, sPos
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            drag = true
+            dStart = input.Position
+            sPos = btn.Position
+            origPos = btn.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dStart
+            btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+            origPos = btn.Position
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            drag = false
+        end
+    end)
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.C then setPressed(true) end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.C then setPressed(false) end
+    end)
+end
+
+-- ===== R6 ANIMATIONS =====
+local function RunCustomAnimation(Char)
+    if Char:WaitForChild("Humanoid").RigType == Enum.HumanoidRigType.R6 then return end
+    if Char:FindFirstChild("Animate") then Char.Animate.Disabled = true end
+    for _, v in next, Char.Humanoid:GetPlayingAnimationTracks() do v:Stop() end
+    
+    local Humanoid = Char:WaitForChild("Humanoid")
+    local animTable = {}
+    local animNames = {
+        idle = {{id = "http://www.roblox.com/asset/?id=12521158637", weight = 9}, {id = "http://www.roblox.com/asset/?id=12521162526", weight = 1}},
+        walk = {{id = "http://www.roblox.com/asset/?id=12518152696", weight = 10}},
+        run = {{id = "http://www.roblox.com/asset/?id=12518152696", weight = 10}},
+        jump = {{id = "http://www.roblox.com/asset/?id=12520880485", weight = 10}},
+        fall = {{id = "http://www.roblox.com/asset/?id=12520972571", weight = 10}},
+        climb = {{id = "http://www.roblox.com/asset/?id=12520982150", weight = 10}},
+        sit = {{id = "http://www.roblox.com/asset/?id=12520993168", weight = 10}}
+    }
+    
+    for name, list in pairs(animNames) do
+        animTable[name] = {}
+        for idx, anim in pairs(list) do
+            animTable[name][idx] = {anim = Instance.new("Animation"), weight = anim.weight}
+            animTable[name][idx].anim.AnimationId = anim.id
+            animTable[name][idx].anim.Name = name
+        end
+    end
+    
+    local currentTrack = nil
+    
+    local function playAnimation(name, time)
+        local roll = math.random(1, 10)
+        local idx = 1
+        local total = 0
+        for i, v in pairs(animTable[name]) do total = total + v.weight end
+        while roll > 0 do
+            roll = roll - animTable[name][idx].weight
+            if roll <= 0 then break end
+            idx = idx + 1
+        end
+        local anim = animTable[name][idx].anim
+        if currentTrack then currentTrack:Stop(time) currentTrack:Destroy() end
+        currentTrack = Humanoid:LoadAnimation(anim)
+        currentTrack:Play(time)
+    end
+    
+    Humanoid.Running:Connect(function(speed)
+        if speed > 0.75 then playAnimation("walk", 0.2) else playAnimation("idle", 0.2) end
+    end)
+    Humanoid.Jumping:Connect(function() playAnimation("jump", 0.1) end)
+    Humanoid.FreeFalling:Connect(function() playAnimation("fall", 0.2) end)
+    Humanoid.Seated:Connect(function() playAnimation("sit", 0.5) end)
+    playAnimation("idle", 0.1)
+end
+
+-- ===== STRETCH =====
+local function ToggleStretch()
+    stretchEnabled = not stretchEnabled
+    if stretchEnabled then
+        if stretchConnection then stretchConnection:Disconnect() end
+        stretchConnection = RunService.RenderStepped:Connect(function()
+            if not stretchEnabled then return end
+            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, guiSettings.StretchValue, 0, 0, 0, 1)
+        end)
+        ShowMessage("Stretch ON")
+    else
+        if stretchConnection then stretchConnection:Disconnect() stretchConnection = nil end
+        ShowMessage("Stretch OFF")
+    end
+end
+
+-- ===== UPDATE GUI STYLE =====
+local function UpdateGUIStyle()
+    if guiMainFrame then
+        guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor
+        guiMainFrame.BackgroundTransparency = guiSettings.Transparency
+    end
+    if blurEffect then
+        blurEffect.Enabled = guiSettings.BlurEnabled
+        blurEffect.Size = guiSettings.BlurSize
+    end
+end
