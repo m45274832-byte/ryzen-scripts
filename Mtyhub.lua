@@ -1,6 +1,6 @@
--- MTY HUB v3.3 FULL
--- Полный функционал: VISUAL, PLAYER, COMBAT, NO FE, SETTINGS
--- Работает в Delta Executor
+-- MTY HUB v4.0
+-- Новая структура: UNIVERSAL (все функции) + SETTINGS (отдельно)
+-- Исправлен Jump Circle, добавлен ESP V2, новый Aimbot и Tracers
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -15,7 +15,6 @@ local guiMainFrame = nil
 local screenGui = nil
 local blurEffect = nil
 
--- ===== НАСТРОЙКИ =====
 local guiSettings = {
     BackgroundColor = Color3.fromRGB(0, 0, 0),
     BorderColor = Color3.fromRGB(255, 0, 0),
@@ -38,137 +37,12 @@ local guiSettings = {
     TrailLength = 50,
     AntiAimMode = "Spin",
     FakeLagAmount = 5,
-    StretchValue = 0.65
-}
-
--- ===== ПЕРЕМЕННЫЕ =====
-local espEnabled = false
-local espFolder = Instance.new("Folder")
-espFolder.Name = "MTY_ESP"
-espFolder.Parent = workspace
-
-local chamsEnabled = false
-local chamsFolder = Instance.new("Folder")
-chamsFolder.Name = "MTY_Chams"
-chamsFolder.Parent = workspace
-
-local hitboxEnabled = false
-local HitboxFolder = Instance.new("Folder")
-HitboxFolder.Name = "MTY_Hitboxes"
-HitboxFolder.Parent = workspace
-
-local tracersEnabled = false
-local tracersFolder = Instance.new("Folder")
-tracersFolder.Name = "MTY_Tracers"
-tracersFolder.Parent = workspace
-
-local backtrackEnabled = false
-local backtrackFolder = Instance.new("Folder")
-backtrackFolder.Name = "MTY_Backtrack"
-backtrackFolder.Parent = workspace
-local backtrackData = {}
-
-local jumpCircleEnabled = false
-local jumpCircle = nil
-local jumpCircleConnection = nil
-local jumpCircleColor = Color3.fromRGB(0, 255, 0)
-
-local trailEnabled = false
-local trailParts = {}
-local trailConnection = nil
-
-local spinEnabled = false
-local spinConnection = nil
-
-local sunSpinEnabled = false
-local sunSpinConnection = nil
-
-local helicopterEnabled = false
-local helicopterConnection = nil
-
-local invisibilityEnabled = false
-
-local noClipEnabled = false
-
-local orbitEnabled = false
-local orbitConnection = nil
-
-local antiAimEnabled = false
-local antiAimConnection = nil
-local antiAimMode = "Spin"
-
-local fakeLagEnabled = false
-local fakeLagConnection = nil
-
-local silentAimEnabled = false
-local silentAimConnection = nil
-
-local triggerBotEnabled = false
-local triggerBotConnection = nil
-
-local doubleTapEnabled = false
-local doubleTapConnection = nil
-
-local strafeEnabled = false
-local strafeConnection = nil
-
-local fullbrightEnabled = false
-
-local nameTagsEnabled = false
-local nameTagsFolder = Instance.new("Folder")
-nameTagsFolder.Name = "MTY_NameTags"
-nameTagsFolder.Parent = workspace
-
-local skeletonEnabled = false
-local skeletonFolder = Instance.new("Folder")
-skeletonFolder.Name = "MTY_Skeleton"
-skeletonFolder.Parent = workspace
-
-local targetESPEnabled = false
-local targetHighlight = nil
-
-local shiftlockActive = false
-local shiftlockConnection = nil
-local shiftlockButton = nil
-
-local cButtonEnabled = false
-local cButtonGui = nil
-
-local clemonRCLoaded = false
-local r6Enabled = false
-
-local particlesEnabled = false
-local particlesConnection = nil
-
-local worldColorEnabled = false
-local originalAmbient = Lighting.Ambient
-local originalOutdoor = Lighting.OutdoorAmbient
-
-local crosshairEnabled = false
-local crosshairGui = nil
-local crosshairColor = Color3.fromRGB(0, 255, 0)
-
-local stretchEnabled = false
-local stretchConnection = nil
-
-local hatEnabled = false
-local currentHat = nil
-local hatBrim = nil
-local hatTopRing = nil
-local hatTassel = nil
-local hatConnection = nil
-
-local dashEnabled = false
-local dashButton = nil
-
-local teleportTool = nil
-local teleportToolEnabled = false
-
-local flyLoaded = false
-local speedValue = 16
-local gravityValue = workspace.Gravity
-
-local function ShowMessage(text)
+    StretchValue = 0.65,
+    AimbotFOV = 150,
+    AimbotSpeed = 0.3,
+    AimbotPart = "Head",
+    AimbotMaxDist = 1000
+}local function ShowMessage(text)
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(0.5, 0, 0.08, 0)
     msg.Position = UDim2.new(0.25, 0, 0.88, 0)
@@ -183,7 +57,6 @@ local function ShowMessage(text)
     msg:Destroy()
 end
 
--- ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 local function OpenTextInput(title, placeholder, default, callback)
     local s = Instance.new("ScreenGui")
     s.Name = "Input"
@@ -340,9 +213,155 @@ local function OpenColorPicker(title, callback)
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = close
     close.MouseButton1Click:Connect(function() s:Destroy() end)
+endlocal function FindBestTarget()
+    local target = nil
+    local near = guiSettings.AimbotFOV
+    local mid = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local hum = player.Character:FindFirstChild("Humanoid")
+            local hit = player.Character:FindFirstChild(guiSettings.AimbotPart) or player.Character:FindFirstChild("Head")
+            if hum and hit and hum.Health > 0 then
+                local screen, visible = Camera:WorldToViewportPoint(hit.Position)
+                if visible then
+                    local dist = (Vector2.new(screen.X, screen.Y) - mid).Magnitude
+                    local worldDist = (Camera.CFrame.Position - hit.Position).Magnitude
+                    if dist < near and worldDist < guiSettings.AimbotMaxDist then
+                        near = dist
+                        target = hit
+                    end
+                end
+            end
+        end
+    end
+    return target
 end
 
--- ===== ESP =====
+local function ToggleAimbot()
+    aimbotEnabled = not aimbotEnabled
+    if aimbotEnabled then
+        if aimbotConnection then aimbotConnection:Disconnect() end
+        aimbotConnection = RunService.RenderStepped:Connect(function()
+            if not aimbotEnabled then return end
+            local mid = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            aimbotFOVRing.Position = mid
+            aimbotFOVRing.Radius = guiSettings.AimbotFOV
+            aimbotFOVRing.Visible = true
+            
+            local target = FindBestTarget()
+            if target then
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, target.Position), guiSettings.AimbotSpeed)
+            end
+        end)
+        ShowMessage("🎯 Aimbot ON (FOV: " .. guiSettings.AimbotFOV .. ")")
+    else
+        if aimbotConnection then aimbotConnection:Disconnect() aimbotConnection = nil end
+        aimbotFOVRing.Visible = false
+        ShowMessage("🎯 Aimbot OFF")
+    end
+endlocal function UpdateESPV2()
+    for _, v in pairs(espV2Folder:GetChildren()) do v:Destroy() end
+    if not espV2Enabled then return end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            local hum = player.Character:FindFirstChild("Humanoid")
+            if root and hum and hum.Health > 0 then
+                local pos, visible = Camera:WorldToViewportPoint(root.Position)
+                local dist = (Camera.CFrame.Position - root.Position).Magnitude
+                local color = Color3.fromHSV(math.clamp(dist / 1000, 0, 0.33), 1, 1)
+                
+                if visible then
+                    local size = math.clamp(2500 / dist, 5, 300)
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Adornee = root
+                    box.Color3 = color
+                    box.Transparency = 0.5
+                    box.Size = Vector3.new(size / 2, size * 0.75, 1)
+                    box.AlwaysOnTop = true
+                    box.ZIndex = 10
+                    box.Parent = espV2Folder
+                end
+            end
+        end
+    end
+end
+
+local function ToggleESPV2()
+    espV2Enabled = not espV2Enabled
+    if espV2Enabled then
+        RunService.Heartbeat:Connect(function()
+            if espV2Enabled then UpdateESPV2() end
+        end)
+    else
+        for _, v in pairs(espV2Folder:GetChildren()) do v:Destroy() end
+    end
+    ShowMessage("ESP V2 " .. (espV2Enabled and "ON" or "OFF"))
+endlocal function ToggleJumpCircle()
+    jumpCircleEnabled = not jumpCircleEnabled
+    if jumpCircleEnabled then
+        if jumpCircleConnection then jumpCircleConnection:Disconnect() end
+        
+        jumpCircle = Instance.new("Part")
+        jumpCircle.Size = Vector3.new(6, 0.2, 6)
+        jumpCircle.Anchored = true
+        jumpCircle.CanCollide = false
+        jumpCircle.Material = Enum.Material.Neon
+        jumpCircle.BrickColor = BrickColor.new(jumpCircleColor)
+        jumpCircle.Transparency = 1
+        jumpCircle.Shape = Enum.PartType.Cylinder
+        jumpCircle.Parent = workspace
+        
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Cylinder
+        mesh.Scale = Vector3.new(1, 0.05, 1)
+        mesh.Parent = jumpCircle
+        
+        local fadeStart = 0
+        local isJumping = false
+        
+        jumpCircleConnection = RunService.Heartbeat:Connect(function()
+            if not jumpCircleEnabled or not jumpCircle then return end
+            
+            local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+            if not hum then return end
+            
+            local jumping = hum:GetState() == Enum.HumanoidStateType.Jumping
+            
+            if jumping and not isJumping then
+                isJumping = true
+                fadeStart = tick()
+                jumpCircle.Transparency = 0.1
+                jumpCircle.Size = Vector3.new(6, 0.2, 6)
+                jumpCircle.Position = LP.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
+                
+            elseif not jumping and isJumping then
+                local elapsed = tick() - fadeStart
+                if elapsed < guiSettings.JumpCircleFadeTime then
+                    local alpha = elapsed / guiSettings.JumpCircleFadeTime
+                    jumpCircle.Transparency = 0.1 + (alpha * 0.9)
+                    jumpCircle.Size = Vector3.new(6 - (alpha * 2), 0.2, 6 - (alpha * 2))
+                else
+                    jumpCircle.Transparency = 1
+                    jumpCircle.Size = Vector3.new(0.1, 0.1, 0.1)
+                    isJumping = false
+                end
+                
+            elseif jumping and isJumping then
+                jumpCircle.Position = LP.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
+                jumpCircle.Transparency = 0.1
+                jumpCircle.Size = Vector3.new(6, 0.2, 6)
+            end
+        end)
+        ShowMessage("Jump Circle ON ⭕")
+    else
+        if jumpCircleConnection then jumpCircleConnection:Disconnect() jumpCircleConnection = nil end
+        if jumpCircle then jumpCircle:Destroy() jumpCircle = nil end
+        ShowMessage("Jump Circle OFF")
+    end
+end-- ESP
 local function UpdateESP()
     for _, v in pairs(espFolder:GetChildren()) do v:Destroy() end
     if not espEnabled then return end
@@ -364,7 +383,13 @@ local function UpdateESP()
     end
 end
 
--- ===== CHAMS =====
+local function ToggleESP()
+    espEnabled = not espEnabled
+    UpdateESP()
+    ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
+end
+
+-- CHAMS
 local function UpdateChams()
     for _, v in pairs(chamsFolder:GetChildren()) do v:Destroy() end
     if not chamsEnabled then return end
@@ -386,7 +411,13 @@ local function UpdateChams()
     end
 end
 
--- ===== HITBOXES =====
+local function ToggleChams()
+    chamsEnabled = not chamsEnabled
+    UpdateChams()
+    ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
+end
+
+-- HITBOXES
 local function UpdateHitboxes()
     for _, v in pairs(HitboxFolder:GetChildren()) do v:Destroy() end
     if not hitboxEnabled then return end
@@ -404,31 +435,13 @@ local function UpdateHitboxes()
     end
 end
 
--- ===== TRACERS =====
-local function UpdateTracers()
-    for _, v in pairs(tracersFolder:GetChildren()) do v:Destroy() end
-    if not tracersEnabled then return end
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local tracer = Instance.new("Part")
-            tracer.Size = Vector3.new(0.1, 0.1, 0.1)
-            tracer.Anchored = true
-            tracer.CanCollide = false
-            tracer.Material = Enum.Material.Neon
-            tracer.BrickColor = BrickColor.new(Color3.fromRGB(255, 255, 255))
-            tracer.Parent = tracersFolder
-            local pos = player.Character.HumanoidRootPart.Position
-            local camPos = Camera.CFrame.Position
-            local dist = (pos - camPos).Magnitude
-            local mid = (camPos + pos) / 2
-            tracer.Size = Vector3.new(0.1, dist, 0.1)
-            tracer.CFrame = CFrame.lookAt(mid, camPos) * CFrame.new(0, 0, -dist / 2)
-            game:GetService("Debris"):AddItem(tracer, 0.1)
-        end
-    end
+local function ToggleHitboxes()
+    hitboxEnabled = not hitboxEnabled
+    UpdateHitboxes()
+    ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
 end
 
--- ===== BACKTRACK =====
+-- BACKTRACK
 local function UpdateBacktrack()
     for _, v in pairs(backtrackFolder:GetChildren()) do v:Destroy() end
     if not backtrackEnabled then return end
@@ -449,63 +462,26 @@ local function UpdateBacktrack()
     end
 end
 
--- ===== JUMP CIRCLE =====
-local function ToggleJumpCircle()
-    jumpCircleEnabled = not jumpCircleEnabled
-    if jumpCircleEnabled then
-        if jumpCircleConnection then jumpCircleConnection:Disconnect() end
-        jumpCircle = Instance.new("Part")
-        jumpCircle.Size = Vector3.new(6, 0.2, 6)
-        jumpCircle.Anchored = true
-        jumpCircle.CanCollide = false
-        jumpCircle.Material = Enum.Material.Neon
-        jumpCircle.BrickColor = BrickColor.new(jumpCircleColor)
-        jumpCircle.Transparency = 1
-        jumpCircle.Shape = Enum.PartType.Cylinder
-        jumpCircle.Parent = workspace
-        local mesh = Instance.new("SpecialMesh")
-        mesh.MeshType = Enum.MeshType.Cylinder
-        mesh.Scale = Vector3.new(1, 0.1, 1)
-        mesh.Parent = jumpCircle
-        local fadeStart = 0
-        local isJumping = false
-        jumpCircleConnection = RunService.Heartbeat:Connect(function()
-            if not jumpCircleEnabled or not jumpCircle then return end
-            local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-            if not hum then return end
-            local jumping = hum:GetState() == Enum.HumanoidStateType.Jumping
-            if jumping and not isJumping then
-                isJumping = true
-                fadeStart = tick()
-                jumpCircle.Transparency = 0.1
-                jumpCircle.Size = Vector3.new(6, 0.2, 6)
-                jumpCircle.Position = LP.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
-            elseif not jumping and isJumping then
-                local elapsed = tick() - fadeStart
-                if elapsed < guiSettings.JumpCircleFadeTime then
-                    local alpha = elapsed / guiSettings.JumpCircleFadeTime
-                    jumpCircle.Transparency = 0.1 + (alpha * 0.9)
-                    jumpCircle.Size = Vector3.new(6 - (alpha * 2), 0.2, 6 - (alpha * 2))
-                else
-                    jumpCircle.Transparency = 1
-                    jumpCircle.Size = Vector3.new(0.1, 0.1, 0.1)
-                    isJumping = false
-                end
-            elseif jumping and isJumping then
-                jumpCircle.Position = LP.Character.HumanoidRootPart.Position - Vector3.new(0, 3, 0)
-                jumpCircle.Transparency = 0.1
-                jumpCircle.Size = Vector3.new(6, 0.2, 6)
+local function ToggleBacktrack()
+    backtrackEnabled = not backtrackEnabled
+    if backtrackEnabled then
+        backtrackData = {}
+        RunService.Heartbeat:Connect(function()
+            if not backtrackEnabled then return end
+            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(backtrackData, {time = tick(), cframe = LP.Character.HumanoidRootPart.CFrame})
+                if #backtrackData > 100 then table.remove(backtrackData, 1) end
+                UpdateBacktrack()
             end
         end)
-        ShowMessage("Jump Circle ON")
     else
-        if jumpCircleConnection then jumpCircleConnection:Disconnect() jumpCircleConnection = nil end
-        if jumpCircle then jumpCircle:Destroy() jumpCircle = nil end
-        ShowMessage("Jump Circle OFF")
+        for _, v in pairs(backtrackFolder:GetChildren()) do v:Destroy() end
+        backtrackData = {}
     end
+    ShowMessage("Backtrack " .. (backtrackEnabled and "ON" or "OFF"))
 end
 
--- ===== TRAIL =====
+-- TRAIL
 local function CreateTrail()
     if not trailEnabled then return end
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -526,7 +502,23 @@ local function CreateTrail()
     end
 end
 
--- ===== PARTICLES =====
+local function ToggleTrail()
+    trailEnabled = not trailEnabled
+    if trailEnabled then
+        for _, v in pairs(trailParts) do v:Destroy() end
+        trailParts = {}
+        trailConnection = RunService.Heartbeat:Connect(function()
+            if trailEnabled then CreateTrail() end
+        end)
+    else
+        if trailConnection then trailConnection:Disconnect() trailConnection = nil end
+        for _, v in pairs(trailParts) do v:Destroy() end
+        trailParts = {}
+    end
+    ShowMessage("Trail " .. (trailEnabled and "ON" or "OFF"))
+end
+
+-- PARTICLES
 local function ToggleParticles()
     particlesEnabled = not particlesEnabled
     if particlesEnabled then
@@ -550,9 +542,7 @@ local function ToggleParticles()
         if particlesConnection then particlesConnection:Disconnect() particlesConnection = nil end
         ShowMessage("Particles OFF")
     end
-end
-
--- ===== CHINESE HAT =====
+end-- CHINESE HAT
 local function CreateChineseHat()
     if currentHat then currentHat:Destroy() currentHat = nil end
     if hatBrim then hatBrim:Destroy() hatBrim = nil end
@@ -628,7 +618,22 @@ local function CreateChineseHat()
     end)
 end
 
--- ===== CROSSHAIR =====
+local function ToggleChineseHat()
+    hatEnabled = not hatEnabled
+    if hatEnabled then
+        CreateChineseHat()
+        ShowMessage("Chinese Hat ON 🎩")
+    else
+        if currentHat then currentHat:Destroy() currentHat = nil end
+        if hatBrim then hatBrim:Destroy() hatBrim = nil end
+        if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
+        if hatTassel then hatTassel:Destroy() hatTassel = nil end
+        if hatConnection then hatConnection:Disconnect() hatConnection = nil end
+        ShowMessage("Chinese Hat OFF")
+    end
+end
+
+-- CROSSHAIR
 local function CreateCrosshair()
     if crosshairGui then crosshairGui:Destroy() end
     crosshairGui = Instance.new("ScreenGui")
@@ -677,7 +682,16 @@ local function CreateCrosshair()
     dot.Parent = crosshairGui
 end
 
--- ===== SHIFTLOCK =====
+local function ToggleCrosshair()
+    crosshairEnabled = not crosshairEnabled
+    if crosshairEnabled then
+        CreateCrosshair()
+        ShowMessage("Crosshair ON 🎯")
+    else
+        if crosshairGui then crosshairGui:Destroy() crosshairGui = nil end
+        ShowMessage("Crosshair OFF")
+    end
+end-- SHIFTLOCK
 local function CreateShiftlockButton()
     if shiftlockButton then return end
     local sg = Instance.new("ScreenGui")
@@ -714,18 +728,18 @@ local function ToggleShiftlock()
             end
         end)
         if shiftlockButton then shiftlockButton.Image = "rbxasset://textures/ui/mouseLock_on@2x.png" end
-        ShowMessage("Shiftlock ON")
+        ShowMessage("Shiftlock ON 🔒")
     else
         if shiftlockConnection then shiftlockConnection:Disconnect() shiftlockConnection = nil end
         if LP.Character and LP.Character:FindFirstChild("Humanoid") then
             LP.Character.Humanoid.AutoRotate = true
         end
         if shiftlockButton then shiftlockButton.Image = "rbxasset://textures/ui/mouseLock_off@2x.png" end
-        ShowMessage("Shiftlock OFF")
+        ShowMessage("Shiftlock OFF 🔓")
     end
 end
 
--- ===== C BUTTON =====
+-- C BUTTON
 local function CreateCButton()
     if cButtonGui then cButtonGui:Destroy() cButtonGui = nil end
     cButtonGui = Instance.new("ScreenGui")
@@ -807,7 +821,18 @@ local function CreateCButton()
     end)
 end
 
--- ===== R6 ANIMATIONS =====
+local function ToggleCButton()
+    cButtonEnabled = not cButtonEnabled
+    if cButtonEnabled then
+        CreateCButton()
+        ShowMessage("C Button ON ⌨️")
+    else
+        if cButtonGui then cButtonGui:Destroy() cButtonGui = nil end
+        ShowMessage("C Button OFF")
+    end
+end
+
+-- R6 ANIMATIONS
 local function RunCustomAnimation(Char)
     if Char:WaitForChild("Humanoid").RigType == Enum.HumanoidRigType.R6 then return end
     if Char:FindFirstChild("Animate") then Char.Animate.Disabled = true end
@@ -861,8 +886,499 @@ local function RunCustomAnimation(Char)
     playAnimation("idle", 0.1)
 end
 
--- ===== STRETCH =====
-local function ToggleStretch()
+local function ToggleR6Animations()
+    if not r6Enabled then
+        RunCustomAnimation(LP.Character)
+        LP.CharacterAdded:Connect(function(char) RunCustomAnimation(char) end)
+        r6Enabled = true
+        ShowMessage("R6 Animations ON 🕺")
+    else
+        ShowMessage("R6 Animations already ON")
+    end
+endlocal function ToggleFullbright()
+    fullbrightEnabled = not fullbrightEnabled
+    if fullbrightEnabled then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    else
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
+        Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+    end
+    ShowMessage("Fullbright " .. (fullbrightEnabled and "ON" or "OFF"))
+end
+
+local function ToggleNameTags()
+    nameTagsEnabled = not nameTagsEnabled
+    if nameTagsEnabled then
+        local function UpdateNameTags()
+            for _, v in pairs(nameTagsFolder:GetChildren()) do v:Destroy() end
+            if not nameTagsEnabled then return end
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local bill = Instance.new("BillboardGui")
+                    bill.Size = UDim2.new(0, 200, 0, 40)
+                    bill.Adornee = player.Character.HumanoidRootPart
+                    bill.Parent = nameTagsFolder
+                    local label = Instance.new("TextLabel")
+                    label.Size = UDim2.new(1, 0, 1, 0)
+                    label.BackgroundTransparency = 1
+                    label.Text = player.Name
+                    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    label.TextScaled = true
+                    label.Font = Enum.Font.GothamBold
+                    label.Parent = bill
+                end
+            end
+        end
+        UpdateNameTags()
+        RunService.Heartbeat:Connect(function()
+            if nameTagsEnabled then UpdateNameTags() end
+        end)
+    else
+        for _, v in pairs(nameTagsFolder:GetChildren()) do v:Destroy() end
+    end
+    ShowMessage("NameTags " .. (nameTagsEnabled and "ON" or "OFF"))
+end
+
+local function ToggleSkeleton()
+    skeletonEnabled = not skeletonEnabled
+    if skeletonEnabled then
+        local function UpdateSkeleton()
+            for _, v in pairs(skeletonFolder:GetChildren()) do v:Destroy() end
+            if not skeletonEnabled then return end
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LP and player.Character then
+                    local root = player.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        for _, part in pairs(player.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                local sphere = Instance.new("Part")
+                                sphere.Size = Vector3.new(0.3, 0.3, 0.3)
+                                sphere.CFrame = part.CFrame
+                                sphere.Anchored = true
+                                sphere.CanCollide = false
+                                sphere.Material = Enum.Material.Neon
+                                sphere.BrickColor = BrickColor.new("Bright red")
+                                sphere.Parent = skeletonFolder
+                                game:GetService("Debris"):AddItem(sphere, 0.1)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        UpdateSkeleton()
+        RunService.Heartbeat:Connect(function()
+            if skeletonEnabled then UpdateSkeleton() end
+        end)
+    else
+        for _, v in pairs(skeletonFolder:GetChildren()) do v:Destroy() end
+    end
+    ShowMessage("Skeleton " .. (skeletonEnabled and "ON" or "OFF"))
+end
+
+local function ToggleTargetESP()
+    targetESPEnabled = not targetESPEnabled
+    if targetESPEnabled then
+        RunService.Heartbeat:Connect(function()
+            if targetESPEnabled then
+                if targetHighlight then targetHighlight:Destroy() end
+                local mousePos = LP:GetMouse().UnitRay
+                local hit = workspace:FindPartOnRay(Ray.new(Camera.CFrame.Position, mousePos.Direction * 500))
+                if hit and hit.Parent and hit.Parent:FindFirstChild("Humanoid") then
+                    local player = Players:GetPlayerFromCharacter(hit.Parent)
+                    if player and player ~= LP then
+                        targetHighlight = Instance.new("Highlight")
+                        targetHighlight.Adornee = hit.Parent
+                        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                        targetHighlight.FillColor = Color3.fromRGB(255, 255, 0)
+                        targetHighlight.FillTransparency = 0.2
+                        targetHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        targetHighlight.OutlineTransparency = 0.1
+                        targetHighlight.Parent = workspace
+                    end
+                end
+            else
+                if targetHighlight then targetHighlight:Destroy() end
+            end
+        end)
+    else
+        if targetHighlight then targetHighlight:Destroy() end
+    end
+    ShowMessage("Target ESP " .. (targetESPEnabled and "ON" or "OFF"))
+end
+
+local function ToggleWorldColor()
+    worldColorEnabled = not worldColorEnabled
+    if worldColorEnabled then
+        Lighting.Ambient = guiSettings.WorldColor
+        Lighting.OutdoorAmbient = guiSettings.WorldColor
+        ShowMessage("World Color ON 🌍")
+    else
+        Lighting.Ambient = originalAmbient
+        Lighting.OutdoorAmbient = originalOutdoor
+        ShowMessage("World Color OFF")
+    end
+end
+
+local function ToggleSpin()
+    spinEnabled = not spinEnabled
+    if spinEnabled then
+        if spinConnection then spinConnection:Disconnect() end
+        spinConnection = RunService.Heartbeat:Connect(function()
+            if spinEnabled and LP.Character then
+                local root = LP.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local pos = root.Position
+                    root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(guiSettings.SpinSpeed), 0)
+                end
+            end
+        end)
+        ShowMessage("Spin ON 🌀")
+    else
+        if spinConnection then spinConnection:Disconnect() spinConnection = nil end
+        ShowMessage("Spin OFF")
+    end
+end
+
+local function ToggleSunSpin()
+    sunSpinEnabled = not sunSpinEnabled
+    if sunSpinEnabled then
+        if sunSpinConnection then sunSpinConnection:Disconnect() end
+        sunSpinConnection = RunService.Heartbeat:Connect(function()
+            if sunSpinEnabled and LP.Character then
+                local root = LP.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local pos = root.Position
+                    root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(guiSettings.SunSpinSpeed), math.rad(guiSettings.SunSpinSpeed * 0.5))
+                end
+            end
+        end)
+        ShowMessage("☀️ Sun Spin ON")
+    else
+        if sunSpinConnection then sunSpinConnection:Disconnect() sunSpinConnection = nil end
+        ShowMessage("☀️ Sun Spin OFF")
+    end
+end
+
+local function ToggleHelicopter()
+    helicopterEnabled = not helicopterEnabled
+    if helicopterEnabled then
+        if helicopterConnection then helicopterConnection:Disconnect() end
+        helicopterConnection = RunService.Heartbeat:Connect(function()
+            if helicopterEnabled and LP.Character then
+                local root = LP.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(50), 0)
+                    root.Velocity = Vector3.new(0, 20, 0)
+                end
+            end
+        end)
+        ShowMessage("Helicopter ON 🚁")
+    else
+        if helicopterConnection then helicopterConnection:Disconnect() helicopterConnection = nil end
+        if LP.Character then
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if root then root.Velocity = Vector3.new(0, 0, 0) end
+        end
+        ShowMessage("Helicopter OFF")
+    end
+end
+
+local function ToggleInvisibility()
+    invisibilityEnabled = not invisibilityEnabled
+    local char = LP.Character or LP.CharacterAdded:Wait()
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Transparency = invisibilityEnabled and 0.99 or 0
+        end
+    end
+    ShowMessage("Invisibility " .. (invisibilityEnabled and "ON" or "OFF"))
+end
+
+local function ToggleDash()
+    dashEnabled = not dashEnabled
+    if dashEnabled then
+        if dashButton then return end
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "MTY_Dash"
+        sg.Parent = game.CoreGui
+        sg.ResetOnSpawn = false
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 60, 0, 60)
+        btn.Position = UDim2.new(0.9, -70, 0.5, -30)
+        btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        btn.BorderSizePixel = 0
+        btn.Text = "⚡"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 30
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = sg
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 12)
+        btnCorner.Parent = btn
+        btn.Draggable = true
+        dashButton = btn
+        btn.MouseButton1Down:Connect(function()
+            local hum = LP.Character:FindFirstChild("Humanoid")
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                hum.Jump = true
+                local forward = root.CFrame.LookVector
+                root.Velocity = Vector3.new(forward.X * 50, root.Velocity.Y + 10, forward.Z * 50)
+                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(5), 0)
+            end
+        end)
+    else
+        if dashButton then dashButton.Parent:Destroy() dashButton = nil end
+    end
+    ShowMessage("Dash " .. (dashEnabled and "ON" or "OFF"))
+end
+
+local function ToggleFly()
+    if not flyLoaded then
+        pcall(function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/dUJkcGde"))()
+        end)
+        flyLoaded = true
+        ShowMessage("Fly started")
+    else
+        ShowMessage("Fly already loaded")
+    end
+end
+
+local function ToggleTeleportTool()
+    teleportToolEnabled = not teleportToolEnabled
+    if teleportToolEnabled then
+        if teleportTool then return end
+        teleportTool = Instance.new("Tool")
+        teleportTool.RequiresHandle = false
+        teleportTool.Name = "MTY Teleport"
+        teleportTool.Activated:Connect(function()
+            local pos = LP:GetMouse() and LP:GetMouse().Hit + Vector3.new(0, 2.5, 0) or Vector3.new(0, 10, 0)
+            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                LP.Character.HumanoidRootPart.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
+            end
+        end)
+        teleportTool.Parent = LP.Backpack
+        ShowMessage("Teleport Tool ON")
+    else
+        if teleportTool then teleportTool:Destroy() teleportTool = nil end
+        ShowMessage("Teleport Tool OFF")
+    end
+end
+
+local function ToggleNoClip()
+    noClipEnabled = not noClipEnabled
+    if noClipEnabled then
+        if LP.Character then
+            for _, v in pairs(LP.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    else
+        if LP.Character then
+            for _, v in pairs(LP.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = true end
+            end
+        end
+    end
+    ShowMessage("NoClip " .. (noClipEnabled and "ON" or "OFF"))
+end
+
+local function ToggleStrafe()
+    strafeEnabled = not strafeEnabled
+    if strafeEnabled then
+        if strafeConnection then strafeConnection:Disconnect() end
+        strafeConnection = RunService.Heartbeat:Connect(function()
+            if not strafeEnabled then return end
+            local char = LP.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if not root or not hum then return end
+            if hum:GetState() == Enum.HumanoidStateType.Landed then
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) or
+                    UserInputService:IsKeyDown(Enum.KeyCode.A) or
+                    UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    hum.Jump = true
+                end
+            end
+            if hum:GetState() == Enum.HumanoidStateType.Jumping or
+                hum:GetState() == Enum.HumanoidStateType.Freefall then
+                local moveDir = hum.MoveDirection
+                if moveDir.Magnitude > 0.1 then
+                    local boost = moveDir * 8
+                    root.Velocity = root.Velocity + boost
+                end
+            end
+        end)
+        ShowMessage("Strafe ON 🏃")
+    else
+        if strafeConnection then strafeConnection:Disconnect() strafeConnection = nil end
+        ShowMessage("Strafe OFF")
+    end
+end
+
+local function ToggleOrbit()
+    orbitEnabled = not orbitEnabled
+    if orbitEnabled then
+        if orbitConnection then orbitConnection:Disconnect() end
+        orbitConnection = RunService.Heartbeat:Connect(function()
+            if not orbitEnabled then return end
+            local closest = nil
+            local closestDist = math.huge
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (LP.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < closestDist and dist < 20 then
+                        closestDist = dist
+                        closest = player
+                    end
+                end
+            end
+            if closest then
+                local targetPos = closest.Character.HumanoidRootPart.Position
+                local radius = 5
+                local angle = tick() * 2
+                local x = targetPos.X + radius * math.cos(angle)
+                local z = targetPos.Z + radius * math.sin(angle)
+                LP.Character.HumanoidRootPart.CFrame = CFrame.new(x, LP.Character.HumanoidRootPart.Position.Y, z) * CFrame.lookAt(Vector3.new(x, LP.Character.HumanoidRootPart.Position.Y, z), targetPos)
+            end
+        end)
+        ShowMessage("🌀 Orbit ON")
+    else
+        if orbitConnection then orbitConnection:Disconnect() orbitConnection = nil end
+        ShowMessage("🌀 Orbit OFF")
+    end
+endlocal function ToggleAntiAim()
+    antiAimEnabled = not antiAimEnabled
+    if antiAimEnabled then
+        if antiAimConnection then antiAimConnection:Disconnect() end
+        antiAimConnection = RunService.Heartbeat:Connect(function()
+            if not antiAimEnabled then return end
+            local char = LP.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            if antiAimMode == "Spin" then
+                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(tick() * 200), 0)
+            elseif antiAimMode == "Backwards" then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then
+                    local moveDir = hum.MoveDirection
+                    if moveDir.Magnitude > 0.1 then
+                        local backwardDir = -moveDir
+                        root.CFrame = CFrame.new(root.Position, root.Position + backwardDir * 10)
+                    else
+                        root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(180), 0)
+                    end
+                    hum.AutoRotate = false
+                end
+            end
+        end)
+        ShowMessage("Anti-Aim ON [" .. antiAimMode .. "] 🔫")
+    else
+        if antiAimConnection then antiAimConnection:Disconnect() antiAimConnection = nil end
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.AutoRotate = true
+        end
+        ShowMessage("Anti-Aim OFF")
+    end
+end
+
+local function SetAntiAimMode(mode)
+    antiAimMode = mode
+    if antiAimEnabled then
+        ToggleAntiAim()
+        wait(0.1)
+        ToggleAntiAim()
+    end
+    ShowMessage("Anti-Aim Mode: " .. mode)
+end
+
+local function ToggleFakeLag()
+    fakeLagEnabled = not fakeLagEnabled
+    if fakeLagEnabled then
+        if fakeLagConnection then fakeLagConnection:Disconnect() end
+        fakeLagConnection = RunService.Heartbeat:Connect(function()
+            if not fakeLagEnabled then return end
+            for i = 1, guiSettings.FakeLagAmount do wait(0.001) end
+        end)
+        ShowMessage("Fake Lag ON 📡")
+    else
+        if fakeLagConnection then fakeLagConnection:Disconnect() fakeLagConnection = nil end
+        ShowMessage("Fake Lag OFF")
+    end
+end
+
+local function ToggleSilentAim()
+    silentAimEnabled = not silentAimEnabled
+    ShowMessage("Silent Aim " .. (silentAimEnabled and "ON" or "OFF"))
+end
+
+local function ToggleTriggerBot()
+    triggerBotEnabled = not triggerBotEnabled
+    if triggerBotEnabled then
+        if triggerBotConnection then triggerBotConnection:Disconnect() end
+        triggerBotConnection = RunService.Heartbeat:Connect(function()
+            if not triggerBotEnabled then return end
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LP and player.Character then
+                    local head = player.Character:FindFirstChild("Head")
+                    if head then
+                        local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(LP:GetMouse().X, LP:GetMouse().Y)).Magnitude
+                            if dist < 50 then
+                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                                wait(0.05)
+                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        ShowMessage("Trigger Bot ON 🔥")
+    else
+        if triggerBotConnection then triggerBotConnection:Disconnect() triggerBotConnection = nil end
+        ShowMessage("Trigger Bot OFF")
+    end
+end
+
+local function ToggleDoubleTap()
+    doubleTapEnabled = not doubleTapEnabled
+    if doubleTapEnabled then
+        if doubleTapConnection then doubleTapConnection:Disconnect() end
+        doubleTapConnection = RunService.Heartbeat:Connect(function()
+            if not doubleTapEnabled then return end
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+            wait(0.01)
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+            wait(0.02)
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+            wait(0.01)
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+        end)
+        ShowMessage("Double Tap ON 💥")
+    else
+        if doubleTapConnection then doubleTapConnection:Disconnect() doubleTapConnection = nil end
+        ShowMessage("Double Tap OFF")
+    end
+end
+
+local function LoadClemonRC()
+    if clemonRCLoaded then
+        ShowMessage("ClemonRC already loaded")
+    else
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/clemonlang/clemon_roclothes/refs/heads/main/ClemonRC.lua"))()
+            clemonRCLoaded = true
+            ShowMessage("ClemonRC Loaded 👕")
+        end)
+    end
+endlocal function ToggleStretch()
     stretchEnabled = not stretchEnabled
     if stretchEnabled then
         if stretchConnection then stretchConnection:Disconnect() end
@@ -877,8 +1393,6 @@ local function ToggleStretch()
     end
 end
 
-
--- ===== UPDATE GUI STYLE =====
 local function UpdateGUIStyle()
     if guiMainFrame then
         guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor
@@ -888,22 +1402,7 @@ local function UpdateGUIStyle()
         blurEffect.Enabled = guiSettings.BlurEnabled
         blurEffect.Size = guiSettings.BlurSize
     end
-end
-
--- ===== UPDATE GUI STYLE =====
-local function UpdateGUIStyle()
-    if guiMainFrame then
-        guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor
-        guiMainFrame.BackgroundTransparency = guiSettings.Transparency
-    end
-    if blurEffect then
-        blurEffect.Enabled = guiSettings.BlurEnabled
-        blurEffect.Size = guiSettings.BlurSize
-    end
-end
-
--- ===== СОЗДАНИЕ МЕНЮ =====
-local function CreateMenu()
+endlocal function CreateMenu()
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "MTY_HUB"
     screenGui.Parent = game.CoreGui
@@ -937,7 +1436,7 @@ local function CreateMenu()
     title.Size = UDim2.new(0.7, 0, 0, 40)
     title.Position = UDim2.new(0.05, 0, 0.015, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MTY HUB v3.3 🔥"
+    title.Text = "MTY HUB v4.0 🔥"
     title.TextColor3 = guiSettings.TextColor
     title.TextScaled = true
     title.Font = Enum.Font.GothamBold
@@ -1015,7 +1514,8 @@ local function CreateMenu()
     contentCorner.CornerRadius = UDim.new(0, 12)
     contentCorner.Parent = contentArea
 
-    local categories = {"VISUAL", "PLAYER", "COMBAT", "NO FE", "SETTINGS"}
+    -- НОВАЯ СТРУКТУРА: ТОЛЬКО 2 ВКЛАДКИ
+    local categories = {"UNIVERSAL", "SETTINGS"}
     local categoryButtons = {}
     local allSubs = {}
     local currentCategory = ""
@@ -1044,9 +1544,10 @@ local function CreateMenu()
         btn.MouseButton1Click:Connect(function()
             currentCategory = cat
             local subs = {}
-            if cat == "VISUAL" then
+            if cat == "UNIVERSAL" then
                 subs = {
-                    "Toggle ESP", "Toggle Chams", "Toggle Hitboxes",
+                    "━━━ VISUAL ━━━",
+                    "Toggle ESP", "Toggle ESP V2", "Toggle Chams", "Toggle Hitboxes",
                     "Toggle Tracers", "Toggle Backtrack", "Toggle Jump Circle",
                     "Jump Circle Color", "Jump Circle Fade Time",
                     "Toggle Trail", "Trail Length",
@@ -1054,26 +1555,20 @@ local function CreateMenu()
                     "Toggle Fullbright", "Toggle NameTags", "Toggle Skeleton",
                     "Toggle Chinese Hat", "Hat Color", "Toggle Target ESP",
                     "Toggle World Color", "World Color",
-                    "Toggle Crosshair", "Crosshair Color", "Toggle Stretch"
-                }
-            elseif cat == "PLAYER" then
-                subs = {
+                    "Toggle Crosshair", "Crosshair Color", "Toggle Stretch",
+                    "━━━ PLAYER ━━━",
                     "Speed", "Gravity", "Toggle Spin", "Spin Speed",
                     "Toggle Sun Spin", "Sun Spin Speed",
                     "Toggle Helicopter", "Toggle Invisibility", "Toggle Dash",
                     "Toggle Fly", "Toggle Teleport Tool", "Toggle NoClip",
-                    "Toggle Shiftlock", "Toggle Strafe"
-                }
-            elseif cat == "COMBAT" then
-                subs = {
-                    "Toggle Orbit", "Toggle Anti-Aim",
+                    "Toggle Shiftlock", "Toggle Strafe",
+                    "━━━ COMBAT ━━━",
+                    "Toggle Aimbot", "Toggle Orbit", "Toggle Anti-Aim",
                     "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards",
                     "Toggle Fake Lag", "Fake Lag Amount",
                     "Toggle Silent Aim", "Toggle Trigger Bot",
-                    "Toggle Double Tap"
-                }
-            elseif cat == "NO FE" then
-                subs = {
+                    "Toggle Double Tap",
+                    "━━━ NO FE ━━━",
                     "Toggle C Button", "Load ClemonRC", "Toggle R6 Animations"
                 }
             elseif cat == "SETTINGS" then
@@ -1087,9 +1582,7 @@ local function CreateMenu()
             allSubs = subs
             RenderSubs(subs)
         end)
-    end
-
-    function RenderSubs(subs)
+    end    function RenderSubs(subs)
         for _, v in pairs(contentArea:GetChildren()) do v:Destroy() end
         local grid = Instance.new("Frame")
         grid.Size = UDim2.new(0.95, 0, 0.95, 0)
@@ -1112,763 +1605,299 @@ local function CreateMenu()
             row.BackgroundTransparency = 1
             row.Parent = grid
             
+            local isSeparator = name:find("━━━")
+            
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(0.8, 0, 1, 0)
             btn.Position = UDim2.new(0, 0, 0, 0)
-            btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+            btn.BackgroundColor3 = isSeparator and Color3.fromRGB(30, 0, 0) or Color3.fromRGB(80, 20, 20)
             btn.BorderSizePixel = 0
             btn.Text = name
-            btn.TextColor3 = Color3.fromRGB(255, 200, 200)
-            btn.TextSize = 11
-            btn.Font = Enum.Font.Gotham
+            btn.TextColor3 = isSeparator and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(255, 200, 200)
+            btn.TextSize = isSeparator and 12 or 11
+            btn.Font = isSeparator and Enum.Font.GothamBold or Enum.Font.Gotham
             btn.Parent = row
             local btnCorner = Instance.new("UICorner")
             btnCorner.CornerRadius = UDim.new(0, 6)
             btnCorner.Parent = btn
+            
             btn.MouseEnter:Connect(function()
-                btn.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+                if not isSeparator then btn.BackgroundColor3 = Color3.fromRGB(120, 30, 30) end
             end)
             btn.MouseLeave:Connect(function()
-                btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+                if not isSeparator then btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20) end
             end)
             
-            btn.MouseButton1Click:Connect(function()
-                -- VISUAL
-                if name == "Toggle ESP" then
-    espEnabled = not espEnabled
-    UpdateESP()
-    ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
-elseif name == "Toggle Chams" then
-    chamsEnabled = not chamsEnabled
-    UpdateChams()
-    ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
-elseif name == "Toggle Hitboxes" then
-    hitboxEnabled = not hitboxEnabled
-    UpdateHitboxes()
-    ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
-elseif name == "Toggle Tracers" then
-    tracersEnabled = not tracersEnabled
-    if tracersEnabled then
-        RunService.Heartbeat:Connect(function()
-            if tracersEnabled then UpdateTracers() end
-        end)
-    else
-        for _, v in pairs(tracersFolder:GetChildren()) do v:Destroy() end
-    end
-    ShowMessage("Tracers " .. (tracersEnabled and "ON" or "OFF"))
-elseif name == "Toggle Backtrack" then
-    backtrackEnabled = not backtrackEnabled
-    if backtrackEnabled then
-        backtrackData = {}
-        RunService.Heartbeat:Connect(function()
-            if not backtrackEnabled then return end
-            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                table.insert(backtrackData, {time = tick(), cframe = LP.Character.HumanoidRootPart.CFrame})
-                if #backtrackData > 100 then table.remove(backtrackData, 1) end
-                UpdateBacktrack()
-            end
-        end)
-    else
-        for _, v in pairs(backtrackFolder:GetChildren()) do v:Destroy() end
-        backtrackData = {}
-    end
-    ShowMessage("Backtrack " .. (backtrackEnabled and "ON" or "OFF"))
-elseif name == "Toggle Jump Circle" then
-    ToggleJumpCircle()
-elseif name == "Jump Circle Color" then
-    OpenColorPicker("Jump Circle Color", function(c)
-        jumpCircleColor = c
-        if jumpCircle then jumpCircle.BrickColor = BrickColor.new(c) end
-        guiSettings.JumpCircleColor = c
-    end)
-elseif name == "Jump Circle Fade Time" then
-    OpenTextInput("Fade Time", "0.5 - 5", guiSettings.JumpCircleFadeTime, function(v)
-        guiSettings.JumpCircleFadeTime = math.clamp(v, 0.5, 5)
-        ShowMessage("Fade Time: " .. guiSettings.JumpCircleFadeTime)
-    end)
-elseif name == "Toggle Trail" then
-    trailEnabled = not trailEnabled
-    if trailEnabled then
-        for _, v in pairs(trailParts) do v:Destroy() end
-        trailParts = {}
-        trailConnection = RunService.Heartbeat:Connect(function()
-            if trailEnabled then CreateTrail() end
-        end)
-    else
-        if trailConnection then trailConnection:Disconnect() trailConnection = nil end
-        for _, v in pairs(trailParts) do v:Destroy() end
-        trailParts = {}
-    end
-    ShowMessage("Trail " .. (trailEnabled and "ON" or "OFF"))
-elseif name == "Trail Length" then
-    OpenTextInput("Trail Length", "10 - 200", guiSettings.TrailLength, function(v)
-        guiSettings.TrailLength = math.clamp(v, 10, 200)
-        ShowMessage("Trail Length: " .. guiSettings.TrailLength)
-    end)
-elseif name == "Toggle Particles" then
-    ToggleParticles()
-elseif name == "Particle Color" then
-    OpenColorPicker("Particle Color", function(c)
-        guiSettings.ParticleColor = c
-        ShowMessage("Particle Color changed")
-    end)
-elseif name == "Toggle Fullbright" then
-    fullbrightEnabled = not fullbrightEnabled
-    if fullbrightEnabled then
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    else
-        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
-        Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-    end
-    ShowMessage("Fullbright " .. (fullbrightEnabled and "ON" or "OFF"))
-elseif name == "Toggle NameTags" then
-    nameTagsEnabled = not nameTagsEnabled
-    if nameTagsEnabled then
-        local function UpdateNameTags()
-            for _, v in pairs(nameTagsFolder:GetChildren()) do v:Destroy() end
-            if not nameTagsEnabled then return end
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local bill = Instance.new("BillboardGui")
-                    bill.Size = UDim2.new(0, 200, 0, 40)
-                    bill.Adornee = player.Character.HumanoidRootPart
-                    bill.Parent = nameTagsFolder
-                    local label = Instance.new("TextLabel")
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.Text = player.Name
-                    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    label.TextScaled = true
-                    label.Font = Enum.Font.GothamBold
-                    label.Parent = bill
-                end
-            end
-        end
-        UpdateNameTags()
-        RunService.Heartbeat:Connect(function()
-            if nameTagsEnabled then UpdateNameTags() end
-        end)
-    else
-        for _, v in pairs(nameTagsFolder:GetChildren()) do v:Destroy() end
-    end
-    ShowMessage("NameTags " .. (nameTagsEnabled and "ON" or "OFF"))
-elseif name == "Toggle Skeleton" then
-    skeletonEnabled = not skeletonEnabled
-    if skeletonEnabled then
-        local function UpdateSkeleton()
-            for _, v in pairs(skeletonFolder:GetChildren()) do v:Destroy() end
-            if not skeletonEnabled then return end
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Character then
-                    local root = player.Character:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        for _, part in pairs(player.Character:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                local sphere = Instance.new("Part")
-                                sphere.Size = Vector3.new(0.3, 0.3, 0.3)
-                                sphere.CFrame = part.CFrame
-                                sphere.Anchored = true
-                                sphere.CanCollide = false
-                                sphere.Material = Enum.Material.Neon
-                                sphere.BrickColor = BrickColor.new("Bright red")
-                                sphere.Parent = skeletonFolder
-                                game:GetService("Debris"):AddItem(sphere, 0.1)
+            if not isSeparator then
+                btn.MouseButton1Click:Connect(function()
+                    -- VISUAL
+                    if name == "Toggle ESP" then
+                        espEnabled = not espEnabled
+                        UpdateESP()
+                        ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
+                    elseif name == "Toggle ESP V2" then
+                        ToggleESPV2()
+                    elseif name == "Toggle Chams" then
+                        chamsEnabled = not chamsEnabled
+                        UpdateChams()
+                        ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
+                    elseif name == "Toggle Hitboxes" then
+                        hitboxEnabled = not hitboxEnabled
+                        UpdateHitboxes()
+                        ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
+                    elseif name == "Toggle Tracers" then
+                        ToggleTracers()
+                    elseif name == "Toggle Backtrack" then
+                        ToggleBacktrack()
+                    elseif name == "Toggle Jump Circle" then
+                        ToggleJumpCircle()
+                    elseif name == "Jump Circle Color" then
+                        OpenColorPicker("Jump Circle Color", function(c)
+                            jumpCircleColor = c
+                            if jumpCircle then jumpCircle.BrickColor = BrickColor.new(c) end
+                            guiSettings.JumpCircleColor = c
+                        end)
+                    elseif name == "Jump Circle Fade Time" then
+                        OpenTextInput("Fade Time", "0.5 - 5", guiSettings.JumpCircleFadeTime, function(v)
+                            guiSettings.JumpCircleFadeTime = math.clamp(v, 0.5, 5)
+                            ShowMessage("Fade Time: " .. guiSettings.JumpCircleFadeTime)
+                        end)
+                    elseif name == "Toggle Trail" then
+                        ToggleTrail()
+                    elseif name == "Trail Length" then
+                        OpenTextInput("Trail Length", "10 - 200", guiSettings.TrailLength, function(v)
+                            guiSettings.TrailLength = math.clamp(v, 10, 200)
+                            ShowMessage("Trail Length: " .. guiSettings.TrailLength)
+                        end)
+                    elseif name == "Toggle Particles" then
+                        ToggleParticles()
+                    elseif name == "Particle Color" then
+                        OpenColorPicker("Particle Color", function(c)
+                            guiSettings.ParticleColor = c
+                            ShowMessage("Particle Color changed")
+                        end)
+                    elseif name == "Toggle Fullbright" then
+                        ToggleFullbright()
+                    elseif name == "Toggle NameTags" then
+                        ToggleNameTags()
+                    elseif name == "Toggle Skeleton" then
+                        ToggleSkeleton()
+                    elseif name == "Toggle Chinese Hat" then
+                        ToggleChineseHat()
+                    elseif name == "Hat Color" then
+                        OpenColorPicker("Hat Color", function(c)
+                            guiSettings.HatColor = c
+                            if hatEnabled then CreateChineseHat() end
+                        end)
+                    elseif name == "Toggle Target ESP" then
+                        ToggleTargetESP()
+                    elseif name == "Toggle World Color" then
+                        ToggleWorldColor()
+                    elseif name == "World Color" then
+                        OpenColorPicker("World Color", function(c)
+                            guiSettings.WorldColor = c
+                            if worldColorEnabled then
+                                Lighting.Ambient = c
+                                Lighting.OutdoorAmbient = c
                             end
+                        end)
+                    elseif name == "Toggle Crosshair" then
+                        ToggleCrosshair()
+                    elseif name == "Crosshair Color" then
+                        OpenColorPicker("Crosshair Color", function(c)
+                            crosshairColor = c
+                            if crosshairEnabled then CreateCrosshair() end
+                        end)
+                    elseif name == "Toggle Stretch" then
+                        ToggleStretch()
+                    -- PLAYER
+                    elseif name == "Speed" then
+                        OpenTextInput("Speed", "0 - 99999", speedValue, function(v)
+                            speedValue = v
+                            local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+                            if hum then hum.WalkSpeed = math.clamp(v, 0, 99999) end
+                            ShowMessage("Speed: " .. v)
+                        end)
+                    elseif name == "Gravity" then
+                        OpenTextInput("Gravity", "-1000 - 10000", gravityValue, function(v)
+                            gravityValue = v
+                            workspace.Gravity = math.clamp(v, -1000, 10000)
+                            ShowMessage("Gravity: " .. v)
+                        end)
+                    elseif name == "Toggle Spin" then
+                        ToggleSpin()
+                    elseif name == "Spin Speed" then
+                        OpenTextInput("Spin Speed", "1 - 100", guiSettings.SpinSpeed, function(v)
+                            guiSettings.SpinSpeed = math.clamp(v, 1, 100)
+                            ShowMessage("Spin Speed: " .. guiSettings.SpinSpeed)
+                        end)
+                    elseif name == "Toggle Sun Spin" then
+                        ToggleSunSpin()
+                    elseif name == "Sun Spin Speed" then
+                        OpenTextInput("Sun Spin Speed", "10 - 500", guiSettings.SunSpinSpeed, function(v)
+                            guiSettings.SunSpinSpeed = math.clamp(v, 10, 500)
+                            ShowMessage("Sun Spin Speed: " .. guiSettings.SunSpinSpeed)
+                        end)
+                    elseif name == "Toggle Helicopter" then
+                        ToggleHelicopter()
+                    elseif name == "Toggle Invisibility" then
+                        ToggleInvisibility()
+                    elseif name == "Toggle Dash" then
+                        ToggleDash()
+                    elseif name == "Toggle Fly" then
+                        ToggleFly()
+                    elseif name == "Toggle Teleport Tool" then
+                        ToggleTeleportTool()
+                    elseif name == "Toggle NoClip" then
+                        ToggleNoClip()
+                    elseif name == "Toggle Shiftlock" then
+                        if not shiftlockButton then CreateShiftlockButton() end
+                        ToggleShiftlock()
+                    elseif name == "Toggle Strafe" then
+                        ToggleStrafe()
+                    -- COMBAT
+                    elseif name == "Toggle Aimbot" then
+                        ToggleAimbot()
+                    elseif name == "Toggle Orbit" then
+                        ToggleOrbit()
+                    elseif name == "Toggle Anti-Aim" then
+                        ToggleAntiAim()
+                    elseif name == "Anti-Aim Mode: Spin" then
+                        SetAntiAimMode("Spin")
+                    elseif name == "Anti-Aim Mode: Backwards" then
+                        SetAntiAimMode("Backwards")
+                    elseif name == "Toggle Fake Lag" then
+                        ToggleFakeLag()
+                    elseif name == "Fake Lag Amount" then
+                        OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)
+                            guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
+                            ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
+                        end)
+                    elseif name == "Toggle Silent Aim" then
+                        ToggleSilentAim()
+                    elseif name == "Toggle Trigger Bot" then
+                        ToggleTriggerBot()
+                    elseif name == "Toggle Double Tap" then
+                        ToggleDoubleTap()
+                    -- NO FE
+                    elseif name == "Toggle C Button" then
+                        ToggleCButton()
+                    elseif name == "Load ClemonRC" then
+                        LoadClemonRC()
+                    elseif name == "Toggle R6 Animations" then
+                        ToggleR6Animations()
+                    -- SETTINGS
+                    elseif name == "Style MTY Dark" then
+                        guiSettings.BackgroundColor = Color3.fromRGB(0, 0, 0)
+                        guiSettings.BorderColor = Color3.fromRGB(255, 0, 0)
+                        guiSettings.TextColor = Color3.fromRGB(255, 255, 255)
+                        guiSettings.Transparency = 0.05
+                        UpdateGUIStyle()
+                        ShowMessage("Style: Dark")
+                    elseif name == "Style MTY Neon" then
+                        guiSettings.BackgroundColor = Color3.fromRGB(10, 0, 20)
+                        guiSettings.BorderColor = Color3.fromRGB(255, 0, 200)
+                        guiSettings.TextColor = Color3.fromRGB(255, 0, 200)
+                        guiSettings.Transparency = 0.1
+                        UpdateGUIStyle()
+                        ShowMessage("Style: Neon")
+                    elseif name == "Style MTY Glass" then
+                        guiSettings.BackgroundColor = Color3.fromRGB(255, 255, 255)
+                        guiSettings.BorderColor = Color3.fromRGB(255, 255, 255)
+                        guiSettings.TextColor = Color3.fromRGB(0, 0, 0)
+                        guiSettings.Transparency = 0.3
+                        UpdateGUIStyle()
+                        ShowMessage("Style: Glass")
+                    elseif name == "Background Color" then
+                        OpenColorPicker("Background Color", function(c)
+                            guiSettings.BackgroundColor = c
+                            UpdateGUIStyle()
+                        end)
+                    elseif name == "Border Color" then
+                        OpenColorPicker("Border Color", function(c)
+                            guiSettings.BorderColor = c
+                            UpdateGUIStyle()
+                        end)
+                    elseif name == "Text Color" then
+                        OpenColorPicker("Text Color", function(c)
+                            guiSettings.TextColor = c
+                            UpdateGUIStyle()
+                        end)
+                    elseif name == "Transparency" then
+                        OpenTextInput("Transparency", "0 - 0.8", guiSettings.Transparency, function(v)
+                            guiSettings.Transparency = math.clamp(v, 0, 0.8)
+                            UpdateGUIStyle()
+                        end)
+                    elseif name == "Toggle Blur" then
+                        guiSettings.BlurEnabled = not guiSettings.BlurEnabled
+                        UpdateGUIStyle()
+                        ShowMessage("Blur " .. (guiSettings.BlurEnabled and "ON" or "OFF"))
+                    elseif name == "Blur Size" then
+                        OpenTextInput("Blur Size", "1 - 30", guiSettings.BlurSize, function(v)
+                            guiSettings.BlurSize = math.clamp(v, 1, 30)
+                            UpdateGUIStyle()
+                        end)
+                    elseif name == "Optimize Textures" then
+                        for _, v in pairs(game:GetDescendants()) do
+                            pcall(function()
+                                if v:IsA("Texture") or v:IsA("Decal") then
+                                    v.Texture = "rbxassetid://4322737890"
+                                elseif v:IsA("Part") or v:IsA("MeshPart") then
+                                    v.Material = Enum.Material.Plastic
+                                    v.Reflectance = 0
+                                elseif v:IsA("Terrain") then
+                                    v.WaterWaveSize = 0
+                                    v.WaterReflectance = 0
+                                    v.WaterTransparency = 1
+                                end
+                            end)
                         end
+                        Lighting.GlobalShadows = false
+                        Lighting.Brightness = 1
+                        Lighting.ClockTime = 14
+                        ShowMessage("Textures Optimized")
                     end
-                end
+                end)
             end
         end
-        UpdateSkeleton()
-        RunService.Heartbeat:Connect(function()
-            if skeletonEnabled then UpdateSkeleton() end
-        end)
-    else
-        for _, v in pairs(skeletonFolder:GetChildren()) do v:Destroy() end
+        contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 28 + 20)
     end
-    ShowMessage("Skeleton " .. (skeletonEnabled and "ON" or "OFF"))
-elseif name == "Toggle Chinese Hat" then
-    hatEnabled = not hatEnabled
-    if hatEnabled then
-        CreateChineseHat()
-        ShowMessage("Chinese Hat ON")
-    else
-        if currentHat then currentHat:Destroy() currentHat = nil end
-        if hatBrim then hatBrim:Destroy() hatBrim = nil end
-        if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
-        if hatTassel then hatTassel:Destroy() hatTassel = nil end
-        if hatConnection then hatConnection:Disconnect() hatConnection = nil end
-        ShowMessage("Chinese Hat OFF")
-    end
-elseif name == "Hat Color" then
-    OpenColorPicker("Hat Color", function(c)
-        guiSettings.HatColor = c
-        if hatEnabled then CreateChineseHat() end
-    end)
-elseif name == "Toggle Target ESP" then
-    targetESPEnabled = not targetESPEnabled
-    if targetESPEnabled then
-        RunService.Heartbeat:Connect(function()
-            if targetESPEnabled then
-                if targetHighlight then targetHighlight:Destroy() end
-                local mousePos = LP:GetMouse().UnitRay
-                local hit = workspace:FindPartOnRay(Ray.new(Camera.CFrame.Position, mousePos.Direction * 500))
-                if hit and hit.Parent and hit.Parent:FindFirstChild("Humanoid") then
-                    local player = Players:GetPlayerFromCharacter(hit.Parent)
-                    if player and player ~= LP then
-                        targetHighlight = Instance.new("Highlight")
-                        targetHighlight.Adornee = hit.Parent
-                        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        targetHighlight.FillColor = Color3.fromRGB(255, 255, 0)
-                        targetHighlight.FillTransparency = 0.2
-                        targetHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        targetHighlight.OutlineTransparency = 0.1
-                        targetHighlight.Parent = workspace
-                    end
-                end
-            else
-                if targetHighlight then targetHighlight:Destroy() end
-            end
-        end)
-    else
-        if targetHighlight then targetHighlight:Destroy() end
-    end
-    ShowMessage("Target ESP " .. (targetESPEnabled and "ON" or "OFF"))
-elseif name == "Toggle World Color" then
-    worldColorEnabled = not worldColorEnabled
-    if worldColorEnabled then
-        Lighting.Ambient = guiSettings.WorldColor
-        Lighting.OutdoorAmbient = guiSettings.WorldColor
-    else
-        Lighting.Ambient = originalAmbient
-        Lighting.OutdoorAmbient = originalOutdoor
-    end
-    ShowMessage("World Color " .. (worldColorEnabled and "ON" or "OFF"))
-elseif name == "World Color" then
-    OpenColorPicker("World Color", function(c)
-        guiSettings.WorldColor = c
-        if worldColorEnabled then
-            Lighting.Ambient = c
-            Lighting.OutdoorAmbient = c
-        end
-    end)
-elseif name == "Toggle Crosshair" then
-    crosshairEnabled = not crosshairEnabled
-    if crosshairEnabled then
-        CreateCrosshair()
-    else
-        if crosshairGui then crosshairGui:Destroy() crosshairGui = nil end
-    end
-    ShowMessage("Crosshair " .. (crosshairEnabled and "ON" or "OFF"))
-elseif name == "Crosshair Color" then
-    OpenColorPicker("Crosshair Color", function(c)
-        crosshairColor = c
-        if crosshairEnabled then CreateCrosshair() end
-    end)
-elseif name == "Toggle Stretch" then
-    ToggleStretch()
-    
-        -- PLAYER
-elseif name == "Speed" then
-    OpenTextInput("Speed", "0 - 99999", speedValue, function(v)
-        speedValue = v
-        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-        if hum then hum.WalkSpeed = math.clamp(v, 0, 99999) end
-        ShowMessage("Speed: " .. v)
-    end)
-elseif name == "Gravity" then
-    OpenTextInput("Gravity", "-1000 - 10000", gravityValue, function(v)
-        gravityValue = v
-        workspace.Gravity = math.clamp(v, -1000, 10000)
-        ShowMessage("Gravity: " .. v)
-    end)
-elseif name == "Toggle Spin" then
-    spinEnabled = not spinEnabled
-    if spinEnabled then
-        if spinConnection then spinConnection:Disconnect() end
-        spinConnection = RunService.Heartbeat:Connect(function()
-            if spinEnabled and LP.Character then
-                local root = LP.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local pos = root.Position
-                    root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(guiSettings.SpinSpeed), 0)
-                end
-            end
-        end)
-        ShowMessage("Spin ON")
-    else
-        if spinConnection then spinConnection:Disconnect() spinConnection = nil end
-        ShowMessage("Spin OFF")
-    end
-elseif name == "Spin Speed" then
-    OpenTextInput("Spin Speed", "1 - 100", guiSettings.SpinSpeed, function(v)
-        guiSettings.SpinSpeed = math.clamp(v, 1, 100)
-        ShowMessage("Spin Speed: " .. guiSettings.SpinSpeed)
-    end)
-elseif name == "Toggle Sun Spin" then
-    sunSpinEnabled = not sunSpinEnabled
-    if sunSpinEnabled then
-        if sunSpinConnection then sunSpinConnection:Disconnect() end
-        sunSpinConnection = RunService.Heartbeat:Connect(function()
-            if sunSpinEnabled and LP.Character then
-                local root = LP.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local pos = root.Position
-                    root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(guiSettings.SunSpinSpeed), math.rad(guiSettings.SunSpinSpeed * 0.5))
-                end
-            end
-        end)
-        ShowMessage("☀️ Sun Spin ON")
-    else
-        if sunSpinConnection then sunSpinConnection:Disconnect() sunSpinConnection = nil end
-        ShowMessage("☀️ Sun Spin OFF")
-    end
-elseif name == "Sun Spin Speed" then
-    OpenTextInput("Sun Spin Speed", "10 - 500", guiSettings.SunSpinSpeed, function(v)
-        guiSettings.SunSpinSpeed = math.clamp(v, 10, 500)
-        ShowMessage("Sun Spin Speed: " .. guiSettings.SunSpinSpeed)
-    end)
-elseif name == "Toggle Helicopter" then
-    helicopterEnabled = not helicopterEnabled
-    if helicopterEnabled then
-        if helicopterConnection then helicopterConnection:Disconnect() end
-        helicopterConnection = RunService.Heartbeat:Connect(function()
-            if helicopterEnabled and LP.Character then
-                local root = LP.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(50), 0)
-                    root.Velocity = Vector3.new(0, 20, 0)
-                end
-            end
-        end)
-        ShowMessage("Helicopter ON")
-    else
-        if helicopterConnection then helicopterConnection:Disconnect() helicopterConnection = nil end
-        if LP.Character then
-            local root = LP.Character:FindFirstChild("HumanoidRootPart")
-            if root then root.Velocity = Vector3.new(0, 0, 0) end
-        end
-        ShowMessage("Helicopter OFF")
-    end
-elseif name == "Toggle Invisibility" then
-    invisibilityEnabled = not invisibilityEnabled
-    local char = LP.Character or LP.CharacterAdded:Wait()
-    for _, v in pairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Transparency = invisibilityEnabled and 0.99 or 0
-        end
-    end
-    ShowMessage("Invisibility " .. (invisibilityEnabled and "ON" or "OFF"))
-elseif name == "Toggle Dash" then
-    dashEnabled = not dashEnabled
-    if dashEnabled then
-        if dashButton then return end
-        local sg = Instance.new("ScreenGui")
-        sg.Name = "MTY_Dash"
-        sg.Parent = game.CoreGui
-        sg.ResetOnSpawn = false
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 60, 0, 60)
-        btn.Position = UDim2.new(0.9, -70, 0.5, -30)
-        btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        btn.BorderSizePixel = 0
-        btn.Text = "⚡"
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 30
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = sg
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 12)
-        btnCorner.Parent = btn
-        btn.Draggable = true
-        dashButton = btn
-        btn.MouseButton1Down:Connect(function()
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            local root = LP.Character:FindFirstChild("HumanoidRootPart")
-            if hum and root then
-                hum.Jump = true
-                local forward = root.CFrame.LookVector
-                root.Velocity = Vector3.new(forward.X * 50, root.Velocity.Y + 10, forward.Z * 50)
-                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(5), 0)
-            end
-        end)
-    else
-        if dashButton then dashButton.Parent:Destroy() dashButton = nil end
-    end
-    ShowMessage("Dash " .. (dashEnabled and "ON" or "OFF"))
-elseif name == "Toggle Fly" then
-    if not flyLoaded then
-        pcall(function()
-            loadstring(game:HttpGet("https://pastebin.com/raw/dUJkcGde"))()
-        end)
-        flyLoaded = true
-        ShowMessage("Fly started")
-    else
-        ShowMessage("Fly already loaded")
-    end
-elseif name == "Toggle Teleport Tool" then
-    teleportToolEnabled = not teleportToolEnabled
-    if teleportToolEnabled then
-        if teleportTool then return end
-        teleportTool = Instance.new("Tool")
-        teleportTool.RequiresHandle = false
-        teleportTool.Name = "MTY Teleport"
-        teleportTool.Activated:Connect(function()
-            local pos = LP:GetMouse() and LP:GetMouse().Hit + Vector3.new(0, 2.5, 0) or Vector3.new(0, 10, 0)
-            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                LP.Character.HumanoidRootPart.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
-            end
-        end)
-        teleportTool.Parent = LP.Backpack
-        ShowMessage("Teleport Tool ON")
-    else
-        if teleportTool then teleportTool:Destroy() teleportTool = nil end
-        ShowMessage("Teleport Tool OFF")
-    end
-elseif name == "Toggle NoClip" then
-    noClipEnabled = not noClipEnabled
-    if noClipEnabled then
-        if LP.Character then
-            for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
-        end
-    else
-        if LP.Character then
-            for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = true end
-            end
-        end
-    end
-    ShowMessage("NoClip " .. (noClipEnabled and "ON" or "OFF"))
-elseif name == "Toggle Shiftlock" then
-    if not shiftlockButton then CreateShiftlockButton() end
-    ToggleShiftlock()
-elseif name == "Toggle Strafe" then
-    strafeEnabled = not strafeEnabled
-    if strafeEnabled then
-        if strafeConnection then strafeConnection:Disconnect() end
-        strafeConnection = RunService.Heartbeat:Connect(function()
-            if not strafeEnabled then return end
-            local char = LP.Character
-            if not char then return end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChild("Humanoid")
-            if not root or not hum then return end
-            if hum:GetState() == Enum.HumanoidStateType.Landed then
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) or
-                    UserInputService:IsKeyDown(Enum.KeyCode.A) or
-                    UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                    hum.Jump = true
-                end
-            end
-            if hum:GetState() == Enum.HumanoidStateType.Jumping or
-                hum:GetState() == Enum.HumanoidStateType.Freefall then
-                local moveDir = hum.MoveDirection
-                if moveDir.Magnitude > 0.1 then
-                    local boost = moveDir * 8
-                    root.Velocity = root.Velocity + boost
-                end
-            end
-        end)
-        ShowMessage("Strafe ON")
-    else
-        if strafeConnection then strafeConnection:Disconnect() strafeConnection = nil end
-        ShowMessage("Strafe OFF")
-    end
-    
-    -- COMBAT
-elseif name == "Toggle Orbit" then
-    orbitEnabled = not orbitEnabled
-    if orbitEnabled then
-        if orbitConnection then orbitConnection:Disconnect() end
-        orbitConnection = RunService.Heartbeat:Connect(function()
-            if not orbitEnabled then return end
-            local closest = nil
-            local closestDist = math.huge
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (LP.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                    if dist < closestDist and dist < 20 then
-                        closestDist = dist
-                        closest = player
-                    end
-                end
-            end
-            if closest then
-                local targetPos = closest.Character.HumanoidRootPart.Position
-                local radius = 5
-                local angle = tick() * 2
-                local x = targetPos.X + radius * math.cos(angle)
-                local z = targetPos.Z + radius * math.sin(angle)
-                LP.Character.HumanoidRootPart.CFrame = CFrame.new(x, LP.Character.HumanoidRootPart.Position.Y, z) * CFrame.lookAt(Vector3.new(x, LP.Character.HumanoidRootPart.Position.Y, z), targetPos)
-            end
-        end)
-        ShowMessage("🌀 Orbit ON")
-    else
-        if orbitConnection then orbitConnection:Disconnect() orbitConnection = nil end
-        ShowMessage("🌀 Orbit OFF")
-    end
-elseif name == "Toggle Anti-Aim" then
-    antiAimEnabled = not antiAimEnabled
-    if antiAimEnabled then
-        if antiAimConnection then antiAimConnection:Disconnect() end
-        antiAimConnection = RunService.Heartbeat:Connect(function()
-            if not antiAimEnabled then return end
-            local char = LP.Character
-            if not char then return end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            if antiAimMode == "Spin" then
-                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(tick() * 200), 0)
-            elseif antiAimMode == "Backwards" then
-                local hum = char:FindFirstChild("Humanoid")
-                if hum then
-                    local moveDir = hum.MoveDirection
-                    if moveDir.Magnitude > 0.1 then
-                        local backwardDir = -moveDir
-                        root.CFrame = CFrame.new(root.Position, root.Position + backwardDir * 10)
-                    else
-                        root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(180), 0)
-                    end
-                    hum.AutoRotate = false
-                end
-            end
-        end)
-        ShowMessage("Anti-Aim ON [" .. antiAimMode .. "]")
-    else
-        if antiAimConnection then antiAimConnection:Disconnect() antiAimConnection = nil end
-        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-            LP.Character.Humanoid.AutoRotate = true
-        end
-        ShowMessage("Anti-Aim OFF")
-    end
-elseif name == "Anti-Aim Mode: Spin" then
-    antiAimMode = "Spin"
-    if antiAimEnabled then
-        ToggleAntiAim()
-        wait(0.1)
-        ToggleAntiAim()
-    end
-    ShowMessage("Anti-Aim Mode: Spin")
-elseif name == "Anti-Aim Mode: Backwards" then
-    antiAimMode = "Backwards"
-    if antiAimEnabled then
-        ToggleAntiAim()
-        wait(0.1)
-        ToggleAntiAim()
-    end
-    ShowMessage("Anti-Aim Mode: Backwards")
-elseif name == "Toggle Fake Lag" then
-    fakeLagEnabled = not fakeLagEnabled
-    if fakeLagEnabled then
-        if fakeLagConnection then fakeLagConnection:Disconnect() end
-        fakeLagConnection = RunService.Heartbeat:Connect(function()
-            if not fakeLagEnabled then return end
-            for i = 1, guiSettings.FakeLagAmount do wait(0.001) end
-        end)
-        ShowMessage("Fake Lag ON")
-    else
-        if fakeLagConnection then fakeLagConnection:Disconnect() fakeLagConnection = nil end
-        ShowMessage("Fake Lag OFF")
-    end
-elseif name == "Fake Lag Amount" then
-    OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)
-        guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
-        ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
-    end)
-elseif name == "Toggle Silent Aim" then
-    silentAimEnabled = not silentAimEnabled
-    ShowMessage("Silent Aim " .. (silentAimEnabled and "ON" or "OFF"))
-elseif name == "Toggle Trigger Bot" then
-    triggerBotEnabled = not triggerBotEnabled
-    if triggerBotEnabled then
-        if triggerBotConnection then triggerBotConnection:Disconnect() end
-        triggerBotConnection = RunService.Heartbeat:Connect(function()
-            if not triggerBotEnabled then return end
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Character then
-                    local head = player.Character:FindFirstChild("Head")
-                    if head then
-                        local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
-                        if onScreen then
-                            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(LP:GetMouse().X, LP:GetMouse().Y)).Magnitude
-                            if dist < 50 then
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                                wait(0.05)
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-        ShowMessage("Trigger Bot ON")
-    else
-        if triggerBotConnection then triggerBotConnection:Disconnect() triggerBotConnection = nil end
-        ShowMessage("Trigger Bot OFF")
-    end
-elseif name == "Toggle Double Tap" then
-    doubleTapEnabled = not doubleTapEnabled
-    if doubleTapEnabled then
-        if doubleTapConnection then doubleTapConnection:Disconnect() end
-        doubleTapConnection = RunService.Heartbeat:Connect(function()
-            if not doubleTapEnabled then return end
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            wait(0.01)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            wait(0.02)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            wait(0.01)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-        end)
-        ShowMessage("Double Tap ON")
-    else
-        if doubleTapConnection then doubleTapConnection:Disconnect() doubleTapConnection = nil end
-        ShowMessage("Double Tap OFF")
-    end
-    
-    -- NO FE
-elseif name == "Toggle C Button" then
-    cButtonEnabled = not cButtonEnabled
-    if cButtonEnabled then
-        CreateCButton()
-        ShowMessage("C Button ON")
-    else
-        if cButtonGui then cButtonGui:Destroy() cButtonGui = nil end
-        ShowMessage("C Button OFF")
-    end
-elseif name == "Load ClemonRC" then
-    if clemonRCLoaded then
-        ShowMessage("ClemonRC already loaded")
-    else
-        pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/clemonlang/clemon_roclothes/refs/heads/main/ClemonRC.lua"))()
-            clemonRCLoaded = true
-            ShowMessage("ClemonRC Loaded")
-        end)
-    end
-elseif name == "Toggle R6 Animations" then
-    if not r6Enabled then
-        RunCustomAnimation(LP.Character)
-        LP.CharacterAdded:Connect(function(char) RunCustomAnimation(char) end)
-        r6Enabled = true
-        ShowMessage("R6 Animations ON")
-    else
-        ShowMessage("R6 Animations already ON")
-    end
-    
-    -- SETTINGS
-elseif name == "Style MTY Dark" then
-    guiSettings.BackgroundColor = Color3.fromRGB(0, 0, 0)
-    guiSettings.BorderColor = Color3.fromRGB(255, 0, 0)
-    guiSettings.TextColor = Color3.fromRGB(255, 255, 255)
-    guiSettings.Transparency = 0.05
-    UpdateGUIStyle()
-    ShowMessage("Style: Dark")
-elseif name == "Style MTY Neon" then
-    guiSettings.BackgroundColor = Color3.fromRGB(10, 0, 20)
-    guiSettings.BorderColor = Color3.fromRGB(255, 0, 200)
-    guiSettings.TextColor = Color3.fromRGB(255, 0, 200)
-    guiSettings.Transparency = 0.1
-    UpdateGUIStyle()
-    ShowMessage("Style: Neon")
-elseif name == "Style MTY Glass" then
-    guiSettings.BackgroundColor = Color3.fromRGB(255, 255, 255)
-    guiSettings.BorderColor = Color3.fromRGB(255, 255, 255)
-    guiSettings.TextColor = Color3.fromRGB(0, 0, 0)
-    guiSettings.Transparency = 0.3
-    UpdateGUIStyle()
-    ShowMessage("Style: Glass")
-elseif name == "Background Color" then
-    OpenColorPicker("Background Color", function(c)
-        guiSettings.BackgroundColor = c
-        UpdateGUIStyle()
-    end)
-elseif name == "Border Color" then
-    OpenColorPicker("Border Color", function(c)
-        guiSettings.BorderColor = c
-        UpdateGUIStyle()
-    end)
-elseif name == "Text Color" then
-    OpenColorPicker("Text Color", function(c)
-        guiSettings.TextColor = c
-        UpdateGUIStyle()
-    end)
-elseif name == "Transparency" then
-    OpenTextInput("Transparency", "0 - 0.8", guiSettings.Transparency, function(v)
-        guiSettings.Transparency = math.clamp(v, 0, 0.8)
-        UpdateGUIStyle()
-    end)
-elseif name == "Toggle Blur" then
-    guiSettings.BlurEnabled = not guiSettings.BlurEnabled
-    UpdateGUIStyle()
-    ShowMessage("Blur " .. (guiSettings.BlurEnabled and "ON" or "OFF"))
-elseif name == "Blur Size" then
-    OpenTextInput("Blur Size", "1 - 30", guiSettings.BlurSize, function(v)
-        guiSettings.BlurSize = math.clamp(v, 1, 30)
-        UpdateGUIStyle()
-    end)
-elseif name == "Optimize Textures" then
-    for _, v in pairs(game:GetDescendants()) do
-        pcall(function()
-            if v:IsA("Texture") or v:IsA("Decal") then
-                v.Texture = "rbxassetid://4322737890"
-            elseif v:IsA("Part") or v:IsA("MeshPart") then
-                v.Material = Enum.Material.Plastic
-                v.Reflectance = 0
-            elseif v:IsA("Terrain") then
-                v.WaterWaveSize = 0
-                v.WaterReflectance = 0
-                v.WaterTransparency = 1
-            end
-        end)
-    end
-    Lighting.GlobalShadows = false
-    Lighting.Brightness = 1
-    Lighting.ClockTime = 14
-    ShowMessage("Textures Optimized")
-end        end)
-    end
-    contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 28 + 20)
-end
 
-searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    if currentCategory ~= "" then RenderSubs(allSubs) end
-end)
+    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        if currentCategory ~= "" then RenderSubs(allSubs) end
+    end)
 
-local minimized = false
-minimizeBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    if minimized then
-        guiMainFrame.Size = UDim2.new(0, 60, 0, 60)
-        guiMainFrame.Position = UDim2.new(1, -70, 0, 10)
-        leftPanel.Visible = false
-        contentArea.Visible = false
-        searchBox.Visible = false
-        title.Visible = false
-        minimizeBtn.Text = "+"
-        closeBtn.Position = UDim2.new(1, -35, 0, 8)
-    else
-        guiMainFrame.Size = UDim2.new(0, 450, 0, 430)
-        guiMainFrame.Position = UDim2.new(0.5, -225, 0.5, -215)
-        leftPanel.Visible = true
-        contentArea.Visible = true
-        searchBox.Visible = true
-        title.Visible = true
-        minimizeBtn.Text = "-"
-        closeBtn.Position = UDim2.new(1, -80, 0, 8)
-    end
-end)
+    local minimized = false
+    minimizeBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            guiMainFrame.Size = UDim2.new(0, 60, 0, 60)
+            guiMainFrame.Position = UDim2.new(1, -70, 0, 10)
+            leftPanel.Visible = false
+            contentArea.Visible = false
+            searchBox.Visible = false
+            title.Visible = false
+            minimizeBtn.Text = "+"
+            closeBtn.Position = UDim2.new(1, -35, 0, 8)
+        else
+            guiMainFrame.Size = UDim2.new(0, 450, 0, 430)
+            guiMainFrame.Position = UDim2.new(0.5, -225, 0.5, -215)
+            leftPanel.Visible = true
+            contentArea.Visible = true
+            searchBox.Visible = true
+            title.Visible = true
+            minimizeBtn.Text = "-"
+            closeBtn.Position = UDim2.new(1, -80, 0, 8)
+        end
+    end)
 
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-    if blurEffect then blurEffect:Destroy() end
-end)
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+        if blurEffect then blurEffect:Destroy() end
+    end)
 
-categoryButtons["VISUAL"].MouseButton1Click:Fire()
+    categoryButtons["UNIVERSAL"].MouseButton1Click:Fire()
 end
 
 CreateMenu()
-print("MTY HUB v3.3 FULL LOADED! 🔥")
+print("MTY HUB v4.0 LOADED! 🔥")
