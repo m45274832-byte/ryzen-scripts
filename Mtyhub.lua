@@ -1,6 +1,6 @@
--- MTY HUB v4.0
--- Новая структура: UNIVERSAL (все функции) + SETTINGS (отдельно)
--- Исправлен Jump Circle, добавлен ESP V2, новый Aimbot и Tracers
+-- MTY HUB v4.1
+-- Старое ГУИ: VISUAL, PLAYER, COMBAT, NO FE, SETTINGS
+-- Кнопки в VISUAL ближе друг к другу
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -1604,6 +1604,7 @@ local function UpdateGUIStyle()
         blurEffect.Size = guiSettings.BlurSize
     end
 end
+
 -- ===== ГЛАВНОЕ МЕНЮ =====
 local function CreateMenu()
     screenGui = Instance.new("ScreenGui")
@@ -1639,7 +1640,7 @@ local function CreateMenu()
     title.Size = UDim2.new(0.7, 0, 0, 40)
     title.Position = UDim2.new(0.05, 0, 0.015, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MTY HUB v4.0 🔥"
+    title.Text = "MTY HUB v4.1 🔥"
     title.TextColor3 = guiSettings.TextColor
     title.TextScaled = true
     title.Font = Enum.Font.GothamBold
@@ -1717,20 +1718,21 @@ local function CreateMenu()
     contentCorner.CornerRadius = UDim.new(0, 12)
     contentCorner.Parent = contentArea
 
-    local categories = {"UNIVERSAL", "SETTINGS"}
+    -- СТАРЫЕ КАТЕГОРИИ (без UNIVERSAL)
+    local categories = {"VISUAL", "PLAYER", "COMBAT", "NO FE", "SETTINGS"}
     local categoryButtons = {}
     local allSubs = {}
     local currentCategory = ""
 
     for i, cat in ipairs(categories) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.9, 0, 0, 36)
-        btn.Position = UDim2.new(0.05, 0, 0.05 + (i - 1) * 0.18, 0)
+        btn.Size = UDim2.new(0.9, 0, 0, 32) -- Чуть меньше
+        btn.Position = UDim2.new(0.05, 0, 0.05 + (i - 1) * 0.16, 0) -- Ближе друг к другу
         btn.BackgroundColor3 = Color3.fromRGB(60, 15, 15)
         btn.BorderSizePixel = 0
         btn.Text = cat
         btn.TextColor3 = Color3.fromRGB(255, 150, 150)
-        btn.TextSize = 15
+        btn.TextSize = 14
         btn.Font = Enum.Font.Gotham
         btn.Parent = leftPanel
         local btnCorner = Instance.new("UICorner")
@@ -1746,9 +1748,8 @@ local function CreateMenu()
         btn.MouseButton1Click:Connect(function()
             currentCategory = cat
             local subs = {}
-            if cat == "UNIVERSAL" then
+            if cat == "VISUAL" then
                 subs = {
-                    "━━━ VISUAL ━━━",
                     "Toggle ESP", "Toggle ESP V2", "Toggle Chams", "Toggle Hitboxes",
                     "Toggle Tracers", "Toggle Backtrack", "Toggle Jump Circle",
                     "Jump Circle Color", "Jump Circle Fade Time",
@@ -1757,20 +1758,26 @@ local function CreateMenu()
                     "Toggle Fullbright", "Toggle NameTags", "Toggle Skeleton",
                     "Toggle Chinese Hat", "Hat Color", "Toggle Target ESP",
                     "Toggle World Color", "World Color",
-                    "Toggle Crosshair", "Crosshair Color", "Toggle Stretch",
-                    "━━━ PLAYER ━━━",
+                    "Toggle Crosshair", "Crosshair Color", "Toggle Stretch"
+                }
+            elseif cat == "PLAYER" then
+                subs = {
                     "Speed", "Gravity", "Toggle Spin", "Spin Speed",
                     "Toggle Sun Spin", "Sun Spin Speed",
                     "Toggle Helicopter", "Toggle Invisibility", "Toggle Dash",
                     "Toggle Fly", "Toggle Teleport Tool", "Toggle NoClip",
-                    "Toggle Shiftlock", "Toggle Strafe",
-                    "━━━ COMBAT ━━━",
+                    "Toggle Shiftlock", "Toggle Strafe"
+                }
+            elseif cat == "COMBAT" then
+                subs = {
                     "Toggle Aimbot", "Toggle Orbit", "Toggle Anti-Aim",
                     "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards",
                     "Toggle Fake Lag", "Fake Lag Amount",
                     "Toggle Silent Aim", "Toggle Trigger Bot",
-                    "Toggle Double Tap",
-                    "━━━ NO FE ━━━",
+                    "Toggle Double Tap"
+                }
+            elseif cat == "NO FE" then
+                subs = {
                     "Toggle C Button", "Load ClemonRC", "Toggle R6 Animations"
                 }
             elseif cat == "SETTINGS" then
@@ -1804,267 +1811,262 @@ local function CreateMenu()
         
         for i, name in ipairs(filtered) do
             local row = Instance.new("Frame")
-            row.Size = UDim2.new(1, 0, 0, 22)
-            row.Position = UDim2.new(0, 0, 0.03 + (i - 1) * 0.07, 0)
+            row.Size = UDim2.new(1, 0, 0, 18) -- Меньше высота
+            row.Position = UDim2.new(0, 0, 0.02 + (i - 1) * 0.055, 0) -- Ближе друг к другу
             row.BackgroundTransparency = 1
             row.Parent = grid
-            
-            local isSeparator = name:find("━━━")
             
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(0.8, 0, 1, 0)
             btn.Position = UDim2.new(0, 0, 0, 0)
-            btn.BackgroundColor3 = isSeparator and Color3.fromRGB(30, 0, 0) or Color3.fromRGB(80, 20, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
             btn.BorderSizePixel = 0
             btn.Text = name
-            btn.TextColor3 = isSeparator and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(255, 200, 200)
-            btn.TextSize = isSeparator and 12 or 11
-            btn.Font = isSeparator and Enum.Font.GothamBold or Enum.Font.Gotham
+            btn.TextColor3 = Color3.fromRGB(255, 200, 200)
+            btn.TextSize = 10
+            btn.Font = Enum.Font.Gotham
             btn.Parent = row
             local btnCorner = Instance.new("UICorner")
             btnCorner.CornerRadius = UDim.new(0, 6)
             btnCorner.Parent = btn
-            
             btn.MouseEnter:Connect(function()
-                if not isSeparator then btn.BackgroundColor3 = Color3.fromRGB(120, 30, 30) end
+                btn.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
             end)
             btn.MouseLeave:Connect(function()
-                if not isSeparator then btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20) end
+                btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
             end)
             
-            if not isSeparator then
-                btn.MouseButton1Click:Connect(function()
-                    -- VISUAL
-                    if name == "Toggle ESP" then
-                        espEnabled = not espEnabled
-                        UpdateESP()
-                        ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
-                    elseif name == "Toggle ESP V2" then
-                        ToggleESPV2()
-                    elseif name == "Toggle Chams" then
-                        chamsEnabled = not chamsEnabled
-                        UpdateChams()
-                        ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
-                    elseif name == "Toggle Hitboxes" then
-                        hitboxEnabled = not hitboxEnabled
-                        UpdateHitboxes()
-                        ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
-                    elseif name == "Toggle Tracers" then
-                        ToggleTracers()
-                    elseif name == "Toggle Backtrack" then
-                        ToggleBacktrack()
-                    elseif name == "Toggle Jump Circle" then
-                        ToggleJumpCircle()
-                    elseif name == "Jump Circle Color" then
-                        OpenColorPicker("Jump Circle Color", function(c)
-                            jumpCircleColor = c
-                            if jumpCircle then jumpCircle.BrickColor = BrickColor.new(c) end
-                            guiSettings.JumpCircleColor = c
-                        end)
-                    elseif name == "Jump Circle Fade Time" then
-                        OpenTextInput("Fade Time", "0.5 - 5", guiSettings.JumpCircleFadeTime, function(v)
-                            guiSettings.JumpCircleFadeTime = math.clamp(v, 0.5, 5)
-                            ShowMessage("Fade Time: " .. guiSettings.JumpCircleFadeTime)
-                        end)
-                    elseif name == "Toggle Trail" then
-                        ToggleTrail()
-                    elseif name == "Trail Length" then
-                        OpenTextInput("Trail Length", "10 - 200", guiSettings.TrailLength, function(v)
-                            guiSettings.TrailLength = math.clamp(v, 10, 200)
-                            ShowMessage("Trail Length: " .. guiSettings.TrailLength)
-                        end)
-                    elseif name == "Toggle Particles" then
-                        ToggleParticles()
-                    elseif name == "Particle Color" then
-                        OpenColorPicker("Particle Color", function(c)
-                            guiSettings.ParticleColor = c
-                            ShowMessage("Particle Color changed")
-                        end)
-                    elseif name == "Toggle Fullbright" then
-                        ToggleFullbright()
-                    elseif name == "Toggle NameTags" then
-                        ToggleNameTags()
-                    elseif name == "Toggle Skeleton" then
-                        ToggleSkeleton()
-                    elseif name == "Toggle Chinese Hat" then
-                        ToggleChineseHat()
-                    elseif name == "Hat Color" then
-                        OpenColorPicker("Hat Color", function(c)
-                            guiSettings.HatColor = c
-                            if hatEnabled then CreateChineseHat() end
-                        end)
-                    elseif name == "Toggle Target ESP" then
-                        ToggleTargetESP()
-                    elseif name == "Toggle World Color" then
-                        ToggleWorldColor()
-                    elseif name == "World Color" then
-                        OpenColorPicker("World Color", function(c)
-                            guiSettings.WorldColor = c
-                            if worldColorEnabled then
-                                Lighting.Ambient = c
-                                Lighting.OutdoorAmbient = c
+            btn.MouseButton1Click:Connect(function()
+                -- VISUAL
+                if name == "Toggle ESP" then
+                    espEnabled = not espEnabled
+                    UpdateESP()
+                    ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
+                elseif name == "Toggle ESP V2" then
+                    ToggleESPV2()
+                elseif name == "Toggle Chams" then
+                    chamsEnabled = not chamsEnabled
+                    UpdateChams()
+                    ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
+                elseif name == "Toggle Hitboxes" then
+                    hitboxEnabled = not hitboxEnabled
+                    UpdateHitboxes()
+                    ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
+                elseif name == "Toggle Tracers" then
+                    ToggleTracers()
+                elseif name == "Toggle Backtrack" then
+                    ToggleBacktrack()
+                elseif name == "Toggle Jump Circle" then
+                    ToggleJumpCircle()
+                elseif name == "Jump Circle Color" then
+                    OpenColorPicker("Jump Circle Color", function(c)
+                        jumpCircleColor = c
+                        if jumpCircle then jumpCircle.BrickColor = BrickColor.new(c) end
+                        guiSettings.JumpCircleColor = c
+                    end)
+                elseif name == "Jump Circle Fade Time" then
+                    OpenTextInput("Fade Time", "0.5 - 5", guiSettings.JumpCircleFadeTime, function(v)
+                        guiSettings.JumpCircleFadeTime = math.clamp(v, 0.5, 5)
+                        ShowMessage("Fade Time: " .. guiSettings.JumpCircleFadeTime)
+                    end)
+                elseif name == "Toggle Trail" then
+                    ToggleTrail()
+                elseif name == "Trail Length" then
+                    OpenTextInput("Trail Length", "10 - 200", guiSettings.TrailLength, function(v)
+                        guiSettings.TrailLength = math.clamp(v, 10, 200)
+                        ShowMessage("Trail Length: " .. guiSettings.TrailLength)
+                    end)
+                elseif name == "Toggle Particles" then
+                    ToggleParticles()
+                elseif name == "Particle Color" then
+                    OpenColorPicker("Particle Color", function(c)
+                        guiSettings.ParticleColor = c
+                        ShowMessage("Particle Color changed")
+                    end)
+                elseif name == "Toggle Fullbright" then
+                    ToggleFullbright()
+                elseif name == "Toggle NameTags" then
+                    ToggleNameTags()
+                elseif name == "Toggle Skeleton" then
+                    ToggleSkeleton()
+                elseif name == "Toggle Chinese Hat" then
+                    ToggleChineseHat()
+                elseif name == "Hat Color" then
+                    OpenColorPicker("Hat Color", function(c)
+                        guiSettings.HatColor = c
+                        if hatEnabled then CreateChineseHat() end
+                    end)
+                elseif name == "Toggle Target ESP" then
+                    ToggleTargetESP()
+                elseif name == "Toggle World Color" then
+                    ToggleWorldColor()
+                elseif name == "World Color" then
+                    OpenColorPicker("World Color", function(c)
+                        guiSettings.WorldColor = c
+                        if worldColorEnabled then
+                            Lighting.Ambient = c
+                            Lighting.OutdoorAmbient = c
+                        end
+                    end)
+                elseif name == "Toggle Crosshair" then
+                    ToggleCrosshair()
+                elseif name == "Crosshair Color" then
+                    OpenColorPicker("Crosshair Color", function(c)
+                        crosshairColor = c
+                        if crosshairEnabled then CreateCrosshair() end
+                    end)
+                elseif name == "Toggle Stretch" then
+                    ToggleStretch()
+                -- PLAYER
+                elseif name == "Speed" then
+                    OpenTextInput("Speed", "0 - 99999", speedValue, function(v)
+                        speedValue = v
+                        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+                        if hum then hum.WalkSpeed = math.clamp(v, 0, 99999) end
+                        ShowMessage("Speed: " .. v)
+                    end)
+                elseif name == "Gravity" then
+                    OpenTextInput("Gravity", "-1000 - 10000", gravityValue, function(v)
+                        gravityValue = v
+                        workspace.Gravity = math.clamp(v, -1000, 10000)
+                        ShowMessage("Gravity: " .. v)
+                    end)
+                elseif name == "Toggle Spin" then
+                    ToggleSpin()
+                elseif name == "Spin Speed" then
+                    OpenTextInput("Spin Speed", "1 - 100", guiSettings.SpinSpeed, function(v)
+                        guiSettings.SpinSpeed = math.clamp(v, 1, 100)
+                        ShowMessage("Spin Speed: " .. guiSettings.SpinSpeed)
+                    end)
+                elseif name == "Toggle Sun Spin" then
+                    ToggleSunSpin()
+                elseif name == "Sun Spin Speed" then
+                    OpenTextInput("Sun Spin Speed", "10 - 500", guiSettings.SunSpinSpeed, function(v)
+                        guiSettings.SunSpinSpeed = math.clamp(v, 10, 500)
+                        ShowMessage("Sun Spin Speed: " .. guiSettings.SunSpinSpeed)
+                    end)
+                elseif name == "Toggle Helicopter" then
+                    ToggleHelicopter()
+                elseif name == "Toggle Invisibility" then
+                    ToggleInvisibility()
+                elseif name == "Toggle Dash" then
+                    ToggleDash()
+                elseif name == "Toggle Fly" then
+                    ToggleFly()
+                elseif name == "Toggle Teleport Tool" then
+                    ToggleTeleportTool()
+                elseif name == "Toggle NoClip" then
+                    ToggleNoClip()
+                elseif name == "Toggle Shiftlock" then
+                    if not shiftlockButton then CreateShiftlockButton() end
+                    ToggleShiftlock()
+                elseif name == "Toggle Strafe" then
+                    ToggleStrafe()
+                -- COMBAT
+                elseif name == "Toggle Aimbot" then
+                    ToggleAimbot()
+                elseif name == "Toggle Orbit" then
+                    ToggleOrbit()
+                elseif name == "Toggle Anti-Aim" then
+                    ToggleAntiAim()
+                elseif name == "Anti-Aim Mode: Spin" then
+                    SetAntiAimMode("Spin")
+                elseif name == "Anti-Aim Mode: Backwards" then
+                    SetAntiAimMode("Backwards")
+                elseif name == "Toggle Fake Lag" then
+                    ToggleFakeLag()
+                elseif name == "Fake Lag Amount" then
+                    OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)
+                        guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
+                        ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
+                    end)
+                elseif name == "Toggle Silent Aim" then
+                    ToggleSilentAim()
+                elseif name == "Toggle Trigger Bot" then
+                    ToggleTriggerBot()
+                elseif name == "Toggle Double Tap" then
+                    ToggleDoubleTap()
+                -- NO FE
+                elseif name == "Toggle C Button" then
+                    ToggleCButton()
+                elseif name == "Load ClemonRC" then
+                    LoadClemonRC()
+                elseif name == "Toggle R6 Animations" then
+                    ToggleR6Animations()
+                -- SETTINGS
+                elseif name == "Style MTY Dark" then
+                    guiSettings.BackgroundColor = Color3.fromRGB(0, 0, 0)
+                    guiSettings.BorderColor = Color3.fromRGB(255, 0, 0)
+                    guiSettings.TextColor = Color3.fromRGB(255, 255, 255)
+                    guiSettings.Transparency = 0.05
+                    UpdateGUIStyle()
+                    ShowMessage("Style: Dark")
+                elseif name == "Style MTY Neon" then
+                    guiSettings.BackgroundColor = Color3.fromRGB(10, 0, 20)
+                    guiSettings.BorderColor = Color3.fromRGB(255, 0, 200)
+                    guiSettings.TextColor = Color3.fromRGB(255, 0, 200)
+                    guiSettings.Transparency = 0.1
+                    UpdateGUIStyle()
+                    ShowMessage("Style: Neon")
+                elseif name == "Style MTY Glass" then
+                    guiSettings.BackgroundColor = Color3.fromRGB(255, 255, 255)
+                    guiSettings.BorderColor = Color3.fromRGB(255, 255, 255)
+                    guiSettings.TextColor = Color3.fromRGB(0, 0, 0)
+                    guiSettings.Transparency = 0.3
+                    UpdateGUIStyle()
+                    ShowMessage("Style: Glass")
+                elseif name == "Background Color" then
+                    OpenColorPicker("Background Color", function(c)
+                        guiSettings.BackgroundColor = c
+                        UpdateGUIStyle()
+                    end)
+                elseif name == "Border Color" then
+                    OpenColorPicker("Border Color", function(c)
+                        guiSettings.BorderColor = c
+                        UpdateGUIStyle()
+                    end)
+                elseif name == "Text Color" then
+                    OpenColorPicker("Text Color", function(c)
+                        guiSettings.TextColor = c
+                        UpdateGUIStyle()
+                    end)
+                elseif name == "Transparency" then
+                    OpenTextInput("Transparency", "0 - 0.8", guiSettings.Transparency, function(v)
+                        guiSettings.Transparency = math.clamp(v, 0, 0.8)
+                        UpdateGUIStyle()
+                    end)
+                elseif name == "Toggle Blur" then
+                    guiSettings.BlurEnabled = not guiSettings.BlurEnabled
+                    UpdateGUIStyle()
+                    ShowMessage("Blur " .. (guiSettings.BlurEnabled and "ON" or "OFF"))
+                elseif name == "Blur Size" then
+                    OpenTextInput("Blur Size", "1 - 30", guiSettings.BlurSize, function(v)
+                        guiSettings.BlurSize = math.clamp(v, 1, 30)
+                        UpdateGUIStyle()
+                    end)
+                elseif name == "Optimize Textures" then
+                    for _, v in pairs(game:GetDescendants()) do
+                        pcall(function()
+                            if v:IsA("Texture") or v:IsA("Decal") then
+                                v.Texture = "rbxassetid://4322737890"
+                            elseif v:IsA("Part") or v:IsA("MeshPart") then
+                                v.Material = Enum.Material.Plastic
+                                v.Reflectance = 0
+                            elseif v:IsA("Terrain") then
+                                v.WaterWaveSize = 0
+                                v.WaterReflectance = 0
+                                v.WaterTransparency = 1
                             end
                         end)
-                    elseif name == "Toggle Crosshair" then
-                        ToggleCrosshair()
-                    elseif name == "Crosshair Color" then
-                        OpenColorPicker("Crosshair Color", function(c)
-                            crosshairColor = c
-                            if crosshairEnabled then CreateCrosshair() end
-                        end)
-                    elseif name == "Toggle Stretch" then
-                        ToggleStretch()
-                    -- PLAYER
-                    elseif name == "Speed" then
-                        OpenTextInput("Speed", "0 - 99999", speedValue, function(v)
-                            speedValue = v
-                            local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-                            if hum then hum.WalkSpeed = math.clamp(v, 0, 99999) end
-                            ShowMessage("Speed: " .. v)
-                        end)
-                    elseif name == "Gravity" then
-                        OpenTextInput("Gravity", "-1000 - 10000", gravityValue, function(v)
-                            gravityValue = v
-                            workspace.Gravity = math.clamp(v, -1000, 10000)
-                            ShowMessage("Gravity: " .. v)
-                        end)
-                    elseif name == "Toggle Spin" then
-                        ToggleSpin()
-                    elseif name == "Spin Speed" then
-                        OpenTextInput("Spin Speed", "1 - 100", guiSettings.SpinSpeed, function(v)
-                            guiSettings.SpinSpeed = math.clamp(v, 1, 100)
-                            ShowMessage("Spin Speed: " .. guiSettings.SpinSpeed)
-                        end)
-                    elseif name == "Toggle Sun Spin" then
-                        ToggleSunSpin()
-                    elseif name == "Sun Spin Speed" then
-                        OpenTextInput("Sun Spin Speed", "10 - 500", guiSettings.SunSpinSpeed, function(v)
-                            guiSettings.SunSpinSpeed = math.clamp(v, 10, 500)
-                            ShowMessage("Sun Spin Speed: " .. guiSettings.SunSpinSpeed)
-                        end)
-                    elseif name == "Toggle Helicopter" then
-                        ToggleHelicopter()
-                    elseif name == "Toggle Invisibility" then
-                        ToggleInvisibility()
-                    elseif name == "Toggle Dash" then
-                        ToggleDash()
-                    elseif name == "Toggle Fly" then
-                        ToggleFly()
-                    elseif name == "Toggle Teleport Tool" then
-                        ToggleTeleportTool()
-                    elseif name == "Toggle NoClip" then
-                        ToggleNoClip()
-                    elseif name == "Toggle Shiftlock" then
-                        if not shiftlockButton then CreateShiftlockButton() end
-                        ToggleShiftlock()
-                    elseif name == "Toggle Strafe" then
-                        ToggleStrafe()
-                    -- COMBAT
-                    elseif name == "Toggle Aimbot" then
-                        ToggleAimbot()
-                    elseif name == "Toggle Orbit" then
-                        ToggleOrbit()
-                    elseif name == "Toggle Anti-Aim" then
-                        ToggleAntiAim()
-                    elseif name == "Anti-Aim Mode: Spin" then
-                        SetAntiAimMode("Spin")
-                    elseif name == "Anti-Aim Mode: Backwards" then
-                        SetAntiAimMode("Backwards")
-                    elseif name == "Toggle Fake Lag" then
-                        ToggleFakeLag()
-                    elseif name == "Fake Lag Amount" then
-                        OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)
-                            guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
-                            ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
-                        end)
-                    elseif name == "Toggle Silent Aim" then
-                        ToggleSilentAim()
-                    elseif name == "Toggle Trigger Bot" then
-                        ToggleTriggerBot()
-                    elseif name == "Toggle Double Tap" then
-                        ToggleDoubleTap()
-                    -- NO FE
-                    elseif name == "Toggle C Button" then
-                        ToggleCButton()
-                    elseif name == "Load ClemonRC" then
-                        LoadClemonRC()
-                    elseif name == "Toggle R6 Animations" then
-                        ToggleR6Animations()
-                    -- SETTINGS
-                    elseif name == "Style MTY Dark" then
-                        guiSettings.BackgroundColor = Color3.fromRGB(0, 0, 0)
-                        guiSettings.BorderColor = Color3.fromRGB(255, 0, 0)
-                        guiSettings.TextColor = Color3.fromRGB(255, 255, 255)
-                        guiSettings.Transparency = 0.05
-                        UpdateGUIStyle()
-                        ShowMessage("Style: Dark")
-                    elseif name == "Style MTY Neon" then
-                        guiSettings.BackgroundColor = Color3.fromRGB(10, 0, 20)
-                        guiSettings.BorderColor = Color3.fromRGB(255, 0, 200)
-                        guiSettings.TextColor = Color3.fromRGB(255, 0, 200)
-                        guiSettings.Transparency = 0.1
-                        UpdateGUIStyle()
-                        ShowMessage("Style: Neon")
-                    elseif name == "Style MTY Glass" then
-                        guiSettings.BackgroundColor = Color3.fromRGB(255, 255, 255)
-                        guiSettings.BorderColor = Color3.fromRGB(255, 255, 255)
-                        guiSettings.TextColor = Color3.fromRGB(0, 0, 0)
-                        guiSettings.Transparency = 0.3
-                        UpdateGUIStyle()
-                        ShowMessage("Style: Glass")
-                    elseif name == "Background Color" then
-                        OpenColorPicker("Background Color", function(c)
-                            guiSettings.BackgroundColor = c
-                            UpdateGUIStyle()
-                        end)
-                    elseif name == "Border Color" then
-                        OpenColorPicker("Border Color", function(c)
-                            guiSettings.BorderColor = c
-                            UpdateGUIStyle()
-                        end)
-                    elseif name == "Text Color" then
-                        OpenColorPicker("Text Color", function(c)
-                            guiSettings.TextColor = c
-                            UpdateGUIStyle()
-                        end)
-                    elseif name == "Transparency" then
-                        OpenTextInput("Transparency", "0 - 0.8", guiSettings.Transparency, function(v)
-                            guiSettings.Transparency = math.clamp(v, 0, 0.8)
-                            UpdateGUIStyle()
-                        end)
-                    elseif name == "Toggle Blur" then
-                        guiSettings.BlurEnabled = not guiSettings.BlurEnabled
-                        UpdateGUIStyle()
-                        ShowMessage("Blur " .. (guiSettings.BlurEnabled and "ON" or "OFF"))
-                    elseif name == "Blur Size" then
-                        OpenTextInput("Blur Size", "1 - 30", guiSettings.BlurSize, function(v)
-                            guiSettings.BlurSize = math.clamp(v, 1, 30)
-                            UpdateGUIStyle()
-                        end)
-                    elseif name == "Optimize Textures" then
-                        for _, v in pairs(game:GetDescendants()) do
-                            pcall(function()
-                                if v:IsA("Texture") or v:IsA("Decal") then
-                                    v.Texture = "rbxassetid://4322737890"
-                                elseif v:IsA("Part") or v:IsA("MeshPart") then
-                                    v.Material = Enum.Material.Plastic
-                                    v.Reflectance = 0
-                                elseif v:IsA("Terrain") then
-                                    v.WaterWaveSize = 0
-                                    v.WaterReflectance = 0
-                                    v.WaterTransparency = 1
-                                end
-                            end)
-                        end
-                        Lighting.GlobalShadows = false
-                        Lighting.Brightness = 1
-                        Lighting.ClockTime = 14
-                        ShowMessage("Textures Optimized")
                     end
-                end)
-            end
+                    Lighting.GlobalShadows = false
+                    Lighting.Brightness = 1
+                    Lighting.ClockTime = 14
+                    ShowMessage("Textures Optimized")
+                end
+            end)
         end
-        contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 28 + 20)
+        contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 22 + 10)
     end
 
     searchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2100,8 +2102,8 @@ local function CreateMenu()
         if blurEffect then blurEffect:Destroy() end
     end)
 
-    categoryButtons["UNIVERSAL"].MouseButton1Click:Fire()
+    categoryButtons["VISUAL"].MouseButton1Click:Fire()
 end
 
 CreateMenu()
-print("MTY HUB v4.0 LOADED! 🔥")
+print("MTY HUB v4.1 LOADED! 🔥")
