@@ -1,8 +1,7 @@
--- MTY HUB v4.4
--- Chinese Hat теперь круглый конус
--- Добавлены: Aimbot Speed, Aimbot Strength в меню
--- Удалены: Silent Aim, Target ESP, Trigger Bot
--- Кнопки в VISUAL максимально сжаты
+-- MTY HUB v4.4 DELTA EDITION
+-- Убраны: Drawing (FOV круг), TweenService
+-- CoreGui заменён на PlayerGui
+-- Оптимизирован для Delta Executor
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -11,7 +10,6 @@ local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Camera = workspace.CurrentCamera
-local TweenService = game:GetService("TweenService")
 
 local guiMainFrame = nil
 local screenGui = nil
@@ -160,12 +158,6 @@ local gravityValue = workspace.Gravity
 
 local aimbotEnabled = false
 local aimbotConnection = nil
-local aimbotFOVRing = Drawing.new("Circle")
-aimbotFOVRing.Thickness = 1.5
-aimbotFOVRing.Color = Color3.fromRGB(255, 0, 0)
-aimbotFOVRing.Filled = false
-aimbotFOVRing.Visible = false
-aimbotFOVRing.Radius = guiSettings.AimbotFOV
 
 -- ===== ФУНКЦИЯ ПОКАЗА СООБЩЕНИЙ =====
 local function ShowMessage(text)
@@ -187,7 +179,7 @@ end
 local function OpenTextInput(title, placeholder, default, callback)
     local s = Instance.new("ScreenGui")
     s.Name = "Input"
-    s.Parent = game.CoreGui
+    s.Parent = LP.PlayerGui
     s.ResetOnSpawn = false
     local f = Instance.new("Frame")
     f.Size = UDim2.new(0, 250, 0, 150)
@@ -262,7 +254,7 @@ end
 local function OpenColorPicker(title, callback)
     local s = Instance.new("ScreenGui")
     s.Name = "ColorPicker"
-    s.Parent = game.CoreGui
+    s.Parent = LP.PlayerGui
     s.ResetOnSpawn = false
     local f = Instance.new("Frame")
     f.Size = UDim2.new(0, 200, 0, 300)
@@ -342,7 +334,7 @@ local function OpenColorPicker(title, callback)
     close.MouseButton1Click:Connect(function() s:Destroy() end)
 end
 
--- ===== НОВЫЙ АИМБОТ (С СИЛОЙ И СКОРОСТЬЮ) =====
+-- ===== НОВЫЙ АИМБОТ (С СИЛОЙ И СКОРОСТЬЮ, БЕЗ DRAWING) =====
 local function FindBestTarget()
     local target = nil
     local near = guiSettings.AimbotFOV
@@ -374,10 +366,6 @@ local function ToggleAimbot()
         if aimbotConnection then aimbotConnection:Disconnect() end
         aimbotConnection = RunService.RenderStepped:Connect(function()
             if not aimbotEnabled then return end
-            local mid = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-            aimbotFOVRing.Position = mid
-            aimbotFOVRing.Radius = guiSettings.AimbotFOV
-            aimbotFOVRing.Visible = true
             
             local target = FindBestTarget()
             if target then
@@ -395,7 +383,6 @@ local function ToggleAimbot()
         ShowMessage("🎯 Aimbot ON (Speed: " .. guiSettings.AimbotSpeed .. ", Strength: " .. guiSettings.AimbotStrength .. ")")
     else
         if aimbotConnection then aimbotConnection:Disconnect() aimbotConnection = nil end
-        aimbotFOVRing.Visible = false
         ShowMessage("🎯 Aimbot OFF")
     end
 end
@@ -410,7 +397,6 @@ local function UpdateTracersV2()
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             local hum = player.Character:FindFirstChild("Humanoid")
             if root and hum and hum.Health > 0 then
-                local pos, visible = Camera:WorldToViewportPoint(root.Position)
                 local dist = (Camera.CFrame.Position - root.Position).Magnitude
                 
                 local tracer = Instance.new("Part")
@@ -643,7 +629,7 @@ local function ToggleChineseHat()
     end
 end
 
--- ===== ВИЗУАЛЫ (ESP, CHAMS, HITBOXES, BACKTRACK, TRAIL, PARTICLES) =====
+-- ===== ВИЗУАЛЫ =====
 -- ESP
 local function UpdateESP()
     for _, v in pairs(espFolder:GetChildren()) do v:Destroy() end
@@ -832,7 +818,7 @@ local function CreateCrosshair()
     if crosshairGui then crosshairGui:Destroy() end
     crosshairGui = Instance.new("ScreenGui")
     crosshairGui.Name = "MTY_Crosshair"
-    crosshairGui.Parent = game.CoreGui
+    crosshairGui.Parent = LP.PlayerGui
     crosshairGui.ResetOnSpawn = false
     
     local size = 25
@@ -887,13 +873,12 @@ local function ToggleCrosshair()
     end
 end
 
--- ===== SHIFTLOCK + C BUTTON + R6 АНИМАЦИИ =====
--- SHIFTLOCK
+-- ===== SHIFTLOCK =====
 local function CreateShiftlockButton()
     if shiftlockButton then return end
     local sg = Instance.new("ScreenGui")
     sg.Name = "MTY_Shiftlock"
-    sg.Parent = game.CoreGui
+    sg.Parent = LP.PlayerGui
     sg.ResetOnSpawn = false
     
     local btn = Instance.new("ImageButton")
@@ -936,12 +921,12 @@ local function ToggleShiftlock()
     end
 end
 
--- C BUTTON
+-- ===== C BUTTON =====
 local function CreateCButton()
     if cButtonGui then cButtonGui:Destroy() cButtonGui = nil end
     cButtonGui = Instance.new("ScreenGui")
     cButtonGui.Name = "MTY_CButton"
-    cButtonGui.Parent = game.CoreGui
+    cButtonGui.Parent = LP.PlayerGui
     cButtonGui.ResetOnSpawn = false
     
     local btn = Instance.new("TextButton")
@@ -1029,7 +1014,7 @@ local function ToggleCButton()
     end
 end
 
--- R6 ANIMATIONS
+-- ===== R6 ANIMATIONS =====
 local function RunCustomAnimation(Char)
     if Char:WaitForChild("Humanoid").RigType == Enum.HumanoidRigType.R6 then return end
     if Char:FindFirstChild("Animate") then Char.Animate.Disabled = true end
@@ -1271,7 +1256,7 @@ local function ToggleDash()
         if dashButton then return end
         local sg = Instance.new("ScreenGui")
         sg.Name = "MTY_Dash"
-        sg.Parent = game.CoreGui
+        sg.Parent = LP.PlayerGui
         sg.ResetOnSpawn = false
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0, 60, 0, 60)
@@ -1548,7 +1533,7 @@ end
 local function CreateMenu()
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "MTY_HUB"
-    screenGui.Parent = game.CoreGui
+    screenGui.Parent = LP.PlayerGui
     screenGui.ResetOnSpawn = false
 
     guiMainFrame = Instance.new("Frame")
@@ -1914,7 +1899,6 @@ local function CreateMenu()
                 elseif name == "Aimbot FOV" then
                     OpenTextInput("Aimbot FOV", "10 - 500", guiSettings.AimbotFOV, function(v)
                         guiSettings.AimbotFOV = math.clamp(v, 10, 500)
-                        aimbotFOVRing.Radius = guiSettings.AimbotFOV
                         ShowMessage("Aimbot FOV: " .. guiSettings.AimbotFOV)
                     end)
                 elseif name == "Toggle Orbit" then
@@ -2054,4 +2038,4 @@ local function CreateMenu()
 end
 
 CreateMenu()
-print("MTY HUB v4.4 LOADED! 🔥")
+print("MTY HUB v4.4 DELTA EDITION LOADED! 🔥")
