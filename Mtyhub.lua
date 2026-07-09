@@ -52,27 +52,30 @@ local guiSettings = {
 }
 
 -- ===== СОСТОЯНИЯ =====
-local espEnabled, espV2Enabled, tracersEnabled, chamsEnabled, hitboxEnabled, skeletonEnabled = false, false, false, false, false, false
-local jumpCircleEnabled, trailEnabled, particlesEnabled, crosshairEnabled, stretchEnabled, hatEnabled = false, false, false, false, false, false
+local espEnabled, espV2Enabled, espV3Enabled, tracersEnabled, chamsEnabled, hitboxEnabled, hitboxV2Enabled, skeletonEnabled = false, false, false, false, false, false, false, false
+local jumpCircleEnabled, trailEnabled, trailV2Enabled, particlesEnabled, crosshairEnabled, stretchEnabled, hatEnabled = false, false, false, false, false, false, false
 local spinEnabled, sunSpinEnabled, helicopterEnabled, invisibilityEnabled, noClipEnabled, orbitEnabled = false, false, false, false, false, false
 local antiAimEnabled, fakeLagEnabled, doubleTapEnabled, strafeEnabled, fullbrightEnabled, nameTagsEnabled = false, false, false, false, false, false
 local shiftlockActive, cButtonEnabled, worldColorEnabled = false, false, false
-
--- СОСТОЯНИЯ ДЛЯ HvH И XESCRIPT
-local killAuraEnabled, infJumpEnabled, autoSprintEnabled, airWalkEnabled = false, false, false, false
+local blockEspEnabled, dmgIndicatorsEnabled = false, false
+local killAuraEnabled, killAuraV2Enabled, infJumpEnabled, autoSprintEnabled, airWalkEnabled, flyV2Enabled = false, false, false, false, false, false
 local resolverEnabled, desyncEnabled = false, false
-local triggerBotEnabled, autoClickerEnabled = false, false
+local triggerBotEnabled, autoClickerEnabled, autoClickerV2Enabled = false, false, false
+local aimbotV2Enabled, aimbotV3Enabled = false, false
 
+-- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
 local espV2Folder = Instance.new("Folder", workspace) espV2Folder.Name = "MTY_ESP_V2"
 local tracersFolder = Instance.new("Folder", workspace) tracersFolder.Name = "MTY_Tracers"
 local chamsFolder = Instance.new("Folder", workspace) chamsFolder.Name = "MTY_Chams"
 local HitboxFolder = Instance.new("Folder", workspace) HitboxFolder.Name = "MTY_Hitboxes"
 local skeletonFolder = Instance.new("Folder", workspace) skeletonFolder.Name = "MTY_Skeleton"
+local blockEspFolder = Instance.new("Folder", workspace) blockEspFolder.Name = "MTY_BlockESP"
 
+-- ===== ПЕРЕМЕННЫЕ =====
 local trailParts = {}
 local currentHat, hatConnection, crosshairGui, shiftlockConnection, cButtonGui, dashButton, runNoClip, airWalkPlatform
-local particlesConnection, spinConnection, sunSpinConnection, helicopterConnection, orbitConnection, antiAimConnection, fakeLagConnection, strafeConnection, stretchConnection, tracersConnection, jumpCircleConnection, killAuraConnection, infJumpConnection, autoSprintConnection, triggerBotConnection, autoClickConnection
+local particlesConnection, spinConnection, sunSpinConnection, helicopterConnection, orbitConnection, antiAimConnection, fakeLagConnection, strafeConnection, stretchConnection, tracersConnection, jumpCircleConnection, killAuraConnection, killAuraV2Connection, infJumpConnection, autoSprintConnection, triggerBotConnection, autoClickConnection, autoClickV2Connection
 local trailAnchor, actualTrailInstance
 local originalAmbient, originalOutdoor = Lighting.Ambient, Lighting.OutdoorAmbient
 local speedValue = 16
@@ -201,12 +204,7 @@ local function FindBestTarget()
         if player ~= LP and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local hit = player.Character:FindFirstChild(guiSettings.AimbotPart) or player.Character:FindFirstChild("Head")
             if hit then
-                local screen, visible
-                if guiSettings.AimbotWallbang then
-                    screen, visible = Camera:WorldToViewportPoint(hit.Position)
-                else
-                    screen, visible = Camera:WorldToViewportPoint(hit.Position)
-                end
+                local screen, visible = Camera:WorldToViewportPoint(hit.Position)
                 if visible then
                     local dist = (Vector2.new(screen.X, screen.Y) - mid).Magnitude
                     if dist < near then near = dist target = hit end
@@ -268,19 +266,50 @@ local function ToggleChineseHat()
     end
 end
 
--- ===== 👣 НАСТОЯЩИЙ TRAIL ЛЕНТОЙ (БЕЗ КУБИКОВ!) 👣 =====
+-- ===== 👣 ТВОЙ ОРИГИНАЛЬНЫЙ ТРЕЙЛ (ПАРТЫ-КУБИКИ) 👣 =====
+local function CreateTrail()
+    if not trailEnabled or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
+    local part = Instance.new("Part", workspace) 
+    part.Size = Vector3.new(0.3, 0.3, 0.3) 
+    part.CFrame = LP.Character.HumanoidRootPart.CFrame
+    part.Anchored = true
+    part.CanCollide = false
+    part.Material = Enum.Material.Neon
+    part.Color = guiSettings.TrailColor
+    part.Transparency = 0.6
+    table.insert(trailParts, part) 
+    if #trailParts > guiSettings.TrailLength then 
+        local old = table.remove(trailParts, 1) 
+        if old then old:Destroy() end 
+    end
+end
+
+local function ToggleTrail()
+    trailEnabled = not trailEnabled
+    if trailEnabled then 
+        trailParts = {} 
+        trailConnection = RunService.Heartbeat:Connect(CreateTrail) 
+        ShowMessage("Trail V1 ON 👣") 
+    else 
+        if trailConnection then trailConnection:Disconnect() end 
+        for _, v in pairs(trailParts) do v:Destroy() end 
+        trailParts = {} 
+        ShowMessage("Trail V1 OFF") 
+    end
+end
+
+-- ===== 👣 ТРЕНДОВЫЙ TRAIL V2 ЛЕНТОЙ (БЕЗ КУБИКОВ) 👣 =====
 local function UpdateCustomTrail()
-    if not trailEnabled or not LP.Character or not LP.Character:FindFirstChild("Head") then return end
-    trailAnchor = Instance.new("Part") 
+    if not trailV2Enabled or not LP.Character or not LP.Character:FindFirstChild("Head") then return end
+    trailAnchor = Instance.new("Part", LP.Character.Head) 
     trailAnchor.Name = "MTY_TrailAnchor" 
     trailAnchor.Size = Vector3.new(0.1, 0.1, 0.1) 
-    trailAnchor.Transparency = 1 
-    trailAnchor.CanCollide = false 
+    trailAnchor.Transparency = 1
+    trailAnchor.CanCollide = false
     trailAnchor.Massless = true
     local weld = Instance.new("Weld", trailAnchor) 
     weld.Part0 = LP.Character.Head
-    weld.Part1 = trailAnchor 
-    trailAnchor.Parent = LP.Character.Head
+    weld.Part1 = trailAnchor
     local a0 = Instance.new("Attachment", trailAnchor) 
     a0.Position = Vector3.new(-0.8, -1.2, 0)
     local a1 = Instance.new("Attachment", trailAnchor) 
@@ -294,22 +323,22 @@ local function UpdateCustomTrail()
     actualTrailInstance.Color = ColorSequence.new(guiSettings.TrailColor)
 end
 
-local function ToggleTrail()
-    trailEnabled = not trailEnabled
-    if trailEnabled then 
+local function ToggleTrailV2() 
+    trailV2Enabled = not trailV2Enabled 
+    if trailV2Enabled then 
         UpdateCustomTrail() 
-        ShowMessage("Trail ON 👣") 
+        ShowMessage("Trail V2 (Ribbon) ON 🎀") 
     else 
         if trailAnchor then trailAnchor:Destroy() trailAnchor = nil end 
-        ShowMessage("Trail OFF") 
-    end
+        ShowMessage("Trail V2 OFF") 
+    end 
 end
 
--- ===== 🟢 ИДЕАЛЬНЫЙ НЕОНОВЫЙ JUMP CIRCLE (БЕЗ ЛИНИЙ!) 🟢 =====
+-- ===== 🟢 ИДЕАЛЬНЫЙ НЕОНОВЫЙ JUMP CIRCLE (БЕЗ ЛИНИЙ) 🟢 =====
 local function ApplyJumpCircleEffect()
     if not jumpCircleEnabled or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
-    local disk = Instance.new("Part") 
-    disk.Shape = Enum.PartType.Cylinder 
+    local disk = Instance.new("Part", workspace) 
+    disk.Shape = Enum.PartType.Cylinder
     disk.Size = Vector3.new(0.02, 2, 2)
     disk.CFrame = CFrame.new(LP.Character.HumanoidRootPart.Position - Vector3.new(0, 2.8, 0)) * CFrame.Angles(0, 0, math.rad(90))
     disk.Anchored = true
@@ -317,7 +346,6 @@ local function ApplyJumpCircleEffect()
     disk.Material = Enum.Material.Neon
     disk.Color = guiSettings.JumpCircleColor
     disk.Transparency = 0.2
-    disk.Parent = workspace
     local tween = TweenService:Create(disk, TweenInfo.new(guiSettings.JumpCircleFadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = Vector3.new(0.01, 14, 14), 
         Transparency = 1
@@ -328,19 +356,19 @@ end
 
 local function ToggleJumpCircle()
     jumpCircleEnabled = not jumpCircleEnabled
-    if jumpCircleEnabled then
-        local char = LP.Character or LP.CharacterAdded:Wait()
+    if jumpCircleEnabled then 
+        local char = LP.Character or LP.CharacterAdded:Wait() 
         jumpCircleConnection = char:WaitForChild("Humanoid").Jumping:Connect(function() 
             if jumpCircleEnabled then ApplyJumpCircleEffect() end 
-        end)
-        ShowMessage("Jump Circle ON 🟢")
+        end) 
+        ShowMessage("Jump Circle ON 🟢") 
     else 
         if jumpCircleConnection then jumpCircleConnection:Disconnect() end 
         ShowMessage("Jump Circle OFF") 
     end
 end
 
--- ===== ⚔️ COMBAT & HVH БЭКЕНД МОДУЛЕЙ ⚔️ =====
+-- ===== ⚔️ COMBAT, XESCRIPT & NEW V2/V3 FUNCTIONS ⚔️ =====
 local function ToggleKillAura()
     killAuraEnabled = not killAuraEnabled
     if killAuraEnabled then
@@ -349,16 +377,40 @@ local function ToggleKillAura()
             local tool = LP.Character:FindFirstChildOfClass("Tool")
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                    if (LP.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= guiSettings.KillAuraRange then
-                        if tool then tool:Activate() end
+                    if (LP.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= guiSettings.KillAuraRange then 
+                        if tool then tool:Activate() end 
                     end
                 end
             end
-        end)
-        ShowMessage("Kill Aura ON ⚔️")
+        end) 
+        ShowMessage("Kill Aura V1 ON ⚔️")
     else 
         if killAuraConnection then killAuraConnection:Disconnect() end 
         ShowMessage("Kill Aura OFF") 
+    end
+end
+
+local function ToggleKillAuraV2()
+    killAuraV2Enabled = not killAuraV2Enabled
+    if killAuraV2Enabled then
+        killAuraV2Connection = RunService.Heartbeat:Connect(function()
+            if not killAuraV2Enabled or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
+            local tool = LP.Character:FindFirstChildOfClass("Tool")
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.Humanoid.Health > 0 then
+                    if (LP.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= (guiSettings.KillAuraRange + 4) then
+                        if tool then 
+                            tool:Activate() 
+                            LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(180), 0)
+                        end
+                    end
+                end
+            end
+        end) 
+        ShowMessage("Kill Aura V2 HvH ON 🔥")
+    else 
+        if killAuraV2Connection then killAuraV2Connection:Disconnect() end 
+        ShowMessage("Kill Aura V2 OFF") 
     end
 end
 
@@ -369,11 +421,11 @@ local function ToggleTriggerBot()
             local mouse = LP:GetMouse()
             if mouse and mouse.Target and mouse.Target.Parent:FindFirstChild("Humanoid") then
                 if Players:GetPlayerFromCharacter(mouse.Target.Parent) ~= LP then
-                    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1) 
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
             end
-        end)
+        end) 
         ShowMessage("Trigger Bot ON 🎯")
     else 
         if triggerBotConnection then triggerBotConnection:Disconnect() end 
@@ -384,17 +436,35 @@ end
 local function ToggleAutoClicker()
     autoClickerEnabled = not autoClickerEnabled
     if autoClickerEnabled then
-        autoClickConnection = RunService.Heartbeat:Connect(function()
-            VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
-            VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+        autoClickConnection = RunService.Heartbeat:Connect(function() 
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1) 
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1) 
         end)
-        ShowMessage("Auto-Clicker ON 🖱️")
+        ShowMessage("Auto-Clicker V1 ON 🖱️")
     else 
         if autoClickConnection then autoClickConnection:Disconnect() end 
         ShowMessage("Auto-Clicker OFF") 
     end
 end
 
+local function ToggleAutoClickerV2()
+    autoClickerV2Enabled = not autoClickerV2Enabled
+    if autoClickerV2Enabled then
+        autoClickV2Connection = RunService.RenderStepped:Connect(function()
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1) 
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+            task.wait(0.005)
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1) 
+            VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+        end) 
+        ShowMessage("Auto-Clicker V2 Jitter ON ⚡")
+    else 
+        if autoClickV2Connection then autoClickV2Connection:Disconnect() end 
+        ShowMessage("Auto-Clicker V2 OFF") 
+    end
+end
+
+-- ===== 🌀 HVH РАССИНХРОНЫ И RESOLVER 🌀 =====
 local function ToggleResolver() 
     resolverEnabled = not resolverEnabled 
     ShowMessage("HvH Resolver "..(resolverEnabled and "ON 🎯" or "OFF")) 
@@ -402,7 +472,7 @@ end
 
 local function ToggleDesync() 
     desyncEnabled = not desyncEnabled 
-    ShowMessage("Desync "..(desyncEnabled and "ON ✈️" or "OFF")) 
+    ShowMessage("Desync Movement "..(desyncEnabled and "ON ✈️" or "OFF")) 
 end
 
 task.spawn(function()
@@ -430,17 +500,17 @@ local function ToggleAntiAim()
     ShowMessage("Anti-Aim "..(antiAimEnabled and "ON 🔥" or "OFF")) 
 end
 
--- ===== 👁️ ВИЗУАЛЫ И ЭСП ОБНОВЛЕНИЯ 👁️ =====
+-- ===== 👁️ ВСЕ ВАРИАНТЫ ЭСП =====
 local function UpdateESP()
     espFolder:ClearAllChildren() 
     if not espEnabled then return end
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
+    for _, p in pairs(Players:GetPlayers()) do 
+        if p ~= LP and p.Character then 
             local h = Instance.new("Highlight", espFolder) 
-            h.Adornee = p.Character 
-            h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop 
-            h.FillColor = guiSettings.ESPColor 
-            h.FillTransparency = 0.3
+            h.Adornee = p.Character
+            h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            h.FillColor = guiSettings.ESPColor
+            h.FillTransparency = 0.3 
         end
     end
 end
@@ -475,10 +545,42 @@ local function ToggleESPV2()
                 task.wait(0.1) 
             end 
         end) 
-        ShowMessage("ESP V2 Toggled") 
+        ShowMessage("ESP V2 ON") 
     else 
         espV2Folder:ClearAllChildren() 
     end 
+end
+
+local function UpdateESPV3()
+    if not espV3Enabled then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character:FindFirstChild("HumanoidRootPart") then
+            local root = p.Character.HumanoidRootPart 
+            local hum = p.Character.Humanoid
+            local bg = root:FindFirstChild("MTY_HealthBar") or Instance.new("BillboardGui", root)
+            bg.Name = "MTY_HealthBar"
+            bg.Size = UDim2.new(0, 4, 0, 50)
+            bg.AlwaysOnTop = true
+            bg.ExtentsOffset = Vector3.new(-2.5, 0, 0)
+            bg:ClearAllChildren()
+            local bar = Instance.new("Frame", bg) 
+            bar.Size = UDim2.new(1, 0, hum.Health / hum.MaxHealth, 0) 
+            bar.Position = UDim2.new(0, 0, 1 - (hum.Health / hum.MaxHealth), 0) 
+            bar.BackgroundColor3 = Color3.fromRGB(0, 255, 50) 
+            bar.BorderSizePixel = 0
+        end
+    end
+end
+
+local function ToggleESPV3() 
+    espV3Enabled = not espV3Enabled 
+    ShowMessage("ESP V3 Bars "..(espV3Enabled and "ON" or "OFF")) 
+    task.spawn(function() 
+        while espV3Enabled do 
+            UpdateESPV3() 
+            task.wait(0.2) 
+        end 
+    end) 
 end
 
 local function UpdateSkeleton()
@@ -515,40 +617,112 @@ local function ToggleSkeleton()
     end 
 end
 
-local function ToggleChams() 
-    chamsEnabled = not chamsEnabled 
-    ShowMessage("Chams Toggled") 
+-- ===== 🧱 ХИТБОКСЫ V1 И V2 MINECRAFT =====
+local function UpdateHitboxes()
+    HitboxFolder:ClearAllChildren() 
+    if not hitboxEnabled then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local b = Instance.new("BoxHandleAdornment", HitboxFolder) 
+            b.Adornee = p.Character.HumanoidRootPart 
+            b.Color3 = guiSettings.HitboxColor 
+            b.Transparency = 0.5 
+            b.Size = p.Character.HumanoidRootPart.Size * 2 
+            b.AlwaysOnTop = true
+        end
+    end
 end
 
 local function ToggleHitboxes() 
     hitboxEnabled = not hitboxEnabled 
-    ShowMessage("Hitboxes Toggled") 
+    task.spawn(function() 
+        while hitboxEnabled do 
+            UpdateHitboxes() 
+            task.wait(0.2) 
+        end 
+    end) 
+    ShowMessage("Hitboxes V1 Toggled") 
 end
 
-local function ToggleTracers() 
-    tracersEnabled = not tracersEnabled 
-    ShowMessage("Tracers Toggled") 
+local function UpdateHitboxesV2()
+    blockEspFolder:ClearAllChildren() 
+    if not hitboxV2Enabled then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local b = Instance.new("BoxHandleAdornment", blockEspFolder) 
+            b.Adornee = p.Character.HumanoidRootPart 
+            b.Color3 = guiSettings.HitboxColor 
+            b.Transparency = 0.5 
+            b.Size = Vector3.new(6,6,6) 
+            b.AlwaysOnTop = true
+        end
+    end
 end
 
-local function ToggleFullbright() 
-    fullbrightEnabled = not fullbrightEnabled 
-    Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient 
-    ShowMessage("Fullbright Toggled") 
+local function ToggleHitboxesV2() 
+    hitboxV2Enabled = not hitboxV2Enabled 
+    task.spawn(function() 
+        while hitboxV2Enabled do 
+            UpdateHitboxesV2() 
+            task.wait(0.2) 
+        end 
+    end) 
+    ShowMessage("Hitboxes V2 Minecraft ON") 
 end
 
-local function ToggleStretch() 
-    stretchEnabled = not stretchEnabled
-    if stretchEnabled then 
-        stretchConnection = RunService.RenderStepped:Connect(function() 
-            Camera.CFrame = Camera.CFrame * CFrame.new(0,0,0,1,0,0,0,guiSettings.StretchValue,0,0,0,1) 
-        end) 
+local function ToggleBlockESP()
+    blockEspEnabled = not blockEspEnabled
+    blockEspFolder:ClearAllChildren()
+    if blockEspEnabled then
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Name:lower():find("ore") or v.Name:lower():find("chest") or v.Name:lower():find("spawner")) then
+                local b = Instance.new("BoxHandleAdornment", blockEspFolder) 
+                b.Adornee = v 
+                b.Size = v.Size
+                b.Color3 = Color3.fromRGB(0,255,150) 
+                b.Transparency = 0.5 
+                b.AlwaysOnTop = true
+            end
+        end
+        ShowMessage("Block ESP ON")
     else 
-        if stretchConnection then stretchConnection:Disconnect() end 
-    end 
-    ShowMessage("Stretch Toggled") 
+        ShowMessage("Block ESP OFF") 
+    end
 end
 
--- ===== ☁️ ПЕРЕМЕЩЕНИЯ (PLAYER) ☁️ =====
+local function ToggleDamageIndicators()
+    dmgIndicatorsEnabled = not dmgIndicatorsEnabled
+    if dmgIndicatorsEnabled then
+        ShowMessage("Damage Indicators ON")
+        task.spawn(function()
+            while dmgIndicatorsEnabled do 
+                task.wait(math.random(2, 4))
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    local part = Instance.new("Part", workspace) 
+                    part.Size = Vector3.new(2,1,2) 
+                    part.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.new(math.random(-4,4), 4, math.random(-4,4))
+                    part.Anchored = true
+                    part.CanCollide = false
+                    part.Transparency = 1
+                    local bb = Instance.new("BillboardGui", part) 
+                    bb.Size = UDim2.new(0,50,0,30) 
+                    bb.AlwaysOnTop = true
+                    local lbl = Instance.new("TextLabel", bb) 
+                    lbl.Size = UDim2.new(1,0,1,0) 
+                    lbl.Text = "-"..math.random(5,24) 
+                    lbl.TextColor3 = Color3.fromRGB(255,50,50) 
+                    lbl.Font = Enum.Font.GothamBold 
+                    lbl.TextScaled = true 
+                    lbl.BackgroundTransparency = 1
+                    TweenService:Create(part, TweenInfo.new(1), {CFrame = part.CFrame * CFrame.new(0,3,0)}):Play() 
+                    Debris:AddItem(part, 1)
+                end
+            end
+        end)
+    end
+end
+
+-- ===== ☁️ ПЕРЕМЕЩЕНИЯ И ФЛАЙ МОДЫ =====
 local function ToggleInfiniteJump() 
     infJumpEnabled = not infJumpEnabled
     if infJumpEnabled then 
@@ -557,7 +731,7 @@ local function ToggleInfiniteJump()
                 LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) 
             end 
         end) 
-        ShowMessage("Inf Jump ON") 
+        ShowMessage("Infinite Jump ON") 
     else 
         if infJumpConnection then infJumpConnection:Disconnect() end 
     end 
@@ -642,6 +816,82 @@ local function ToggleFakeLag()
     ShowMessage("FakeLag Toggled") 
 end
 
+-- ===== БЕЗУМНЫЕ ГЛОБАЛЬНЫЕ ПАРТИКЛЫ V2 ПО ВСЕМУ МИРУ =====
+local function ToggleParticles()
+    particlesEnabled = not particlesEnabled
+    if particlesEnabled then
+        particlesConnection = RunService.Heartbeat:Connect(function()
+            if not particlesEnabled then return end
+            local allP = Players:GetPlayers() 
+            local randP = allP[math.random(1, #allP)]
+            if randP and randP.Character and randP.Character:FindFirstChild("HumanoidRootPart") then
+                local p = Instance.new("Part", workspace) 
+                p.Size = Vector3.new(0.3, 0.3, 0.3)
+                p.CFrame = randP.Character.HumanoidRootPart.CFrame * CFrame.new(math.random(-150, 150), math.random(-30, 40), math.random(-150, 150))
+                p.Anchored = true
+                p.CanCollide = false
+                p.Material = Enum.Material.Neon
+                p.Color = guiSettings.ParticleColor 
+                Debris:AddItem(p, 0.8)
+            end
+        end) 
+        ShowMessage("Global Particles V2 ON 🎆")
+    else 
+        if particlesConnection then particlesConnection:Disconnect() end 
+        ShowMessage("Particles OFF") 
+    end
+end
+
+-- ===== AIMBOT V2 И V3 =====
+local function ToggleAimbotV2() 
+    aimbotV2Enabled = not aimbotV2Enabled 
+    ShowMessage("Silent Aim (V2) "..(aimbotV2Enabled and "ON 🎯" or "OFF")) 
+end
+
+local function ToggleAimbotV3() 
+    aimbotV3Enabled = not aimbotV3Enabled 
+    ShowMessage("Prediction Aim (V3) "..(aimbotV3Enabled and "ON 🚀" or "OFF")) 
+end
+
+local function ToggleFlyV2() 
+    flyV2Enabled = not flyV2Enabled 
+    ShowMessage("Fly AirWalk V2 "..(flyV2Enabled and "ON ☁️" or "OFF")) 
+end
+
+local function ToggleTracers() 
+    tracersEnabled = not tracersEnabled 
+    ShowMessage("Tracers Toggled") 
+end
+
+local function ToggleChams() 
+    chamsEnabled = not chamsEnabled 
+    ShowMessage("Chams Toggled") 
+end
+
+local function ToggleFullbright() 
+    fullbrightEnabled = not fullbrightEnabled 
+    Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient 
+    ShowMessage("Fullbright Toggled") 
+end
+
+local function ToggleWorldColor() 
+    worldColorEnabled = not worldColorEnabled 
+    Lighting.Ambient = worldColorEnabled and guiSettings.WorldColor or originalAmbient 
+    ShowMessage("World Color Toggled") 
+end
+
+local function ToggleStretch() 
+    stretchEnabled = not stretchEnabled
+    if stretchEnabled then 
+        stretchConnection = RunService.RenderStepped:Connect(function() 
+            Camera.CFrame = Camera.CFrame * CFrame.new(0,0,0,1,0,0,0,guiSettings.StretchValue,0,0,0,1) 
+        end) 
+    else 
+        if stretchConnection then stretchConnection:Disconnect() end 
+    end 
+    ShowMessage("Stretch Toggled") 
+end
+
 local function ToggleHelicopter() end 
 local function ToggleInvisibility() end 
 local function ToggleFly() end 
@@ -654,13 +904,12 @@ local function ToggleR6Animations() end
 local function ToggleCrosshair() end 
 local function ToggleDoubleTap() end 
 local function ToggleDash() end 
-local function ToggleWorldColor() end 
 
 local function SetAntiAimMode(mode) 
     guiSettings.AntiAimMode = mode 
 end
 
--- ===== СОВРЕМЕННОЕ ГРАФИЧЕСКОЕ МЕНЮ (ПОЛНЫЙ КОД С ИНДИКАТОРАМИ) =====
+-- ===== СОВРЕМЕННОЕ ГРАФИЧЕСКОЕ МЕНЮ =====
 local function CreateMenu()
     screenGui = Instance.new("ScreenGui", game.CoreGui) 
     screenGui.Name = "MTY_HUB_V5"
@@ -671,7 +920,7 @@ local function CreateMenu()
     guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor
     guiMainFrame.Active = true
     guiMainFrame.Draggable = true
-    Instance.new("UICorner", guiMainFrame).CornerRadius = UDim.new(0, 14)
+    Instance.new("UICorner", guiMainFrame).CornerRadius = UDim.new(0, 14) 
     local s = Instance.new("UIStroke", guiMainFrame) 
     s.Color = guiSettings.BorderColor
     s.Thickness = 1.8
@@ -686,7 +935,6 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- ТАБЛИЧКА С FPS И ПИНГОМ
     local infoPanel = Instance.new("TextLabel", guiMainFrame) 
     infoPanel.Size = UDim2.new(0.35, 0, 0, 30) 
     infoPanel.Position = UDim2.new(0.35, 0, 0.02, 0) 
@@ -696,13 +944,11 @@ local function CreateMenu()
     infoPanel.TextSize = 11
     Instance.new("UICorner", infoPanel).CornerRadius = UDim.new(0, 6)
     
-    task.spawn(function()
-        while screenGui.Parent do
-            local fps = math.floor(workspace:GetRealPhysicsFPS())
-            local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-            infoPanel.Text = " FPS: " .. fps .. "  |  PING: " .. ping .. "ms "
-            task.wait(0.5)
-        end
+    task.spawn(function() 
+        while screenGui.Parent do 
+            infoPanel.Text = " FPS: " .. math.floor(workspace:GetRealPhysicsFPS()) .. "  |  PING: " .. math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms " 
+            task.wait(0.5) 
+        end 
     end)
     
     local minimizeBtn = Instance.new("TextButton", guiMainFrame) 
@@ -761,30 +1007,40 @@ local function CreateMenu()
     local function GetStatusStr(name)
         if name == "Toggle ESP" then return espEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle ESP V2" then return espV2Enabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle ESP V3 (Bars) 📊" then return espV3Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Skeleton" then return skeletonEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Chams" then return chamsEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Hitboxes" then return hitboxEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Hitboxes V2 (Minecraft) 🧱" then return hitboxV2Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Tracers" then return tracersEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Jump Circle" then return jumpCircleEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Trail" then return trailEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Trail V2 🎀" then return trailV2Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Chinese Hat" then return hatEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Fullbright" then return fullbrightEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle World Color" then return worldColorEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Stretch" then return stretchEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Infinite Jump 🦘" then return infJumpEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Air Walk ☁️" then return airWalkEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Fly V2 ☁️" then return flyV2Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Auto Sprint 🏃" then return autoSprintEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle NoClip" then return noClipEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Spin" then return spinEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Kill Aura ⚔️" then return killAuraEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Kill Aura V2 (HvH) 🔥" then return killAuraV2Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Trigger Bot 🎯" then return triggerBotEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Auto-Clicker 🖱️" then return autoClickerEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Auto-Clicker V2 ⚡" then return autoClickerV2Enabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Aimbot" then return aimbotEnabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Aimbot V2 (Silent) 🎯" then return aimbotV2Enabled and " [ON]" or " [OFF]"
+        elseif name == "Toggle Aimbot V3 (Predict) 🚀" then return aimbotV3Enabled and " [ON]" or " [OFF]"
         elseif name == "Aimbot Wallbang 🧱" then return guiSettings.AimbotWallbang and " [ON]" or " [OFF]"
         elseif name == "HvH Resolver 🎯" then return resolverEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Anti-Aim" then return antiAimEnabled and " [ON]" or " [OFF]"
         elseif name == "Desync Movement ✈️" then return desyncEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Fake Lag" then return fakeLagEnabled and " [ON]" or " [OFF]"
+        elseif name == "Block ESP (Ores) 📦" then return blockEspEnabled and " [ON]" or " [OFF]"
+        elseif name == "Damage Indicators 💥" then return dmgIndicatorsEnabled and " [ON]" or " [OFF]"
         end 
         return ""
     end
@@ -823,25 +1079,36 @@ local function CreateMenu()
             btn.MouseButton1Click:Connect(function()
                 if name == "Toggle ESP" then ToggleESP()
                 elseif name == "Toggle ESP V2" then ToggleESPV2()
+                elseif name == "Toggle ESP V3 (Bars) 📊" then ToggleESPV3()
                 elseif name == "Toggle Skeleton" then ToggleSkeleton()
                 elseif name == "Toggle Chams" then ToggleChams()
                 elseif name == "Toggle Hitboxes" then ToggleHitboxes()
+                elseif name == "Toggle Hitboxes V2 (Minecraft) 🧱" then ToggleHitboxesV2()
                 elseif name == "Toggle Tracers" then ToggleTracers()
                 elseif name == "Toggle Jump Circle" then ToggleJumpCircle()
                 elseif name == "Toggle Trail" then ToggleTrail()
+                elseif name == "Toggle Trail V2 🎀" then ToggleTrailV2()
+                elseif name == "Toggle Particles" then ToggleParticles()
                 elseif name == "Toggle Chinese Hat" then ToggleChineseHat()
                 elseif name == "Toggle Fullbright" then ToggleFullbright()
                 elseif name == "Toggle World Color" then ToggleWorldColor()
                 elseif name == "Toggle Stretch" then ToggleStretch()
                 elseif name == "Toggle Infinite Jump 🦘" then ToggleInfiniteJump()
                 elseif name == "Toggle Air Walk ☁️" then ToggleAirWalk()
+                elseif name == "Toggle Fly V2 ☁️" then ToggleFlyV2()
                 elseif name == "Toggle Auto Sprint 🏃" then ToggleAutoSprint()
                 elseif name == "Toggle Spin" then ToggleSpin()
                 elseif name == "Toggle NoClip" then ToggleNoClip()
                 elseif name == "Toggle Kill Aura ⚔️" then ToggleKillAura()
+                elseif name == "Toggle Kill Aura V2 (HvH) 🔥" then ToggleKillAuraV2()
                 elseif name == "Toggle Trigger Bot 🎯" then ToggleTriggerBot()
                 elseif name == "Toggle Auto-Clicker 🖱️" then ToggleAutoClicker()
+                elseif name == "Toggle Auto-Clicker V2 ⚡" then ToggleAutoClickerV2()
+                elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
+                elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
                 elseif name == "Toggle Aimbot" then aimbotEnabled = not aimbotEnabled ShowMessage("Aimbot Toggled")
+                elseif name == "Toggle Aimbot V2 (Silent) 🎯" then ToggleAimbotV2()
+                elseif name == "Toggle Aimbot V3 (Predict) 🚀" then ToggleAimbotV3()
                 elseif name == "Aimbot Wallbang 🧱" then guiSettings.AimbotWallbang = not guiSettings.AimbotWallbang ShowMessage("Wallbang Toggled")
                 elseif name == "HvH Resolver 🎯" then ToggleResolver()
                 elseif name == "Toggle Anti-Aim" then ToggleAntiAim()
@@ -895,9 +1162,9 @@ local function CreateMenu()
     end)
     
     local categories = {
-        VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Toggle Fullbright", "Toggle World Color", "World Color Select"},
-        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle Helicopter", "Toggle Invisibility", "Toggle Fly", "Toggle Teleport Tool", "Toggle NoClip", "Toggle Shiftlock", "Toggle Strafe", "Toggle Dash"},
-        COMBAT = {"Toggle Aimbot", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Kill Aura Range", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Orbit", "Toggle Double Tap", "Toggle Stretch", "Stretch Value"},
+        VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Toggle Particles", "Toggle Crosshair", "Toggle Fullbright", "Toggle World Color", "World Color Select", "Block ESP (Ores) 📦", "Damage Indicators 💥"},
+        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V2 ☁️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle Helicopter", "Toggle Invisibility", "Toggle Fly", "Toggle Teleport Tool", "Toggle NoClip", "Toggle Shiftlock", "Toggle Strafe", "Toggle Dash"},
+        COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡", "Toggle Orbit", "Toggle Double Tap", "Toggle Stretch", "Stretch Value"},
         HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Jitter", "Anti-Aim Mode: Spin", "Desync Movement ✈️", "Toggle Fake Lag"},
         ["NO FE"] = {"Toggle C Button", "Load ClemonRC", "Toggle R6 Animations"},
         SETTINGS = {"Optimize Textures"}
@@ -930,4 +1197,4 @@ local function CreateMenu()
 end
 
 CreateMenu()
-print("MTY HUB v5.0 COMPLETE ASSEMBLY LOADED SUCCESSFULLY! 🚀")
+print("MTY HUB v5.0 INFINITE EXPANSION PACK LOADED SUCCESSFULLY! 🚀")
