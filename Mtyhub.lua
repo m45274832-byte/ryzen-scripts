@@ -134,7 +134,9 @@ local particlesEnabled = false
 local particlesConnection = nil
 local worldColorEnabled = false
 local originalAmbient = Lighting.Ambient
-local originalOutdoor = Lighting.OutdoorAmbientlocal crosshairEnabled = false
+local originalOutdoor = Lighting.OutdoorAmbient
+
+local crosshairEnabled = false
 local crosshairGui = nil
 local crosshairColor = Color3.fromRGB(0, 255, 0)
 
@@ -253,7 +255,8 @@ local function OpenTextInput(title, placeholder, default, callback)
         else
             input.Text = "Enter number"
         end
-    end)close.MouseButton1Click:Connect(function() s:Destroy() end)
+    end)
+    close.MouseButton1Click:Connect(function() s:Destroy() end)
 end
 
 local function OpenColorPicker(title, callback)
@@ -352,7 +355,8 @@ local function FindBestTarget()
             if hum and hit and hum.Health > 0 then
                 local screen, visible = Camera:WorldToViewportPoint(hit.Position)
                 if visible then
-                    local dist = (Vector2.new(screen.X, screen.Y) - mid).Magnitudelocal worldDist = (Camera.CFrame.Position - hit.Position).Magnitude
+                    local dist = (Vector2.new(screen.X, screen.Y) - mid).Magnitude
+                    local worldDist = (Camera.CFrame.Position - hit.Position).Magnitude
                     if dist < near and worldDist < guiSettings.AimbotMaxDist then
                         near = dist
                         target = hit
@@ -447,7 +451,8 @@ local function UpdateESPV2()
     if not espV2Enabled then return end
     
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character thenlocal root = player.Character:FindFirstChild("HumanoidRootPart")
+        if player ~= LP and player.Character then
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
             local hum = player.Character:FindFirstChild("Humanoid")
             if root and hum and hum.Health > 0 then
                 local pos, visible = Camera:WorldToViewportPoint(root.Position)
@@ -541,7 +546,8 @@ local function ToggleJumpCircle()
         end)
         ShowMessage("Jump Circle ON ⭕")
     else
-        if jumpCircleConnection then jumpCircleConnection:Disconnect() jumpCircleConnection = nil endif jumpCircle then jumpCircle:Destroy() jumpCircle = nil end
+        if jumpCircleConnection then jumpCircleConnection:Disconnect() jumpCircleConnection = nil end
+        if jumpCircle then jumpCircle:Destroy() jumpCircle = nil end
         ShowMessage("Jump Circle OFF")
     end
 end
@@ -644,7 +650,8 @@ local function UpdateESP()
     if not espEnabled then return end
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LP and player.Character then
-            for _, part in pairs(player.Character:GetDescendants()) doif part:IsA("BasePart") then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
                     local h = Instance.new("Highlight")
                     h.Adornee = part
                     h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -759,7 +766,8 @@ end
 
 -- TRAIL
 local function CreateTrail()
-    if not trailEnabled then return endlocal root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not trailEnabled then return end
+    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
     local part = Instance.new("Part")
     part.Size = Vector3.new(0.3, 0.3, 0.3)
@@ -870,7 +878,8 @@ end
 
 local function ToggleCrosshair()
     crosshairEnabled = not crosshairEnabled
-    if crosshairEnabled thenCreateCrosshair()
+    if crosshairEnabled then
+        CreateCrosshair()
         ShowMessage("Crosshair ON 🎯")
     else
         if crosshairGui then crosshairGui:Destroy() crosshairGui = nil end
@@ -979,7 +988,8 @@ local function CreateCButton()
     end)
     
     local drag = false
-    local dStart, sPosbtn.InputBegan:Connect(function(input)
+    local dStart, sPos
+    btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             drag = true
             dStart = input.Position
@@ -1071,7 +1081,9 @@ local function RunCustomAnimation(Char)
     Humanoid.FreeFalling:Connect(function() playAnimation("fall", 0.2) end)
     Humanoid.Seated:Connect(function() playAnimation("sit", 0.5) end)
     playAnimation("idle", 0.1)
-endlocal function ToggleR6Animations()
+end
+
+local function ToggleR6Animations()
     if not r6Enabled then
         RunCustomAnimation(LP.Character)
         LP.CharacterAdded:Connect(function(char) RunCustomAnimation(char) end)
@@ -1165,7 +1177,8 @@ local function ToggleSkeleton()
     ShowMessage("Skeleton " .. (skeletonEnabled and "ON" or "OFF"))
 end
 
-local function ToggleWorldColor()worldColorEnabled = not worldColorEnabled
+local function ToggleWorldColor()
+    worldColorEnabled = not worldColorEnabled
     if worldColorEnabled then
         Lighting.Ambient = guiSettings.WorldColor
         Lighting.OutdoorAmbient = guiSettings.WorldColor
@@ -1269,7 +1282,8 @@ local function ToggleDash()
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.TextSize = 30
         btn.Font = Enum.Font.GothamBold
-        btn.Parent = sglocal btnCorner = Instance.new("UICorner")
+        btn.Parent = sg
+        local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 12)
         btnCorner.Parent = btn
         btn.Draggable = true
@@ -1373,7 +1387,9 @@ local function ToggleStrafe()
         if strafeConnection then strafeConnection:Disconnect() strafeConnection = nil end
         ShowMessage("Strafe OFF")
     end
-endlocal function ToggleOrbit()
+end
+
+local function ToggleOrbit()
     orbitEnabled = not orbitEnabled
     if orbitEnabled then
         if orbitConnection then orbitConnection:Disconnect() end
@@ -1468,7 +1484,8 @@ local function ToggleFakeLag()
     end
 end
 
-local function ToggleDoubleTap()doubleTapEnabled = not doubleTapEnabled
+local function ToggleDoubleTap()
+    doubleTapEnabled = not doubleTapEnabled
     if doubleTapEnabled then
         if doubleTapConnection then doubleTapConnection:Disconnect() end
         doubleTapConnection = RunService.Heartbeat:Connect(function()
@@ -1571,7 +1588,8 @@ local function CreateMenu()
     local minimizeBtn = Instance.new("TextButton")
     minimizeBtn.Size = UDim2.new(0, 36, 0, 36)
     minimizeBtn.Position = UDim2.new(1, -80, 0, 8)
-    minimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 0, 0)minimizeBtn.BorderSizePixel = 0
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 0, 0)
+    minimizeBtn.BorderSizePixel = 0
     minimizeBtn.Text = "-"
     minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     minimizeBtn.TextSize = 24
@@ -1670,7 +1688,8 @@ local function CreateMenu()
             local subs = {}
             if cat == "VISUAL" then
                 subs = {
-                    "Toggle ESP", "Toggle ESP V2", "Toggle Chams", "Toggle Hitboxes","Toggle Tracers", "Toggle Backtrack", "Toggle Jump Circle",
+                    "Toggle ESP", "Toggle ESP V2", "Toggle Chams", "Toggle Hitboxes",
+                    "Toggle Tracers", "Toggle Backtrack", "Toggle Jump Circle",
                     "Jump Circle Color", "Jump Circle Fade Time",
                     "Toggle Trail", "Trail Length",
                     "Toggle Particles", "Particle Color",
@@ -1761,7 +1780,8 @@ local function CreateMenu()
                     espEnabled = not espEnabled
                     UpdateESP()
                     ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
-                elseif name == "Toggle ESP V2" thenToggleESPV2()
+                elseif name == "Toggle ESP V2" then
+                    ToggleESPV2()
                 elseif name == "Toggle Chams" then
                     chamsEnabled = not chamsEnabled
                     UpdateChams()
@@ -1836,7 +1856,8 @@ local function CreateMenu()
                 -- PLAYER
                 elseif name == "Speed" then
                     OpenTextInput("Speed", "0 - 99999", speedValue, function(v)
-                        speedValue = vlocal hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+                        speedValue = v
+                        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
                         if hum then hum.WalkSpeed = math.clamp(v, 0, 99999) end
                         ShowMessage("Speed: " .. v)
                     end)
@@ -1907,7 +1928,8 @@ local function CreateMenu()
                 elseif name == "Toggle Fake Lag" then
                     ToggleFakeLag()
                 elseif name == "Fake Lag Amount" then
-                    OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
+                    OpenTextInput("Fake Lag Amount", "1 - 20", guiSettings.FakeLagAmount, function(v)
+                        guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
                         ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
                     end)
                 elseif name == "Toggle Double Tap" then
@@ -1980,7 +2002,8 @@ local function CreateMenu()
                                 v.Reflectance = 0
                             elseif v:IsA("Terrain") then
                                 v.WaterWaveSize = 0
-                                v.WaterReflectance = 0v.WaterTransparency = 1
+                                v.WaterReflectance = 0
+                                v.WaterTransparency = 1
                             end
                         end)
                     end
