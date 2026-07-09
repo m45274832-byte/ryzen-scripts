@@ -1,7 +1,6 @@
 -- MTY HUB v4.4 DELTA EDITION
--- Убраны: Drawing (FOV круг), TweenService
--- CoreGui заменён на PlayerGui
--- Оптимизирован для Delta Executor
+-- Полная версия для Delta Executor
+-- Все функции: VISUAL, PLAYER, COMBAT, NO FE, SETTINGS
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -334,7 +333,7 @@ local function OpenColorPicker(title, callback)
     close.MouseButton1Click:Connect(function() s:Destroy() end)
 end
 
--- ===== НОВЫЙ АИМБОТ (С СИЛОЙ И СКОРОСТЬЮ, БЕЗ DRAWING) =====
+-- ===== НОВЫЙ АИМБОТ (С СИЛОЙ И СКОРОСТЬЮ) =====
 local function FindBestTarget()
     local target = nil
     local near = guiSettings.AimbotFOV
@@ -387,7 +386,7 @@ local function ToggleAimbot()
     end
 end
 
--- ===== НОВЫЕ ТРЭКЕРЫ (EXTERNAL V6) =====
+-- ===== НОВЫЕ ТРЭКЕРЫ =====
 local function UpdateTracersV2()
     for _, v in pairs(tracersFolder:GetChildren()) do v:Destroy() end
     if not tracersEnabled then return end
@@ -431,7 +430,7 @@ local function ToggleTracers()
     ShowMessage("Tracers " .. (tracersEnabled and "ON" or "OFF"))
 end
 
--- ===== ESP V2 (EXTERNAL V6) =====
+-- ===== ESP V2 =====
 local function UpdateESPV2()
     for _, v in pairs(espV2Folder:GetChildren()) do v:Destroy() end
     if not espV2Enabled then return end
@@ -473,7 +472,7 @@ local function ToggleESPV2()
     ShowMessage("ESP V2 " .. (espV2Enabled and "ON" or "OFF"))
 end
 
--- ===== ИСПРАВЛЕННЫЙ JUMP CIRCLE =====
+-- ===== JUMP CIRCLE =====
 local function ToggleJumpCircle()
     jumpCircleEnabled = not jumpCircleEnabled
     if jumpCircleEnabled then
@@ -538,7 +537,7 @@ local function ToggleJumpCircle()
     end
 end
 
--- ===== CHINESE HAT (КРУГЛЫЙ КОНУС) =====
+-- ===== CHINESE HAT =====
 local function CreateChineseHat()
     if currentHat then currentHat:Destroy() currentHat = nil end
     if hatBrim then hatBrim:Destroy() hatBrim = nil end
@@ -629,8 +628,7 @@ local function ToggleChineseHat()
     end
 end
 
--- ===== ВИЗУАЛЫ =====
--- ESP
+-- ===== ESP =====
 local function UpdateESP()
     for _, v in pairs(espFolder:GetChildren()) do v:Destroy() end
     if not espEnabled then return end
@@ -658,7 +656,7 @@ local function ToggleESP()
     ShowMessage("ESP " .. (espEnabled and "ON" or "OFF"))
 end
 
--- CHAMS
+-- ===== CHAMS =====
 local function UpdateChams()
     for _, v in pairs(chamsFolder:GetChildren()) do v:Destroy() end
     if not chamsEnabled then return end
@@ -686,7 +684,7 @@ local function ToggleChams()
     ShowMessage("Chams " .. (chamsEnabled and "ON" or "OFF"))
 end
 
--- HITBOXES
+-- ===== HITBOXES =====
 local function UpdateHitboxes()
     for _, v in pairs(HitboxFolder:GetChildren()) do v:Destroy() end
     if not hitboxEnabled then return end
@@ -710,7 +708,7 @@ local function ToggleHitboxes()
     ShowMessage("Hitboxes " .. (hitboxEnabled and "ON" or "OFF"))
 end
 
--- BACKTRACK
+-- ===== BACKTRACK =====
 local function UpdateBacktrack()
     for _, v in pairs(backtrackFolder:GetChildren()) do v:Destroy() end
     if not backtrackEnabled then return end
@@ -750,7 +748,7 @@ local function ToggleBacktrack()
     ShowMessage("Backtrack " .. (backtrackEnabled and "ON" or "OFF"))
 end
 
--- TRAIL
+-- ===== TRAIL =====
 local function CreateTrail()
     if not trailEnabled then return end
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -787,7 +785,7 @@ local function ToggleTrail()
     ShowMessage("Trail " .. (trailEnabled and "ON" or "OFF"))
 end
 
--- PARTICLES
+-- ===== PARTICLES =====
 local function ToggleParticles()
     particlesEnabled = not particlesEnabled
     if particlesEnabled then
@@ -1407,7 +1405,7 @@ local function ToggleOrbit()
     end
 end
 
--- ===== ФУНКЦИИ COMBAT =====
+-- ===== COMBAT =====
 local function ToggleAntiAim()
     antiAimEnabled = not antiAimEnabled
     if antiAimEnabled then
@@ -1502,7 +1500,7 @@ local function LoadClemonRC()
     end
 end
 
--- ===== STRETCH + СТИЛЬ =====
+-- ===== STRETCH =====
 local function ToggleStretch()
     stretchEnabled = not stretchEnabled
     if stretchEnabled then
