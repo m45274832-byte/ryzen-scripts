@@ -1,6 +1,8 @@
--- MTY HUB v4.1
--- Старое ГУИ: VISUAL, PLAYER, COMBAT, NO FE, SETTINGS
--- Кнопки в VISUAL ближе друг к другу
+-- MTY HUB v4.4
+-- Chinese Hat теперь круглый конус
+-- Добавлены: Aimbot Speed, Aimbot Strength в меню
+-- Удалены: Silent Aim, Target ESP, Trigger Bot
+-- Кнопки в VISUAL максимально сжаты
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -41,6 +43,7 @@ local guiSettings = {
     StretchValue = 0.65,
     AimbotFOV = 150,
     AimbotSpeed = 0.3,
+    AimbotStrength = 0.8,
     AimbotPart = "Head",
     AimbotMaxDist = 1000
 }
@@ -96,17 +99,12 @@ local invisibilityEnabled = false
 local noClipEnabled = false
 local orbitEnabled = false
 local orbitConnection = nil
-
 local antiAimEnabled = false
 local antiAimConnection = nil
 local antiAimMode = "Spin"
 
 local fakeLagEnabled = false
 local fakeLagConnection = nil
-local silentAimEnabled = false
-local silentAimConnection = nil
-local triggerBotEnabled = false
-local triggerBotConnection = nil
 local doubleTapEnabled = false
 local doubleTapConnection = nil
 local strafeEnabled = false
@@ -123,8 +121,6 @@ local skeletonFolder = Instance.new("Folder")
 skeletonFolder.Name = "MTY_Skeleton"
 skeletonFolder.Parent = workspace
 
-local targetESPEnabled = false
-local targetHighlight = nil
 local shiftlockActive = false
 local shiftlockConnection = nil
 local shiftlockButton = nil
@@ -345,7 +341,7 @@ local function OpenColorPicker(title, callback)
     close.MouseButton1Click:Connect(function() s:Destroy() end)
 end
 
--- ===== НОВЫЙ АИМБОТ (EXTERNAL V6) =====
+-- ===== НОВЫЙ АИМБОТ (С СИЛОЙ И СКОРОСТЬЮ) =====
 local function FindBestTarget()
     local target = nil
     local near = guiSettings.AimbotFOV
@@ -384,10 +380,18 @@ local function ToggleAimbot()
             
             local target = FindBestTarget()
             if target then
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position, target.Position), guiSettings.AimbotSpeed)
+                local targetPos = target.Position
+                local currentCF = Camera.CFrame
+                local targetCF = CFrame.lookAt(currentCF.Position, targetPos)
+                
+                local speed = guiSettings.AimbotSpeed or 0.3
+                local strength = guiSettings.AimbotStrength or 0.8
+                
+                local lerpAmount = speed * strength
+                Camera.CFrame = currentCF:Lerp(targetCF, lerpAmount)
             end
         end)
-        ShowMessage("🎯 Aimbot ON (FOV: " .. guiSettings.AimbotFOV .. ")")
+        ShowMessage("🎯 Aimbot ON (Speed: " .. guiSettings.AimbotSpeed .. ", Strength: " .. guiSettings.AimbotStrength .. ")")
     else
         if aimbotConnection then aimbotConnection:Disconnect() aimbotConnection = nil end
         aimbotFOVRing.Visible = false
@@ -544,6 +548,97 @@ local function ToggleJumpCircle()
         if jumpCircleConnection then jumpCircleConnection:Disconnect() jumpCircleConnection = nil end
         if jumpCircle then jumpCircle:Destroy() jumpCircle = nil end
         ShowMessage("Jump Circle OFF")
+    end
+end
+
+-- ===== CHINESE HAT (КРУГЛЫЙ КОНУС) =====
+local function CreateChineseHat()
+    if currentHat then currentHat:Destroy() currentHat = nil end
+    if hatBrim then hatBrim:Destroy() hatBrim = nil end
+    if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
+    if hatTassel then hatTassel:Destroy() hatTassel = nil end
+    
+    currentHat = Instance.new("Part")
+    currentHat.Size = Vector3.new(4, 0.1, 4)
+    currentHat.Anchored = true
+    currentHat.CanCollide = false
+    currentHat.Material = Enum.Material.Neon
+    currentHat.BrickColor = BrickColor.new(guiSettings.HatColor)
+    currentHat.Transparency = 0.05
+    currentHat.Parent = workspace
+    
+    local cone = Instance.new("SpecialMesh")
+    cone.MeshType = Enum.MeshType.Cone
+    cone.Scale = Vector3.new(4, 2.2, 4)
+    cone.Parent = currentHat
+    
+    hatBrim = Instance.new("Part")
+    hatBrim.Size = Vector3.new(4.8, 0.05, 4.8)
+    hatBrim.Anchored = true
+    hatBrim.CanCollide = false
+    hatBrim.Material = Enum.Material.Neon
+    hatBrim.BrickColor = BrickColor.new(guiSettings.HatColor)
+    hatBrim.Transparency = 0.05
+    hatBrim.Parent = workspace
+    
+    local ring = Instance.new("SpecialMesh")
+    ring.MeshType = Enum.MeshType.Cylinder
+    ring.Scale = Vector3.new(1, 0.05, 1)
+    ring.Parent = hatBrim
+    
+    hatTopRing = Instance.new("Part")
+    hatTopRing.Size = Vector3.new(1, 0.05, 1)
+    hatTopRing.Anchored = true
+    hatTopRing.CanCollide = false
+    hatTopRing.Material = Enum.Material.Neon
+    hatTopRing.BrickColor = BrickColor.new(guiSettings.HatColor)
+    hatTopRing.Transparency = 0.05
+    hatTopRing.Parent = workspace
+    
+    local topRing = Instance.new("SpecialMesh")
+    topRing.MeshType = Enum.MeshType.Cylinder
+    topRing.Scale = Vector3.new(1, 0.05, 1)
+    topRing.Parent = hatTopRing
+    
+    hatTassel = Instance.new("Part")
+    hatTassel.Size = Vector3.new(0.3, 1.5, 0.3)
+    hatTassel.Anchored = true
+    hatTassel.CanCollide = false
+    hatTassel.Material = Enum.Material.Neon
+    hatTassel.BrickColor = BrickColor.new(Color3.fromRGB(255, 50, 50))
+    hatTassel.Transparency = 0.1
+    hatTassel.Parent = workspace
+    
+    local tasselMesh = Instance.new("SpecialMesh")
+    tasselMesh.MeshType = Enum.MeshType.Sphere
+    tasselMesh.Scale = Vector3.new(1, 1, 1)
+    tasselMesh.Parent = hatTassel
+    
+    if hatConnection then hatConnection:Disconnect() end
+    hatConnection = RunService.Heartbeat:Connect(function()
+        if currentHat and hatBrim and hatTopRing and hatTassel and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local root = LP.Character.HumanoidRootPart
+            local pos = root.CFrame * CFrame.new(0, 3.0, 0)
+            currentHat.CFrame = pos
+            hatBrim.CFrame = pos * CFrame.new(0, -1.0, 0)
+            hatTopRing.CFrame = pos * CFrame.new(0, 1.0, 0)
+            hatTassel.CFrame = pos * CFrame.new(0, 1.6, 0)
+        end
+    end)
+end
+
+local function ToggleChineseHat()
+    hatEnabled = not hatEnabled
+    if hatEnabled then
+        CreateChineseHat()
+        ShowMessage("Chinese Hat ON 🎩")
+    else
+        if currentHat then currentHat:Destroy() currentHat = nil end
+        if hatBrim then hatBrim:Destroy() hatBrim = nil end
+        if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
+        if hatTassel then hatTassel:Destroy() hatTassel = nil end
+        if hatConnection then hatConnection:Disconnect() hatConnection = nil end
+        ShowMessage("Chinese Hat OFF")
     end
 end
 
@@ -731,99 +826,7 @@ local function ToggleParticles()
     end
 end
 
--- ===== КИТАЙСКАЯ ШЛЯПА + ПРИЦЕЛ =====
--- CHINESE HAT
-local function CreateChineseHat()
-    if currentHat then currentHat:Destroy() currentHat = nil end
-    if hatBrim then hatBrim:Destroy() hatBrim = nil end
-    if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
-    if hatTassel then hatTassel:Destroy() hatTassel = nil end
-    
-    currentHat = Instance.new("Part")
-    currentHat.Size = Vector3.new(4, 0.1, 4)
-    currentHat.Anchored = true
-    currentHat.CanCollide = false
-    currentHat.Material = Enum.Material.Neon
-    currentHat.BrickColor = BrickColor.new(guiSettings.HatColor)
-    currentHat.Transparency = 0.05
-    currentHat.Parent = workspace
-    
-    local cone = Instance.new("SpecialMesh")
-    cone.MeshType = Enum.MeshType.Cone
-    cone.Scale = Vector3.new(4, 2.2, 4)
-    cone.Parent = currentHat
-    
-    hatBrim = Instance.new("Part")
-    hatBrim.Size = Vector3.new(4.8, 0.05, 4.8)
-    hatBrim.Anchored = true
-    hatBrim.CanCollide = false
-    hatBrim.Material = Enum.Material.Neon
-    hatBrim.BrickColor = BrickColor.new(guiSettings.HatColor)
-    hatBrim.Transparency = 0.05
-    hatBrim.Parent = workspace
-    
-    local ring = Instance.new("SpecialMesh")
-    ring.MeshType = Enum.MeshType.Cylinder
-    ring.Scale = Vector3.new(1, 0.05, 1)
-    ring.Parent = hatBrim
-    
-    hatTopRing = Instance.new("Part")
-    hatTopRing.Size = Vector3.new(1, 0.05, 1)
-    hatTopRing.Anchored = true
-    hatTopRing.CanCollide = false
-    hatTopRing.Material = Enum.Material.Neon
-    hatTopRing.BrickColor = BrickColor.new(guiSettings.HatColor)
-    hatTopRing.Transparency = 0.05
-    hatTopRing.Parent = workspace
-    
-    local topRing = Instance.new("SpecialMesh")
-    topRing.MeshType = Enum.MeshType.Cylinder
-    topRing.Scale = Vector3.new(1, 0.05, 1)
-    topRing.Parent = hatTopRing
-    
-    hatTassel = Instance.new("Part")
-    hatTassel.Size = Vector3.new(0.3, 1.5, 0.3)
-    hatTassel.Anchored = true
-    hatTassel.CanCollide = false
-    hatTassel.Material = Enum.Material.Neon
-    hatTassel.BrickColor = BrickColor.new(Color3.fromRGB(255, 50, 50))
-    hatTassel.Transparency = 0.1
-    hatTassel.Parent = workspace
-    
-    local tasselMesh = Instance.new("SpecialMesh")
-    tasselMesh.MeshType = Enum.MeshType.Sphere
-    tasselMesh.Scale = Vector3.new(1, 1, 1)
-    tasselMesh.Parent = hatTassel
-    
-    if hatConnection then hatConnection:Disconnect() end
-    hatConnection = RunService.Heartbeat:Connect(function()
-        if currentHat and hatBrim and hatTopRing and hatTassel and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local root = LP.Character.HumanoidRootPart
-            local pos = root.CFrame * CFrame.new(0, 3.0, 0)
-            currentHat.CFrame = pos
-            hatBrim.CFrame = pos * CFrame.new(0, -1.0, 0)
-            hatTopRing.CFrame = pos * CFrame.new(0, 1.0, 0)
-            hatTassel.CFrame = pos * CFrame.new(0, 1.6, 0)
-        end
-    end)
-end
-
-local function ToggleChineseHat()
-    hatEnabled = not hatEnabled
-    if hatEnabled then
-        CreateChineseHat()
-        ShowMessage("Chinese Hat ON 🎩")
-    else
-        if currentHat then currentHat:Destroy() currentHat = nil end
-        if hatBrim then hatBrim:Destroy() hatBrim = nil end
-        if hatTopRing then hatTopRing:Destroy() hatTopRing = nil end
-        if hatTassel then hatTassel:Destroy() hatTassel = nil end
-        if hatConnection then hatConnection:Disconnect() hatConnection = nil end
-        ShowMessage("Chinese Hat OFF")
-    end
-end
-
--- CROSSHAIR
+-- ===== CROSSHAIR =====
 local function CreateCrosshair()
     if crosshairGui then crosshairGui:Destroy() end
     crosshairGui = Instance.new("ScreenGui")
@@ -1152,7 +1155,7 @@ local function ToggleSkeleton()
                                 sphere.Size = Vector3.new(0.3, 0.3, 0.3)
                                 sphere.CFrame = part.CFrame
                                 sphere.Anchored = true
-                                sphere.CanCollide = false
+                                sphere.CanCollide                                sphere.CanCollide = false
                                 sphere.Material = Enum.Material.Neon
                                 sphere.BrickColor = BrickColor.new("Bright red")
                                 sphere.Parent = skeletonFolder
@@ -1171,37 +1174,6 @@ local function ToggleSkeleton()
         for _, v in pairs(skeletonFolder:GetChildren()) do v:Destroy() end
     end
     ShowMessage("Skeleton " .. (skeletonEnabled and "ON" or "OFF"))
-end
-
-local function ToggleTargetESP()
-    targetESPEnabled = not targetESPEnabled
-    if targetESPEnabled then
-        RunService.Heartbeat:Connect(function()
-            if targetESPEnabled then
-                if targetHighlight then targetHighlight:Destroy() end
-                local mousePos = LP:GetMouse().UnitRay
-                local hit = workspace:FindPartOnRay(Ray.new(Camera.CFrame.Position, mousePos.Direction * 500))
-                if hit and hit.Parent and hit.Parent:FindFirstChild("Humanoid") then
-                    local player = Players:GetPlayerFromCharacter(hit.Parent)
-                    if player and player ~= LP then
-                        targetHighlight = Instance.new("Highlight")
-                        targetHighlight.Adornee = hit.Parent
-                        targetHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        targetHighlight.FillColor = Color3.fromRGB(255, 255, 0)
-                        targetHighlight.FillTransparency = 0.2
-                        targetHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        targetHighlight.OutlineTransparency = 0.1
-                        targetHighlight.Parent = workspace
-                    end
-                end
-            else
-                if targetHighlight then targetHighlight:Destroy() end
-            end
-        end)
-    else
-        if targetHighlight then targetHighlight:Destroy() end
-    end
-    ShowMessage("Target ESP " .. (targetESPEnabled and "ON" or "OFF"))
 end
 
 local function ToggleWorldColor()
@@ -1511,40 +1483,6 @@ local function ToggleFakeLag()
     end
 end
 
-local function ToggleSilentAim()
-    silentAimEnabled = not silentAimEnabled
-    ShowMessage("Silent Aim " .. (silentAimEnabled and "ON" or "OFF"))
-end
-
-local function ToggleTriggerBot()
-    triggerBotEnabled = not triggerBotEnabled
-    if triggerBotEnabled then
-        if triggerBotConnection then triggerBotConnection:Disconnect() end
-        triggerBotConnection = RunService.Heartbeat:Connect(function()
-            if not triggerBotEnabled then return end
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Character then
-                    local head = player.Character:FindFirstChild("Head")
-                    if head then
-                        local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
-                        if onScreen then                            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(LP:GetMouse().X, LP:GetMouse().Y)).Magnitude
-                            if dist < 50 then
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                                wait(0.05)
-                                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-        ShowMessage("Trigger Bot ON 🔥")
-    else
-        if triggerBotConnection then triggerBotConnection:Disconnect() triggerBotConnection = nil end
-        ShowMessage("Trigger Bot OFF")
-    end
-end
-
 local function ToggleDoubleTap()
     doubleTapEnabled = not doubleTapEnabled
     if doubleTapEnabled then
@@ -1640,7 +1578,7 @@ local function CreateMenu()
     title.Size = UDim2.new(0.7, 0, 0, 40)
     title.Position = UDim2.new(0.05, 0, 0.015, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MTY HUB v4.1 🔥"
+    title.Text = "MTY HUB v4.4 🔥"
     title.TextColor3 = guiSettings.TextColor
     title.TextScaled = true
     title.Font = Enum.Font.GothamBold
@@ -1718,7 +1656,6 @@ local function CreateMenu()
     contentCorner.CornerRadius = UDim.new(0, 12)
     contentCorner.Parent = contentArea
 
-    -- СТАРЫЕ КАТЕГОРИИ (без UNIVERSAL)
     local categories = {"VISUAL", "PLAYER", "COMBAT", "NO FE", "SETTINGS"}
     local categoryButtons = {}
     local allSubs = {}
@@ -1726,8 +1663,8 @@ local function CreateMenu()
 
     for i, cat in ipairs(categories) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.9, 0, 0, 32) -- Чуть меньше
-        btn.Position = UDim2.new(0.05, 0, 0.05 + (i - 1) * 0.16, 0) -- Ближе друг к другу
+        btn.Size = UDim2.new(0.9, 0, 0, 32)
+        btn.Position = UDim2.new(0.05, 0, 0.05 + (i - 1) * 0.16, 0)
         btn.BackgroundColor3 = Color3.fromRGB(60, 15, 15)
         btn.BorderSizePixel = 0
         btn.Text = cat
@@ -1756,7 +1693,7 @@ local function CreateMenu()
                     "Toggle Trail", "Trail Length",
                     "Toggle Particles", "Particle Color",
                     "Toggle Fullbright", "Toggle NameTags", "Toggle Skeleton",
-                    "Toggle Chinese Hat", "Hat Color", "Toggle Target ESP",
+                    "Toggle Chinese Hat", "Hat Color",
                     "Toggle World Color", "World Color",
                     "Toggle Crosshair", "Crosshair Color", "Toggle Stretch"
                 }
@@ -1770,10 +1707,10 @@ local function CreateMenu()
                 }
             elseif cat == "COMBAT" then
                 subs = {
-                    "Toggle Aimbot", "Toggle Orbit", "Toggle Anti-Aim",
+                    "Toggle Aimbot", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV",
+                    "Toggle Orbit", "Toggle Anti-Aim",
                     "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards",
                     "Toggle Fake Lag", "Fake Lag Amount",
-                    "Toggle Silent Aim", "Toggle Trigger Bot",
                     "Toggle Double Tap"
                 }
             elseif cat == "NO FE" then
@@ -1811,8 +1748,8 @@ local function CreateMenu()
         
         for i, name in ipairs(filtered) do
             local row = Instance.new("Frame")
-            row.Size = UDim2.new(1, 0, 0, 18) -- Меньше высота
-            row.Position = UDim2.new(0, 0, 0.02 + (i - 1) * 0.055, 0) -- Ближе друг к другу
+            row.Size = UDim2.new(1, 0, 0, 18)
+            row.Position = UDim2.new(0, 0, 0.02 + (i - 1) * 0.055, 0)
             row.BackgroundTransparency = 1
             row.Parent = grid
             
@@ -1896,8 +1833,6 @@ local function CreateMenu()
                         guiSettings.HatColor = c
                         if hatEnabled then CreateChineseHat() end
                     end)
-                elseif name == "Toggle Target ESP" then
-                    ToggleTargetESP()
                 elseif name == "Toggle World Color" then
                     ToggleWorldColor()
                 elseif name == "World Color" then
@@ -1965,6 +1900,22 @@ local function CreateMenu()
                 -- COMBAT
                 elseif name == "Toggle Aimbot" then
                     ToggleAimbot()
+                elseif name == "Aimbot Speed" then
+                    OpenTextInput("Aimbot Speed", "0.01 - 1.0", guiSettings.AimbotSpeed, function(v)
+                        guiSettings.AimbotSpeed = math.clamp(v, 0.01, 1.0)
+                        ShowMessage("Aimbot Speed: " .. guiSettings.AimbotSpeed)
+                    end)
+                elseif name == "Aimbot Strength" then
+                    OpenTextInput("Aimbot Strength", "0.1 - 1.0", guiSettings.AimbotStrength, function(v)
+                        guiSettings.AimbotStrength = math.clamp(v, 0.1, 1.0)
+                        ShowMessage("Aimbot Strength: " .. guiSettings.AimbotStrength)
+                    end)
+                elseif name == "Aimbot FOV" then
+                    OpenTextInput("Aimbot FOV", "10 - 500", guiSettings.AimbotFOV, function(v)
+                        guiSettings.AimbotFOV = math.clamp(v, 10, 500)
+                        aimbotFOVRing.Radius = guiSettings.AimbotFOV
+                        ShowMessage("Aimbot FOV: " .. guiSettings.AimbotFOV)
+                    end)
                 elseif name == "Toggle Orbit" then
                     ToggleOrbit()
                 elseif name == "Toggle Anti-Aim" then
@@ -1980,10 +1931,6 @@ local function CreateMenu()
                         guiSettings.FakeLagAmount = math.clamp(v, 1, 20)
                         ShowMessage("Fake Lag: " .. guiSettings.FakeLagAmount)
                     end)
-                elseif name == "Toggle Silent Aim" then
-                    ToggleSilentAim()
-                elseif name == "Toggle Trigger Bot" then
-                    ToggleTriggerBot()
                 elseif name == "Toggle Double Tap" then
                     ToggleDoubleTap()
                 -- NO FE
@@ -2106,4 +2053,4 @@ local function CreateMenu()
 end
 
 CreateMenu()
-print("MTY HUB v4.1 LOADED! 🔥")
+print("MTY HUB v4.4 LOADED! 🔥")
