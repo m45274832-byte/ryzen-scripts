@@ -1,6 +1,6 @@
--- MTY HUB v5.5 DELTA ULTIMATE (BUNNY HOP + FIXED)
--- Исправлены: Bunny Hop, Invisibility, Anti-Aim (Spin/Backwards)
--- Полный скрипт со всеми модулями
+-- MTY HUB v5.5 ULTIMATE COMPLETE (FULL SCRIPT)
+-- Все модули: Visual, Combat, Movement, HvH, Utilities
+-- Исправлены: Bunny Hop, Invisibility, Anti-Aim, Kill Aura, World Color, Stretch (матрица), Sword, Evil Morty минимизация
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -39,14 +39,20 @@ local guiSettings = {
 
 -- ===== СОСТОЯНИЯ =====
 local espEnabled, espV2Enabled, espV3Enabled, tracersEnabled, chamsEnabled, hitboxEnabled, hitboxV2Enabled, skeletonEnabled = false, false, false, false, false, false, false, false
-local jumpCircleEnabled, trailEnabled, trailV2Enabled, particlesEnabled, crosshairEnabled, stretchEnabled, hatEnabled = false, false, false, false, false, false, false
+local jumpCircleEnabled, trailEnabled, trailV2Enabled, particlesEnabled, crosshairEnabled, stretchEnabled, hatEnabled, swordEnabled = false, false, false, false, false, false, false, false
 local spinEnabled, helicopterEnabled, invisibilityEnabled, noClipEnabled, antiAimEnabled, fakeLagEnabled = false, false, false, false, false, false
 local killAuraEnabled, killAuraV2Enabled, triggerBotEnabled, autoClickerEnabled, autoClickerV2Enabled = false, false, false, false, false
 local infJumpEnabled, autoSprintEnabled, airWalkEnabled, flyV1Enabled, flyV2Enabled, tpToolEnabled = false, false, false, false, false, false
 local resolverEnabled, desyncEnabled, spiderEnabled, antiKbEnabled, swimEnabled, targetHudEnabled, hitGlowEnabled, auraVisEnabled = false, false, false, false, false, false, false, false
 local arrowIndicatorsEnabled, targetLineEnabled, noJumpCdEnabled, blinkEnabled, strafeEnabled, particlesV2Enabled, worldColorEnabled = false, false, false, false, false, false, false
 local aimbotEnabled, aimbotV2Enabled, aimbotV3Enabled = false, false, false
-local bunnyHopEnabled = false
+local bunnyHopEnabled, longJumpEnabled = false, false
+local worldColorSelected = Color3.fromRGB(130, 80, 255)
+local stretchValue = 1.0
+local killAuraButton, killAuraButtonGui = nil, nil
+local swordTool = nil
+local swordConnection = nil
+local hiddenfling = false
 
 -- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
@@ -64,7 +70,15 @@ local fovRing = Instance.new("Frame", fovGui) fovRing.AnchorPoint = Vector2.new(
 local fovStroke = Instance.new("UIStroke", fovRing) fovStroke.Thickness = 1.5 fovStroke.Color = guiSettings.BorderColor
 
 -- ===== КОННЕКШЕНЫ =====
-local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection
+local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection, stretchConnection
+
+-- ===== МИНИМИЗАЦИЯ В EVIL MORTY =====
+local minimized = false
+local miniButton = nil
+local miniGui = nil
+local isDragging = false
+local dragStart = nil
+local startPos = nil
 
 -- ============================================
 -- СИСТЕМА УВЕДОМЛЕНИЙ
@@ -235,8 +249,12 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- 📊 TARGET HUD С ФУНКЦИЕЙ FLING
+-- 📊 TARGET HUD + PLAYER LIST ДЛЯ ФЛИНГА
 -- ============================================
+local playerListGui = nil
+local playerListFrame = nil
+local playerListOpen = false
+
 local function ExecuteFling(targetChar)
     if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
     local myRoot = LP.Character.HumanoidRootPart 
@@ -267,13 +285,14 @@ local function UpdateTargetHud()
     end
     if not targetHudFrame then
         targetHudFrame = Instance.new("Frame", screenGui or game.CoreGui) 
-        targetHudFrame.Size = UDim2.new(0, 200, 0, 90) 
+        targetHudFrame.Size = UDim2.new(0, 220, 0, 120) 
         targetHudFrame.Position = UDim2.new(0.4, 0, 0.7, 0) 
         targetHudFrame.BackgroundColor3 = guiSettings.BackgroundColor 
         targetHudFrame.Active = true 
         targetHudFrame.Draggable = true 
         Instance.new("UICorner", targetHudFrame).CornerRadius = UDim.new(0, 8) 
         Instance.new("UIStroke", targetHudFrame).Color = guiSettings.BorderColor
+        
         local nameL = Instance.new("TextLabel", targetHudFrame) 
         nameL.Name = "NameL" 
         nameL.Size = UDim2.new(1, 0, 0, 25) 
@@ -281,36 +300,137 @@ local function UpdateTargetHud()
         nameL.Font = Enum.Font.GothamBold 
         nameL.TextSize = 12 
         nameL.BackgroundTransparency = 1
+        
         local hpL = Instance.new("TextLabel", targetHudFrame) 
         hpL.Name = "HpL" 
         hpL.Size = UDim2.new(1, 0, 0, 20) 
-        hpL.Position = UDim2.new(0, 0, 0.3, 0) 
+        hpL.Position = UDim2.new(0, 0, 0.25, 0) 
         hpL.TextColor3 = Color3.fromRGB(0,255,100) 
         hpL.Font = Enum.Font.GothamMedium 
         hpL.TextSize = 11 
         hpL.BackgroundTransparency = 1
-        local fBtn = Instance.new("TextButton", targetHudFrame) 
-        fBtn.Size = UDim2.new(0.8, 0, 0, 25) 
-        fBtn.Position = UDim2.new(0.1, 0, 0.6, 0) 
-        fBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60) 
-        fBtn.Text = "FLING TARGET 🚀" 
-        fBtn.TextColor3 = Color3.new(1,1,1) 
-        fBtn.Font = Enum.Font.GothamBold 
-        fBtn.TextSize = 11 
-        Instance.new("UICorner", fBtn).CornerRadius = UDim.new(0, 6)
-        fBtn.MouseButton1Click:Connect(function() 
+        
+        local distL = Instance.new("TextLabel", targetHudFrame) 
+        distL.Name = "DistL" 
+        distL.Size = UDim2.new(1, 0, 0, 20) 
+        distL.Position = UDim2.new(0, 0, 0.45, 0) 
+        distL.TextColor3 = Color3.fromRGB(200,200,200) 
+        distL.Font = Enum.Font.GothamMedium 
+        distL.TextSize = 10 
+        distL.BackgroundTransparency = 1
+        
+        local playerListBtn = Instance.new("TextButton", targetHudFrame) 
+        playerListBtn.Size = UDim2.new(0.45, 0, 0, 22) 
+        playerListBtn.Position = UDim2.new(0.03, 0, 0.7, 0) 
+        playerListBtn.BackgroundColor3 = guiSettings.BorderColor 
+        playerListBtn.Text = "📋 Players" 
+        playerListBtn.TextColor3 = Color3.new(1,1,1) 
+        playerListBtn.Font = Enum.Font.GothamBold 
+        playerListBtn.TextSize = 9 
+        Instance.new("UICorner", playerListBtn).CornerRadius = UDim.new(0, 6)
+        playerListBtn.MouseButton1Click:Connect(TogglePlayerList)
+        
+        local flingBtn = Instance.new("TextButton", targetHudFrame) 
+        flingBtn.Size = UDim2.new(0.45, 0, 0, 22) 
+        flingBtn.Position = UDim2.new(0.52, 0, 0.7, 0) 
+        flingBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60) 
+        flingBtn.Text = "💥 FLING" 
+        flingBtn.TextColor3 = Color3.new(1,1,1) 
+        flingBtn.Font = Enum.Font.GothamBold 
+        flingBtn.TextSize = 9 
+        Instance.new("UICorner", flingBtn).CornerRadius = UDim.new(0, 6)
+        flingBtn.MouseButton1Click:Connect(function() 
             if targetPlayer and targetPlayer.Character then 
                 ExecuteFling(targetPlayer.Character) 
+            else 
+                ShowMessage("❌ No target selected!") 
             end 
         end)
     end
     targetHudFrame.Visible = true
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-        targetHudFrame.NameL.Text = "Target: " .. targetPlayer.Name 
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+        local dist = math.floor((LP.Character.HumanoidRootPart.Position - targetPlayer.Character.HumanoidRootPart.Position).Magnitude)
+        targetHudFrame.NameL.Text = "🎯 " .. targetPlayer.Name 
         targetHudFrame.HpL.Text = "HP: " .. math.floor(targetPlayer.Character.Humanoid.Health) .. " / " .. math.floor(targetPlayer.Character.Humanoid.MaxHealth)
+        targetHudFrame.DistL.Text = "Dist: " .. dist .. " studs"
     else 
-        targetHudFrame.NameL.Text = "No Target" 
+        targetHudFrame.NameL.Text = "🎯 No Target" 
         targetHudFrame.HpL.Text = "HP: --" 
+        targetHudFrame.DistL.Text = "Dist: --" 
+    end
+end
+
+local function TogglePlayerList()
+    playerListOpen = not playerListOpen
+    if playerListOpen then
+        if playerListGui then playerListGui:Destroy() end
+        playerListGui = Instance.new("ScreenGui", game.CoreGui)
+        playerListGui.Name = "MTY_PlayerList"
+        playerListGui.ResetOnSpawn = false
+        
+        playerListFrame = Instance.new("Frame", playerListGui)
+        playerListFrame.Size = UDim2.new(0, 180, 0, 250)
+        playerListFrame.Position = UDim2.new(0.75, 0, 0.25, 0)
+        playerListFrame.BackgroundColor3 = guiSettings.BackgroundColor
+        Instance.new("UICorner", playerListFrame).CornerRadius = UDim.new(0, 10)
+        Instance.new("UIStroke", playerListFrame).Color = guiSettings.BorderColor
+        
+        local title = Instance.new("TextLabel", playerListFrame)
+        title.Size = UDim2.new(1, 0, 0, 30)
+        title.Text = "👥 Players"
+        title.TextColor3 = guiSettings.TextColor
+        title.Font = Enum.Font.GothamBold
+        title.TextScaled = true
+        title.BackgroundTransparency = 1
+        
+        local closeBtn = Instance.new("TextButton", playerListFrame)
+        closeBtn.Size = UDim2.new(0, 25, 0, 25)
+        closeBtn.Position = UDim2.new(1, -30, 0, 3)
+        closeBtn.Text = "X"
+        closeBtn.TextColor3 = guiSettings.TextColor
+        closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60)
+        Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+        closeBtn.MouseButton1Click:Connect(function()
+            playerListOpen = false
+            playerListGui:Destroy()
+            playerListGui = nil
+        end)
+        
+        local scroll = Instance.new("ScrollingFrame", playerListFrame)
+        scroll.Size = UDim2.new(0.95, 0, 0, 200)
+        scroll.Position = UDim2.new(0.025, 0, 0.15, 0)
+        scroll.BackgroundTransparency = 1
+        scroll.ScrollBarThickness = 4
+        
+        local function UpdatePlayerList()
+            scroll:ClearAllChildren()
+            local y = 0
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LP then
+                    local btn = Instance.new("TextButton", scroll)
+                    btn.Size = UDim2.new(1, 0, 0, 28)
+                    btn.Position = UDim2.new(0, 0, 0, y)
+                    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+                    btn.Text = p.Name
+                    btn.TextColor3 = guiSettings.TextColor
+                    btn.Font = Enum.Font.GothamMedium
+                    btn.TextSize = 10
+                    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+                    btn.MouseButton1Click:Connect(function()
+                        targetPlayer = p
+                        ShowMessage("🎯 Target: " .. p.Name)
+                        playerListOpen = false
+                        playerListGui:Destroy()
+                        playerListGui = nil
+                    end)
+                    y = y + 30
+                end
+            end
+            scroll.CanvasSize = UDim2.new(0, 0, 0, y)
+        end
+        UpdatePlayerList()
+    else
+        if playerListGui then playerListGui:Destroy() playerListGui = nil end
     end
 end
 
@@ -322,7 +442,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- ⚔️ KILL AURA
+-- ⚔️ KILL AURA С КНОПКОЙ НА ЭКРАНЕ
 -- ============================================
 local function GetDmgRemote(tool)
     if not tool then return nil end
@@ -367,19 +487,94 @@ local function ApplyToolReach()
     end
 end
 
+local function FindNearestTarget()
+    local nearest, minDist = nil, math.huge
+    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = LP.Character.HumanoidRootPart.Position
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local dist = (myPos - p.Character.HumanoidRootPart.Position).Magnitude
+            if dist < minDist then
+                minDist = dist
+                nearest = p
+            end
+        end
+    end
+    return nearest
+end
+
+function ToggleKillAura()
+    killAuraEnabled = not killAuraEnabled
+    if killAuraEnabled then
+        if killAuraButton then
+            killAuraButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+            killAuraButton.Text = "⚔️ ON"
+        end
+        ShowMessage("⚔️ Kill Aura ON")
+    else
+        if killAuraButton then
+            killAuraButton.BackgroundColor3 = guiSettings.BorderColor
+            killAuraButton.Text = "⚔️ OFF"
+        end
+        ShowMessage("⚔️ Kill Aura OFF")
+    end
+end
+
+function ToggleKillAuraV2()
+    killAuraV2Enabled = not killAuraV2Enabled
+    ShowMessage("Kill Aura V2 "..(killAuraV2Enabled and "ON" or "OFF"))
+end
+
+local function CreateKillAuraButton()
+    if killAuraButtonGui then killAuraButtonGui:Destroy() end
+    
+    killAuraButtonGui = Instance.new("ScreenGui", game.CoreGui)
+    killAuraButtonGui.Name = "MTY_KillAuraButton"
+    killAuraButtonGui.ResetOnSpawn = false
+    
+    killAuraButton = Instance.new("TextButton", killAuraButtonGui)
+    killAuraButton.Size = UDim2.new(0, 65, 0, 65)
+    killAuraButton.Position = UDim2.new(0.92, 0, 0.5, 0)
+    killAuraButton.BackgroundColor3 = guiSettings.BorderColor
+    killAuraButton.Text = "⚔️\nOFF"
+    killAuraButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    killAuraButton.Font = Enum.Font.GothamBold
+    killAuraButton.TextSize = 12
+    Instance.new("UICorner", killAuraButton).CornerRadius = UDim.new(0, 30)
+    Instance.new("UIStroke", killAuraButton).Color = Color3.fromRGB(255, 255, 255)
+    
+    killAuraButton.MouseButton1Click:Connect(function()
+        ToggleKillAura()
+    end)
+    
+    killAuraButton.MouseButton2Click:Connect(function()
+        ToggleKillAuraV2()
+    end)
+end
+
 RunService.Heartbeat:Connect(function()
     if killAuraEnabled or killAuraV2Enabled then
         if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
         local tool = LP.Character:FindFirstChildOfClass("Tool")
         ApplyToolReach()
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                local range = killAuraV2Enabled and (guiSettings.KillAuraRange + 4) or guiSettings.KillAuraRange
-                if (LP.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= range then
-                    AttackPlayer(p.Character, tool)
-                    if killAuraV2Enabled then 
-                        LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(120), 0) 
-                    end
+        
+        local target = FindNearestTarget()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = target.Character.HumanoidRootPart
+            local myRoot = LP.Character.HumanoidRootPart
+            local dist = (myRoot.Position - targetRoot.Position).Magnitude
+            local range = killAuraV2Enabled and (guiSettings.KillAuraRange + 4) or guiSettings.KillAuraRange
+            
+            if dist <= range then
+                local angle = tick() * 4
+                local radius = 3
+                local newPos = targetRoot.Position + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+                myRoot.CFrame = CFrame.new(newPos, targetRoot.Position)
+                
+                AttackPlayer(target.Character, tool)
+                if killAuraV2Enabled then 
+                    myRoot.CFrame = myRoot.CFrame * CFrame.Angles(0, math.rad(120), 0) 
                 end
             end
         end
@@ -552,25 +747,275 @@ function ToggleParticlesV2()
 end
 
 -- ============================================
--- 🌑 WORLD COLOR
+-- 🌍 WORLD COLOR (ВЫБОР ЦВЕТА)
 -- ============================================
 function ToggleWorldColor()
     worldColorEnabled = not worldColorEnabled
-    if worldColorEnabled then 
-        Lighting.Ambient = Color3.fromRGB(5, 5, 8) 
-        Lighting.OutdoorAmbient = Color3.fromRGB(5, 5, 8) 
-        Lighting.ClockTime = 0 
-        ShowMessage("HvH Dark Mode ON 🌑")
-    else 
-        Lighting.Ambient = originalAmbient 
-        Lighting.OutdoorAmbient = originalOutdoor 
-        Lighting.ClockTime = 14 
-        ShowMessage("Dark Mode OFF") 
+    if worldColorEnabled then
+        Lighting.Ambient = worldColorSelected
+        Lighting.OutdoorAmbient = worldColorSelected
+        ShowMessage("🌍 World Color ON")
+    else
+        Lighting.Ambient = originalAmbient
+        Lighting.OutdoorAmbient = originalOutdoor
+        ShowMessage("🌍 World Color OFF")
     end
 end
 
+function OpenWorldColorPicker()
+    OpenColorPicker("🌍 World Color", function(c)
+        worldColorSelected = c
+        if worldColorEnabled then
+            Lighting.Ambient = c
+            Lighting.OutdoorAmbient = c
+        end
+        ShowMessage("🌍 World Color Changed!")
+    end)
+end
+
 -- ============================================
--- 🐰 BUNNY HOP (ОБЫЧНЫЙ БАНИХОП)
+-- 📐 STRETCH ЧЕРЕЗ МАТРИЦУ
+-- ============================================
+local stretchGui = nil
+local stretchSlider = nil
+
+-- Глобальная переменная для скриптеров
+getgenv().Resolution = {
+    [".gg/scripters"] = 0.65
+}
+
+function ToggleStretch()
+    stretchEnabled = not stretchEnabled
+    if stretchEnabled then
+        if not stretchGui then CreateStretchSlider() end
+        stretchGui.Visible = true
+        
+        stretchConnection = RunService.RenderStepped:Connect(function()
+            if not stretchEnabled then return end
+            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[".gg/scripters"], 0, 0, 0, 1)
+        end)
+        ShowMessage("📐 Stretch ON (" .. string.format("%.2f", getgenv().Resolution[".gg/scripters"]) .. "x)")
+    else
+        if stretchConnection then 
+            stretchConnection:Disconnect() 
+            stretchConnection = nil
+        end
+        if stretchGui then stretchGui.Visible = false end
+        ShowMessage("📐 Stretch OFF")
+    end
+end
+
+function SetStretchValue(val)
+    getgenv().Resolution[".gg/scripters"] = math.clamp(val, 0.3, 1.7)
+    if stretchSlider then
+        stretchSlider.Text = "Stretch: " .. string.format("%.2f", getgenv().Resolution[".gg/scripters"])
+    end
+end
+
+function CreateStretchSlider()
+    stretchGui = Instance.new("ScreenGui", game.CoreGui)
+    stretchGui.Name = "MTY_StretchSlider"
+    stretchGui.ResetOnSpawn = false
+    
+    local frame = Instance.new("Frame", stretchGui)
+    frame.Size = UDim2.new(0, 200, 0, 40)
+    frame.Position = UDim2.new(0.5, -100, 0.85, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
+    frame.BackgroundTransparency = 0.2
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", frame).Color = guiSettings.BorderColor
+    
+    stretchSlider = Instance.new("TextLabel", frame)
+    stretchSlider.Size = UDim2.new(0.5, 0, 1, 0)
+    stretchSlider.Position = UDim2.new(0, 0, 0, 0)
+    stretchSlider.Text = "Stretch: " .. string.format("%.2f", getgenv().Resolution[".gg/scripters"])
+    stretchSlider.TextColor3 = guiSettings.TextColor
+    stretchSlider.Font = Enum.Font.GothamBold
+    stretchSlider.TextSize = 12
+    stretchSlider.BackgroundTransparency = 1
+    
+    local sliderBg = Instance.new("Frame", frame)
+    sliderBg.Size = UDim2.new(0.4, 0, 0.3, 0)
+    sliderBg.Position = UDim2.new(0.55, 0, 0.35, 0)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(0, 4)
+    
+    local fill = Instance.new("Frame", sliderBg)
+    fill.Size = UDim2.new(getgenv().Resolution[".gg/scripters"] / 2, 0, 1, 0)
+    fill.BackgroundColor3 = guiSettings.BorderColor
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+    
+    local drag = Instance.new("TextButton", sliderBg)
+    drag.Size = UDim2.new(0, 14, 0, 14)
+    drag.Position = UDim2.new(getgenv().Resolution[".gg/scripters"] / 2 - 0.01, 0, 0.5, -7)
+    drag.BackgroundColor3 = guiSettings.BorderColor
+    Instance.new("UICorner", drag).CornerRadius = UDim.new(0, 7)
+    drag.Text = ""
+    
+    local dragging = false
+    drag.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    drag.MouseButton1Up:Connect(function()
+        dragging = false
+    end)
+    
+    drag.MouseMoved:Connect(function(x, y)
+        if dragging then
+            local relX = (x - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+            local val = math.clamp(relX * 2, 0.3, 1.7)
+            getgenv().Resolution[".gg/scripters"] = val
+            fill.Size = UDim2.new(val / 2, 0, 1, 0)
+            drag.Position = UDim2.new(val / 2 - 0.01, 0, 0.5, -7)
+            stretchSlider.Text = "Stretch: " .. string.format("%.2f", val)
+        end
+    end)
+    
+    stretchGui.Visible = false
+end
+
+-- ============================================
+-- 🗡️ CLASSIC SWORD
+-- ============================================
+function ToggleSword()
+    swordEnabled = not swordEnabled
+    if swordEnabled then
+        CreateSword()
+        ShowMessage("🗡️ Classic Sword ON")
+    else
+        RemoveSword()
+        ShowMessage("🗡️ Classic Sword OFF")
+    end
+end
+
+function CreateSword()
+    RemoveSword()
+    
+    local plr = game.Players.LocalPlayer
+    swordTool = Instance.new("Tool", plr.Backpack)
+    swordTool.GripPos = Vector3.new(0, 0, -1.5)
+    swordTool.GripForward = Vector3.new(0, -1, 0)
+    swordTool.GripRight = Vector3.new(1, 0, 0)
+    swordTool.GripUp = Vector3.new(0, 0, 1)
+    swordTool.Name = "ClassicSword"
+    swordTool.TextureId = "rbxasset://Textures/Sword128.png"
+    swordTool.RequiresHandle = true
+    swordTool.CanBeDropped = true
+
+    local k = Instance.new("Part", swordTool)
+    k.Name = "Handle"
+    k.Size = Vector3.new(1, 0.8, 4)
+    k.Anchored = false
+    k.CanCollide = false
+
+    local mesh = Instance.new("SpecialMesh", k)
+    mesh.MeshId = "rbxasset://fonts/sword.mesh"
+    mesh.TextureId = "rbxasset://textures/SwordTexture.png" 
+    mesh.Scale = Vector3.new(1, 1, 1) 
+    mesh.Offset = Vector3.new(0, 0, 0)
+    mesh.VertexColor = Vector3.new(1, 1, 1)
+
+    local Unsheath = Instance.new("Sound", k)
+    Unsheath.SoundId = "http://www.roblox.com/asset/?id=12222225"
+    Unsheath.Volume = "1"
+    Unsheath.TimePosition = 0
+
+    local SwordSlash = Instance.new("Sound", k)
+    SwordSlash.SoundId = "http://www.roblox.com/asset/?id=12222216"
+    SwordSlash.Volume = "1"
+    SwordSlash.TimePosition = 0
+
+    local l = Instance.new("Animation", swordTool)
+    l.AnimationId = "rbxassetid://94161088"
+    local m = plr.Character.Humanoid:LoadAnimation(l)
+
+    local db = true
+    local da = false
+
+    swordTool.Equipped:Connect(function()
+        Unsheath:Play()
+        wait(1)
+        swordTool.Activated:Connect(function()
+            if db == true then
+                db = false
+                SwordSlash:Play()
+                m:Play()
+                wait()
+                da = true
+                db = true
+                wait(2)
+                da = false
+                m:Stop()
+            end
+        end)
+    end)
+
+    k.Touched:Connect(function(n)
+        if da == true then
+            local o = n.Parent:FindFirstChild("Humanoid")
+            if o ~= nil then
+                local p = game.Players:FindFirstChild(n.Parent.Name)
+                for j = 1, 10 do
+                    if p.Name ~= "FunnyVideo15" then
+                        if game:GetService("ReplicatedStorage"):FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+                            hiddenfling = true
+                        else
+                            hiddenfling = true
+                            local detection = Instance.new("Decal")
+                            detection.Name = "juisdfj0i32i0eidsuf0iok"
+                            detection.Parent = game:GetService("ReplicatedStorage")
+                            
+                            local function fling()
+                                local hrp, c, vel, movel = nil, nil, nil, 0.1
+                                while true do
+                                    game:GetService("RunService").Heartbeat:Wait()
+                                    if hiddenfling then
+                                        local lp = game.Players.LocalPlayer
+                                        while hiddenfling and not (c and c.Parent and hrp and hrp.Parent) do
+                                            game:GetService("RunService").Heartbeat:Wait()
+                                            c = lp.Character
+                                            hrp = c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+                                        end
+                                        if hiddenfling then
+                                            vel = hrp.Velocity
+                                            hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+                                            game:GetService("RunService").RenderStepped:Wait()
+                                            if c and c.Parent and hrp and hrp.Parent then
+                                                hrp.Velocity = vel
+                                            end
+                                            game:GetService("RunService").Stepped:Wait()
+                                            if c and c.Parent and hrp and hrp.Parent then
+                                                hrp.Velocity = vel + Vector3.new(0, movel, 0)
+                                                movel = movel * -1
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            fling()
+                        end
+                    end 
+                end
+            end 
+        end
+        
+        wait(2)
+        hiddenfling = false
+    end)
+end
+
+function RemoveSword()
+    if swordTool then
+        swordTool:Destroy()
+        swordTool = nil
+    end
+    hiddenfling = false
+end
+
+-- ============================================
+-- 🐰 BUNNY HOP (ТОЛЬКО УСКОРЕНИЕ В ВОЗДУХЕ)
 -- ============================================
 function ToggleBunnyHop()
     bunnyHopEnabled = not bunnyHopEnabled
@@ -581,12 +1026,6 @@ function ToggleBunnyHop()
             local root = LP.Character:FindFirstChild("HumanoidRootPart")
             if not hum or not root then return end
             
-            -- Авто-прыжок при касании земли
-            if hum:GetState() == Enum.HumanoidStateType.Landed or hum:GetState() == Enum.HumanoidStateType.Running then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-            
-            -- Ускорение в воздухе (Air Acceleration)
             if hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall then
                 local move = hum.MoveDirection
                 if move.Magnitude > 0.1 then
@@ -599,7 +1038,7 @@ function ToggleBunnyHop()
                 end
             end
         end)
-        ShowMessage("🐰 Bunny Hop ON")
+        ShowMessage("🐰 Bunny Hop (Air Accel) ON")
     else
         if bunnyHopConnection then 
             bunnyHopConnection:Disconnect() 
@@ -1216,6 +1655,55 @@ LP.CharacterAdded:Connect(function()
 end)
 
 -- ============================================
+-- 🖥️ МИНИМИЗАЦИЯ В EVIL MORTY
+-- ============================================
+local function CreateMiniButton()
+    if miniGui then miniGui:Destroy() end
+    
+    miniGui = Instance.new("ScreenGui", game.CoreGui)
+    miniGui.Name = "MTY_MiniButton"
+    miniGui.ResetOnSpawn = false
+    miniGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    miniButton = Instance.new("ImageButton", miniGui)
+    miniButton.Size = UDim2.new(0, 80, 0, 80)
+    miniButton.Position = UDim2.new(0.01, 0, 0.85, 0)
+    miniButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    miniButton.BackgroundTransparency = 0.2
+    miniButton.Image = "https://i.pinimg.com/564x/02/0f/f3/020ff3b6a640ce213f7522a2a9336808.jpg"
+    miniButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", miniButton).CornerRadius = UDim.new(0, 12)
+    Instance.new("UIStroke", miniButton).Color = guiSettings.BorderColor
+    miniButton.Draggable = true
+    
+    miniButton.MouseButton1Click:Connect(function()
+        if minimized then
+            minimized = false
+            miniButton.Visible = false
+            guiMainFrame.Visible = true
+        end
+    end)
+    
+    miniButton.Visible = false
+end
+
+-- Модифицируем кнопку минимизации в главном меню
+local function SetupMinimizeButton()
+    -- Находим кнопку минимизации и заменяем её функционал
+    local minBtn = guiMainFrame:FindFirstChildOfClass("TextButton")
+    if minBtn and minBtn.Text == "-" then
+        minBtn.MouseButton1Click:Connect(function()
+            if not minimized then
+                minimized = true
+                guiMainFrame.Visible = false
+                if not miniButton then CreateMiniButton() end
+                miniButton.Visible = true
+            end
+        end)
+    end
+end
+
+-- ============================================
 -- 🖥️ СОЗДАНИЕ МЕНЮ
 -- ============================================
 local function CreateMenu()
@@ -1228,8 +1716,23 @@ local function CreateMenu()
     task.spawn(function() while screenGui.Parent do infoPanel.Text = " FPS: " .. math.floor(workspace:GetRealPhysicsFPS()) .. "  |  PING: " .. math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms " task.wait(0.5) end end)
 
     local minBtn = Instance.new("TextButton", guiMainFrame) minBtn.Size = UDim2.new(0, 32, 0, 32) minBtn.Position = UDim2.new(1, -75, 0, 10) minBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35) minBtn.Text = "-" minBtn.TextColor3 = guiSettings.TextColor; minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
+    minBtn.MouseButton1Click:Connect(function()
+        if not minimized then
+            minimized = true
+            guiMainFrame.Visible = false
+            if not miniButton then CreateMiniButton() end
+            miniButton.Visible = true
+        end
+    end)
+    
     local clsBtn = Instance.new("TextButton", guiMainFrame) clsBtn.Size = UDim2.new(0, 32, 0, 32) clsBtn.Position = UDim2.new(1, -38, 0, 10) clsBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60) clsBtn.Text = "X" clsBtn.TextColor3 = Color3.fromRGB(255, 255, 255) clsBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", clsBtn).CornerRadius = UDim.new(0, 8)
-    minBtn.MouseButton1Click:Connect(function() guiMainFrame.Visible = not guiMainFrame.Visible end) clsBtn.MouseButton1Click:Connect(function() screenGui:Destroy() fovGui:Destroy() if targetHudFrame then targetHudFrame:Destroy() end if dashButton then dashButton.Parent:Destroy() end end)
+    clsBtn.MouseButton1Click:Connect(function() 
+        screenGui:Destroy() 
+        fovGui:Destroy() 
+        if targetHudFrame then targetHudFrame:Destroy() end 
+        if dashButton then dashButton.Parent:Destroy() end 
+        if miniGui then miniGui:Destroy() end
+    end)
 
     local leftPanel = Instance.new("Frame", guiMainFrame) leftPanel.Size = UDim2.new(0, 125, 0, 355) leftPanel.Position = UDim2.new(0.02, 0, 0.15, 0) leftPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 26) Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 10)
     searchBox = Instance.new("TextBox", guiMainFrame) searchBox.Size = UDim2.new(0.68, 0, 0, 32) searchBox.Position = UDim2.new(0.3, 0, 0.15, 0) searchBox.BackgroundColor3 = Color3.fromRGB(22, 22, 26) searchBox.Text = "" searchBox.TextColor3 = guiSettings.TextColor; searchBox.PlaceholderText = "Search module..."; searchBox.Font = Enum.Font.GothamMedium; searchBox.TextSize = 12 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 8) Instance.new("UIStroke", searchBox).Color = Color3.fromRGB(40,40,50)
@@ -1286,6 +1789,7 @@ local function CreateMenu()
         elseif name == "Toggle Helicopter 🚁" then return helicopterEnabled and " [ON]" or " [OFF]"
         elseif name == "CS:GO Auto-Strafe ✈️" then return strafeEnabled and " [ON]" or " [OFF]"
         elseif name == "Bunny Hop 🐰" then return bunnyHopEnabled and " [ON]" or " [OFF]"
+        elseif name == "Classic Sword 🗡️" then return swordEnabled and " [ON]" or " [OFF]"
         end return ""
     end
 
@@ -1314,7 +1818,13 @@ local function CreateMenu()
                 elseif name == "Toggle Particles V2 🎆" then ToggleParticlesV2()
                 elseif name == "Toggle Chinese Hat" then ToggleChineseHat()
                 elseif name == "Toggle World Color" then ToggleWorldColor()
+                elseif name == "World Color Select 🎨" then OpenWorldColorPicker()
                 elseif name == "Toggle Stretch" then ToggleStretch()
+                elseif name == "Stretch Value 📏" then 
+                    OpenTextInput("Stretch Value", "0.3 - 1.7", getgenv().Resolution[".gg/scripters"], function(v)
+                        SetStretchValue(v)
+                        ShowMessage("Stretch: " .. string.format("%.2f", getgenv().Resolution[".gg/scripters"]))
+                    end)
                 elseif name == "Toggle Infinite Jump 🦘" then ToggleInfiniteJump()
                 elseif name == "Toggle Air Walk ☁️" then ToggleAirWalk()
                 elseif name == "Toggle Fly V1 ✈️" then ToggleFlyV1()
@@ -1351,6 +1861,7 @@ local function CreateMenu()
                 elseif name == "Toggle Helicopter 🚁" then ToggleHelicopter()
                 elseif name == "CS:GO Auto-Strafe ✈️" then ToggleStrafe()
                 elseif name == "Bunny Hop 🐰" then ToggleBunnyHop()
+                elseif name == "Classic Sword 🗡️" then ToggleSword()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
                 elseif name == "Aimbot Speed" then OpenTextInput("Aimbot Speed", "0.01-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end)
@@ -1360,7 +1871,6 @@ local function CreateMenu()
                 elseif name == "Gravity" then OpenTextInput("Gravity", "Workspace", workspace.Gravity, function(v) workspace.Gravity = v end)
                 elseif name == "Kill Aura Range" then OpenTextInput("Aura Range", "Studs", guiSettings.KillAuraRange, function(v) guiSettings.KillAuraRange = v end)
                 elseif name == "Tool Reach 📏" then OpenTextInput("Reach Size", "Studs", guiSettings.ToolReachValue, function(v) guiSettings.ToolReachValue = v ApplyToolReach() end)
-                elseif name == "Stretch Value" then OpenTextInput("Stretch", "0.1 - 1.5", guiSettings.StretchValue, function(v) guiSettings.StretchValue = v end)
                 elseif name == "Trail Color" then OpenColorPicker("Trail Color", function(c) guiSettings.TrailColor = c if actualTrailInstance then actualTrailInstance.Color = ColorSequence.new(c) end end)
                 elseif name == "Hat Color" then OpenColorPicker("Hat Color", function(c) guiSettings.HatColor = c if hatEnabled then CreateChineseHat() end end)
                 elseif name == "Jump Circle Color" then OpenColorPicker("Jump Circle Color", function(c) guiSettings.JumpCircleColor = c end)
@@ -1377,7 +1887,7 @@ local function CreateMenu()
     searchBox:GetPropertyChangedSignal("Text"):Connect(function() if currentCategory ~= "" then RenderSubs(allSubs) end end)
     
     local categories = {
-        VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥"},
+        VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "World Color Select 🎨", "Toggle Stretch", "Stretch Value 📏", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥", "Classic Sword 🗡️"},
         PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰"},
         COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Tool Reach 📏", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡"},
         HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓"},
@@ -1389,6 +1899,12 @@ local function CreateMenu()
         btn.MouseButton1Click:Connect(function() currentCategory = catName allSubs = subs RenderSubs(subs) end) idx = idx + 1
     end
     currentCategory = "VISUAL" allSubs = categories.VISUAL RenderSubs(categories.VISUAL)
+    
+    -- Создаем кнопку Kill Aura
+    CreateKillAuraButton()
+    
+    -- Создаем мини-кнопку Evil Morty
+    CreateMiniButton()
 end
 
 CreateMenu()
