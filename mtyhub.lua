@@ -46,6 +46,8 @@ local arrowIndicatorsEnabled = false
 local hitGlowEnabled = false
 local blockEspEnabled = false
 local damageIndEnabled = false
+local lastDashTime = 0
+local dashCooldown = 1.5
 
 -- ===== НАСТРОЙКИ =====
 local guiSettings = {
@@ -124,8 +126,28 @@ local mm2ShootConnection, mm2AimbotConnection, mm2GrabGunConnection, mm2KillAura
 local mm2AutoShootButton, mm2AutoShootGui = nil, nil
 local mm2GrabMethod, mm2FlingPower = "Teleport", 500
 
+-- ===== КОННЕКШЕНЫ =====
+local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection, wallClimbConnection, fakePingConnection, antiAFKConnection, fpsBoosterConnection, musicConnection, wallJumpConnection, wallRunConnection, noGravityConnection, timeFreezeConnection, skyboxConnection, autoSprintConnection, triggerBotConnection, autoClickerConnection, autoClickerV2Connection
+
 -- ============================================
--- 🔥 СТАБИЛЬНЫЙ БЭКЕНД ДЛЯ DELTA (БЕЗ CRASH И АНТИЧИТА)
+-- 💎 СИСТЕМА УВЕДОМЛЕНИЙ
+-- ============================================
+local function ShowMessage(text)
+    local msg = Instance.new("TextLabel", guiMainFrame or game.CoreGui)
+    msg.Size = UDim2.new(0.45, 0, 0.07, 0)
+    msg.Position = UDim2.new(0.275, 0, 0.88, 0)
+    msg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    msg.Text = text
+    msg.TextColor3 = guiSettings.TextColor
+    msg.TextScaled = true
+    msg.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", msg).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", msg).Color = guiSettings.BorderColor
+    task.spawn(function() task.wait(1.5) msg:Destroy() end)
+end
+
+-- ============================================
+-- 🔥 СТАБИЛЬНЫЙ БЭКЕНД ДЛЯ DELTA
 -- ============================================
 
 -- 1. НЕВИДИМОСТЬ (УНИВЕРСАЛЬНЫЙ МЕТОД)
@@ -167,7 +189,7 @@ function ToggleInvisibility()
     end
 end
 
--- 2. ВЕРТОЛЕТ (С ИМПУЛЬСОМ И ОГРАНИЧЕНИЕМ)
+-- 2. ВЕРТОЛЕТ (ИСПРАВЛЕН - ПОДНИМАЕТ ВВЕРХ)
 function ToggleHelicopter()
     helicopterEnabled = not helicopterEnabled
     if helicopterEnabled then
@@ -181,7 +203,7 @@ function ToggleHelicopter()
             
             root.AssemblyLinearVelocity = Vector3.new(
                 math.clamp(vel.X, -maxSpeed, maxSpeed),
-                math.clamp(vel.Y + 2, -maxSpeed, maxSpeed),
+                math.clamp(vel.Y + 5, -maxSpeed, maxSpeed),
                 math.clamp(vel.Z, -maxSpeed, maxSpeed)
             )
             
@@ -199,6 +221,9 @@ end
 function ToggleAntiAim()
     antiAimEnabled = not antiAimEnabled
     if antiAimEnabled then
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.AutoRotate = false
+        end
         antiAimConnection = RunService.RenderStepped:Connect(function()
             if not antiAimEnabled or not LP.Character then return end
             local root = LP.Character:FindFirstChild("HumanoidRootPart")
@@ -228,7 +253,7 @@ function ToggleAntiAim()
     end
 end
 
--- 4. СТРЕЙФЫ (С ОГРАНИЧЕНИЕМ СКОРОСТИ)
+-- 4. СТРЕЙФЫ (ИСПРАВЛЕНЫ)
 function ToggleStrafe()
     strafeEnabled = not strafeEnabled
     if strafeEnabled then
@@ -240,15 +265,17 @@ function ToggleStrafe()
             
             local move = hum.MoveDirection
             if move.Magnitude > 0.1 then
-                local currentVel = root.AssemblyLinearVelocity
-                local baseSpeed = hum.WalkSpeed * 2
-                local maxSpeed = math.clamp(baseSpeed, 10, 80)
-                
-                root.AssemblyLinearVelocity = Vector3.new(
-                    math.clamp(move.X * maxSpeed, -80, 80),
-                    math.clamp(currentVel.Y, -50, 50),
-                    math.clamp(move.Z * maxSpeed, -80, 80)
-                )
+                local state = hum:GetState()
+                if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall then
+                    local strafeSpeed = math.clamp(hum.WalkSpeed * 2.5, 20, 70)
+                    local currentVel = root.AssemblyLinearVelocity
+                    
+                    root.AssemblyLinearVelocity = Vector3.new(
+                        move.X * strafeSpeed,
+                        math.clamp(currentVel.Y + 2, -50, 50),
+                        move.Z * strafeSpeed
+                    )
+                end
             end
         end)
         ShowMessage("✈️ Strafe ON")
@@ -259,9 +286,6 @@ function ToggleStrafe()
 end
 
 -- 5. DASH (С ОГРАНИЧЕНИЕМ И ПРОВЕРКОЙ)
-local lastDashTime = 0
-local dashCooldown = 1.5
-
 function ToggleDash()
     dashEnabled = not dashEnabled
     if dashEnabled then
@@ -320,7 +344,7 @@ function ToggleDash()
     end
 end
 
--- 6. BUNNY HOP (С ОГРАНИЧЕНИЕМ)
+-- 6. BUNNY HOP (ИСПРАВЛЕН - ДАЛЁКИЕ ПРЫЖКИ)
 function ToggleBunnyHop()
     bunnyHopEnabled = not bunnyHopEnabled
     if bunnyHopEnabled then
@@ -334,13 +358,19 @@ function ToggleBunnyHop()
             if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall then
                 local move = hum.MoveDirection
                 if move.Magnitude > 0.1 then
-                    local speed = math.clamp(hum.WalkSpeed * 1.8, 20, 80)
+                    local jumpSpeed = math.clamp(hum.WalkSpeed * 3, 30, 100)
+                    local currentVel = root.AssemblyLinearVelocity
+                    
                     root.AssemblyLinearVelocity = Vector3.new(
-                        move.X * speed,
-                        math.clamp(root.AssemblyLinearVelocity.Y, -50, 50),
-                        move.Z * speed
+                        move.X * jumpSpeed,
+                        math.clamp(currentVel.Y, -50, 50),
+                        move.Z * jumpSpeed
                     )
                 end
+            end
+            
+            if hum.MoveDirection.Magnitude > 0.1 and hum:GetState() == Enum.HumanoidStateType.Running then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
         ShowMessage("🐰 Bunny Hop ON")
@@ -539,25 +569,6 @@ fovRing.Visible = false
 local fovStroke = Instance.new("UIStroke", fovRing)
 fovStroke.Thickness = 1.5
 fovStroke.Color = guiSettings.BorderColor
-
-local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection, wallClimbConnection, fakePingConnection, antiAFKConnection, fpsBoosterConnection, musicConnection, wallJumpConnection, wallRunConnection, noGravityConnection, timeFreezeConnection, skyboxConnection, autoSprintConnection, triggerBotConnection, autoClickerConnection, autoClickerV2Connection
-
--- ============================================
--- СИСТЕМА УВЕДОМЛЕНИЙ
--- ============================================
-local function ShowMessage(text)
-    local msg = Instance.new("TextLabel", guiMainFrame or game.CoreGui)
-    msg.Size = UDim2.new(0.45, 0, 0.07, 0)
-    msg.Position = UDim2.new(0.275, 0, 0.88, 0)
-    msg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    msg.Text = text
-    msg.TextColor3 = guiSettings.TextColor
-    msg.TextScaled = true
-    msg.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", msg).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", msg).Color = guiSettings.BorderColor
-    task.spawn(function() task.wait(1.5) msg:Destroy() end)
-end
 
 -- ============================================
 -- ВСПОМОГАТЕЛЬНЫЕ ОКНА
