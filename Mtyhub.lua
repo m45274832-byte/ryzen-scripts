@@ -1,5 +1,6 @@
--- MTY HUB v5.5 DELTA ULTIMATE (FULL FIXED)
--- Исправлены: Long Jump + Strafe, Invisibility, Anti-Aim (Spin/Backwards)
+-- MTY HUB v5.5 DELTA ULTIMATE (BUNNY HOP + FIXED)
+-- Исправлены: Bunny Hop, Invisibility, Anti-Aim (Spin/Backwards)
+-- Полный скрипт со всеми модулями
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -45,7 +46,7 @@ local infJumpEnabled, autoSprintEnabled, airWalkEnabled, flyV1Enabled, flyV2Enab
 local resolverEnabled, desyncEnabled, spiderEnabled, antiKbEnabled, swimEnabled, targetHudEnabled, hitGlowEnabled, auraVisEnabled = false, false, false, false, false, false, false, false
 local arrowIndicatorsEnabled, targetLineEnabled, noJumpCdEnabled, blinkEnabled, strafeEnabled, particlesV2Enabled, worldColorEnabled = false, false, false, false, false, false, false
 local aimbotEnabled, aimbotV2Enabled, aimbotV3Enabled = false, false, false
-local longJumpEnabled = false
+local bunnyHopEnabled = false
 
 -- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
@@ -63,9 +64,11 @@ local fovRing = Instance.new("Frame", fovGui) fovRing.AnchorPoint = Vector2.new(
 local fovStroke = Instance.new("UIStroke", fovRing) fovStroke.Thickness = 1.5 fovStroke.Color = guiSettings.BorderColor
 
 -- ===== КОННЕКШЕНЫ =====
-local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, longJumpConnection, antiAimConnection
+local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection
 
--- ===== СИСТЕМА УВЕДОМЛЕНИЙ =====
+-- ============================================
+-- СИСТЕМА УВЕДОМЛЕНИЙ
+-- ============================================
 local function ShowMessage(text)
     local msg = Instance.new("TextLabel", guiMainFrame or game.CoreGui) 
     msg.Size = UDim2.new(0.45, 0, 0.07, 0) 
@@ -80,7 +83,9 @@ local function ShowMessage(text)
     task.spawn(function() task.wait(1.5) msg:Destroy() end)
 end
 
--- ===== ВСПОМОГАТЕЛЬНЫЕ ОКНА =====
+-- ============================================
+-- ВСПОМОГАТЕЛЬНЫЕ ОКНА
+-- ============================================
 local function OpenTextInput(title, placeholder, default, callback)
     local s = Instance.new("ScreenGui", game.CoreGui) 
     local f = Instance.new("Frame", s) 
@@ -565,71 +570,59 @@ function ToggleWorldColor()
 end
 
 -- ============================================
--- 🏃‍♂️ ДЛИННЫЙ ПРЫЖОК С СТРЕЙФОМ (LONG JUMP + STRAFE)
+-- 🐰 BUNNY HOP (ОБЫЧНЫЙ БАНИХОП)
 -- ============================================
-local longJumpDirection = 1
-
-function ToggleLongJump()
-    longJumpEnabled = not longJumpEnabled
-    if longJumpEnabled then
-        longJumpConnection = RunService.Heartbeat:Connect(function()
-            if not longJumpEnabled or not LP.Character then return end
+function ToggleBunnyHop()
+    bunnyHopEnabled = not bunnyHopEnabled
+    if bunnyHopEnabled then
+        bunnyHopConnection = RunService.Heartbeat:Connect(function()
+            if not bunnyHopEnabled or not LP.Character then return end
             local hum = LP.Character:FindFirstChild("Humanoid")
             local root = LP.Character:FindFirstChild("HumanoidRootPart")
             if not hum or not root then return end
             
+            -- Авто-прыжок при касании земли
+            if hum:GetState() == Enum.HumanoidStateType.Landed or hum:GetState() == Enum.HumanoidStateType.Running then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+            
+            -- Ускорение в воздухе (Air Acceleration)
             if hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall then
                 local move = hum.MoveDirection
                 if move.Magnitude > 0.1 then
-                    local camLook = Camera.CFrame.LookVector
-                    local camRight = Camera.CFrame.RightVector
-                    camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
-                    camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
-                    
-                    if tick() % 0.3 < 0.05 then
-                        longJumpDirection = longJumpDirection * -1
-                    end
-                    
-                    local strafeVec = camRight * longJumpDirection
-                    local moveVec = (move.Unit * 0.4 + strafeVec * 0.6).Unit
-                    local speed = hum.WalkSpeed * 2.5
+                    local speed = hum.WalkSpeed * 1.8
                     root.AssemblyLinearVelocity = Vector3.new(
-                        moveVec.X * speed,
-                        root.AssemblyLinearVelocity.Y + 5,
-                        moveVec.Z * speed
+                        move.X * speed,
+                        root.AssemblyLinearVelocity.Y,
+                        move.Z * speed
                     )
-                    if moveVec.Magnitude > 0.1 then
-                        root.CFrame = CFrame.new(root.Position, root.Position + moveVec)
-                    end
                 end
             end
         end)
-        ShowMessage("🔥 Long Jump + Strafe ON")
+        ShowMessage("🐰 Bunny Hop ON")
     else
-        if longJumpConnection then 
-            longJumpConnection:Disconnect() 
-            longJumpConnection = nil
+        if bunnyHopConnection then 
+            bunnyHopConnection:Disconnect() 
+            bunnyHopConnection = nil
         end
-        ShowMessage("🔥 Long Jump + Strafe OFF")
+        ShowMessage("🐰 Bunny Hop OFF")
     end
 end
 
 -- ============================================
--- 👻 ИСПРАВЛЕННАЯ НЕВИДИМОСТЬ (FE INVISIBILITY)
+-- 👻 ИСПРАВЛЕННАЯ НЕВИДИМОСТЬ
 -- ============================================
 function ToggleInvisibility()
     invisibilityEnabled = not invisibilityEnabled
     if invisibilityEnabled then
         if LP.Character then
-            -- Метод через прозрачность частей
             for _, v in pairs(LP.Character:GetDescendants()) do
                 if v:IsA("BasePart") then
                     v.Transparency = 0.99
                 end
             end
-            -- Отключаем тени для полной невидимости
             LP.Character:SetAttribute("Invisible", true)
-            ShowMessage("👤 Invisibility ON (Ghost Mode)")
+            ShowMessage("👤 Invisibility ON")
         end
     else
         if LP.Character then
@@ -644,7 +637,6 @@ function ToggleInvisibility()
     end
 end
 
--- Авто-невидимость при респавне
 LP.CharacterAdded:Connect(function()
     task.wait(0.3)
     if invisibilityEnabled then
@@ -657,7 +649,7 @@ LP.CharacterAdded:Connect(function()
 end)
 
 -- ============================================
--- 🌀 ИСПРАВЛЕННЫЙ АНТИ-АИМ (SPIN / BACKWARDS)
+-- 🌀 ИСПРАВЛЕННЫЙ АНТИ-АИМ
 -- ============================================
 function ToggleAntiAim()
     antiAimEnabled = not antiAimEnabled
@@ -669,11 +661,9 @@ function ToggleAntiAim()
             if not root or not hum then return end
             
             if guiSettings.AntiAimMode == "Spin" then
-                -- Бешеное вращение (быстрое)
                 root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(tick() * 500 % 360), 0)
                 hum.AutoRotate = false
             elseif guiSettings.AntiAimMode == "Backwards" then
-                -- Движение задом + разворот
                 local look = root.CFrame.LookVector
                 local backwards = -look
                 root.CFrame = CFrame.new(root.Position, root.Position + backwards)
@@ -704,7 +694,7 @@ function SetAntiAimMode(mode)
 end
 
 -- ============================================
--- 🕷️ ОСТАЛЬНЫЕ MOVEMENT ФУНКЦИИ
+-- 🕷️ SPIDER MODE
 -- ============================================
 function ToggleSpider()
     spiderEnabled = not spiderEnabled 
@@ -723,6 +713,9 @@ function ToggleSpider()
     end)
 end
 
+-- ============================================
+-- 🏊 SWIM IN AIR
+-- ============================================
 function ToggleSwim()
     swimEnabled = not swimEnabled 
     ShowMessage("Swim In Air "..(swimEnabled and "ON 🏊" or "OFF"))
@@ -736,6 +729,9 @@ function ToggleSwim()
     end)
 end
 
+-- ============================================
+-- 🚁 HELICOPTER
+-- ============================================
 function ToggleHelicopter()
     helicopterEnabled = not helicopterEnabled 
     ShowMessage("Helicopter "..(helicopterEnabled and "ON 🚁" or "OFF"))
@@ -751,6 +747,9 @@ function ToggleHelicopter()
     end)
 end
 
+-- ============================================
+-- ⚓ ANTI-KNOCKBACK
+-- ============================================
 function ToggleAntiKb()
     antiKbEnabled = not antiKbEnabled 
     ShowMessage("Anti-Knockback "..(antiKbEnabled and "ON ⚓" or "OFF"))
@@ -764,6 +763,9 @@ function ToggleAntiKb()
     end)
 end
 
+-- ============================================
+-- ⏳ FAKE LAG
+-- ============================================
 function ToggleFakeLag()
     fakeLagEnabled = not fakeLagEnabled 
     ShowMessage("FakeLag "..(fakeLagEnabled and "ON ⏳" or "OFF"))
@@ -779,6 +781,9 @@ function ToggleFakeLag()
     end)
 end
 
+-- ============================================
+-- 🏃 DASH
+-- ============================================
 function ToggleDash()
     dashEnabled = not dashEnabled
     if dashEnabled then
@@ -807,6 +812,9 @@ function ToggleDash()
     end
 end
 
+-- ============================================
+-- ✈️ CS:GO STRAFE
+-- ============================================
 function ToggleStrafe()
     strafeEnabled = not strafeEnabled 
     ShowMessage("CS Strafes "..(strafeEnabled and "ON ✈️" or "OFF"))
@@ -829,6 +837,321 @@ function ToggleStrafe()
     else 
         if strafeConnection then strafeConnection:Disconnect() end 
     end
+end
+
+-- ============================================
+-- 🚫 NO CLIP
+-- ============================================
+function ToggleNoClip()
+    noClipEnabled = not noClipEnabled
+    if noClipEnabled then
+        noClipConnection = RunService.Stepped:Connect(function()
+            if LP.Character then
+                for _, v in pairs(LP.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        end)
+        ShowMessage("NoClip ON")
+    else
+        if noClipConnection then noClipConnection:Disconnect() end
+        ShowMessage("NoClip OFF")
+    end
+end
+
+-- ============================================
+-- 🌀 SPIN
+-- ============================================
+function ToggleSpin()
+    spinEnabled = not spinEnabled
+    if spinEnabled then
+        spinConnection = RunService.Heartbeat:Connect(function()
+            if spinEnabled and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                LP.Character.HumanoidRootPart.CFrame = CFrame.new(LP.Character.HumanoidRootPart.Position) * CFrame.Angles(0, math.rad(guiSettings.SpinSpeed), 0)
+            end
+        end)
+        ShowMessage("Spin ON")
+    else
+        if spinConnection then spinConnection:Disconnect() end
+        ShowMessage("Spin OFF")
+    end
+end
+
+-- ============================================
+-- 🦘 INFINITE JUMP
+-- ============================================
+function ToggleInfiniteJump()
+    infJumpEnabled = not infJumpEnabled
+    if infJumpEnabled then
+        UserInputService.JumpRequest:Connect(function()
+            if infJumpEnabled and LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+        ShowMessage("Infinite Jump ON")
+    else
+        ShowMessage("Infinite Jump OFF")
+    end
+end
+
+-- ============================================
+-- ☁️ AIR WALK
+-- ============================================
+function ToggleAirWalk()
+    airWalkEnabled = not airWalkEnabled
+    if airWalkEnabled then
+        ShowMessage("Air Walk ON")
+        task.spawn(function()
+            while airWalkEnabled do
+                task.wait()
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    if not airWalkPlatform then
+                        airWalkPlatform = Instance.new("Part", workspace)
+                        airWalkPlatform.Size = Vector3.new(6, 0.5, 6)
+                        airWalkPlatform.Anchored = true
+                        airWalkPlatform.Transparency = 1
+                    end
+                    airWalkPlatform.CFrame = CFrame.new(
+                        LP.Character.HumanoidRootPart.Position.X,
+                        LP.Character.HumanoidRootPart.Position.Y - 2.8,
+                        LP.Character.HumanoidRootPart.Position.Z
+                    )
+                end
+            end
+            if airWalkPlatform then airWalkPlatform:Destroy() airWalkPlatform = nil end
+        end)
+    else
+        if airWalkPlatform then airWalkPlatform:Destroy() airWalkPlatform = nil end
+        ShowMessage("Air Walk OFF")
+    end
+end
+
+-- ============================================
+-- ✈️ FLY V1
+-- ============================================
+function ToggleFlyV1()
+    flyV1Enabled = not flyV1Enabled
+    if flyV1Enabled then
+        task.spawn(function()
+            local bv = Instance.new("BodyVelocity")
+            bv.MaxForce = Vector3.new(1e5, 135, 1e5)
+            bv.Velocity = Vector3.new(0,0,0)
+            while flyV1Enabled do
+                task.wait()
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character:FindFirstChild("Humanoid") then
+                    local hum = LP.Character.Humanoid
+                    bv.Parent = LP.Character.HumanoidRootPart
+                    local move = hum.MoveDirection
+                    bv.Velocity = move * (speedValue * 2) + Vector3.new(0, (UserInputService:IsKeyDown(Enum.KeyCode.Space) and 35 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 35 or 0), 0)
+                end
+            end
+            if bv then bv:Destroy() end
+        end)
+        ShowMessage("Fly V1 Activated ✈️")
+    else
+        flyV1Enabled = false
+        ShowMessage("Fly V1 Disabled")
+    end
+end
+
+-- ============================================
+-- ☁️ FLY V2
+-- ============================================
+function ToggleFlyV2()
+    flyV2Enabled = not flyV2Enabled
+    if flyV2Enabled then
+        task.spawn(function()
+            while flyV2Enabled do
+                task.wait()
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = LP.Character.HumanoidRootPart
+                    local hum = LP.Character.Humanoid
+                    local move = hum.MoveDirection
+                    local camLook = Camera.CFrame.LookVector
+                    if move.Magnitude > 0 then
+                        root.AssemblyLinearVelocity = Vector3.new(move.X * speedValue * 2, camLook.Y * speedValue * 2, move.Z * speedValue * 2)
+                    else
+                        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    end
+                end
+            end
+        end)
+        ShowMessage("Fly V2 Activated ☁️")
+    else
+        flyV2Enabled = false
+        ShowMessage("Fly V2 Disabled")
+    end
+end
+
+-- ============================================
+-- 🛠️ TELEPORT TOOL
+-- ============================================
+function ToggleTeleportTool()
+    tpToolEnabled = not tpToolEnabled
+    if tpToolEnabled then
+        teleportTool = Instance.new("Tool", LP.Backpack)
+        teleportTool.RequiresHandle = false
+        teleportTool.Name = "MTY TP Tool 🛠️"
+        teleportTool.Activated:Connect(function()
+            local m = LP:GetMouse()
+            if m and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                LP.Character.HumanoidRootPart.CFrame = CFrame.new(m.Hit.Position + Vector3.new(0,3,0))
+            end
+        end)
+        ShowMessage("Teleport Tool Added 🛠️")
+    else
+        if teleportTool then teleportTool:Destroy() teleportTool = nil end
+        ShowMessage("Teleport Tool Removed")
+    end
+end
+
+-- ============================================
+-- 🏃 AUTO SPRINT
+-- ============================================
+function ToggleAutoSprint()
+    autoSprintEnabled = not autoSprintEnabled
+    if autoSprintEnabled then
+        autoSprintConnection = RunService.Heartbeat:Connect(function()
+            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                LP.Character.Humanoid.WalkSpeed = speedValue * 1.6
+            end
+        end)
+        ShowMessage("Auto Sprint ON")
+    else
+        if autoSprintConnection then autoSprintConnection:Disconnect() end
+        ShowMessage("Auto Sprint OFF")
+    end
+end
+
+-- ============================================
+-- 👁️ ESP FUNCTIONS
+-- ============================================
+function ToggleESP() 
+    espEnabled = not espEnabled 
+    ShowMessage("ESP "..(espEnabled and "ON" or "OFF")) 
+end
+
+function ToggleESPV2() 
+    espV2Enabled = not espV2Enabled 
+    ShowMessage("ESP V2 "..(espV2Enabled and "ON" or "OFF")) 
+end
+
+function ToggleESPV3() 
+    espV3Enabled = not espV3Enabled 
+    ShowMessage("ESP V3 "..(espV3Enabled and "ON" or "OFF")) 
+end
+
+function ToggleSkeleton() 
+    skeletonEnabled = not skeletonEnabled 
+    ShowMessage("Skeleton "..(skeletonEnabled and "ON" or "OFF")) 
+end
+
+function ToggleChams() 
+    chamsEnabled = not chamsEnabled 
+    ShowMessage("Chams "..(chamsEnabled and "ON" or "OFF")) 
+end
+
+function ToggleHitboxes() 
+    hitboxEnabled = not hitboxEnabled 
+    ShowMessage("Hitboxes "..(hitboxEnabled and "ON" or "OFF")) 
+end
+
+function ToggleHitboxesV2() 
+    hitboxV2Enabled = not hitboxV2Enabled 
+    ShowMessage("Hitboxes V2 "..(hitboxV2Enabled and "ON" or "OFF")) 
+end
+
+function ToggleTracers() 
+    tracersEnabled = not tracersEnabled 
+    ShowMessage("Tracers "..(tracersEnabled and "ON" or "OFF")) 
+end
+
+function ToggleTriggerBot() 
+    triggerBotEnabled = not triggerBotEnabled 
+    ShowMessage("Trigger Bot "..(triggerBotEnabled and "ON" or "OFF")) 
+end
+
+function ToggleAutoClicker() 
+    autoClickerEnabled = not autoClickerEnabled 
+    ShowMessage("AutoClicker "..(autoClickerEnabled and "ON" or "OFF")) 
+end
+
+function ToggleAutoClickerV2() 
+    autoClickerV2Enabled = not autoClickerV2Enabled 
+    ShowMessage("AutoClicker V2 "..(autoClickerV2Enabled and "ON" or "OFF")) 
+end
+
+function ToggleKillAura() 
+    killAuraEnabled = not killAuraEnabled 
+    ShowMessage("Kill Aura "..(killAuraEnabled and "ON" or "OFF")) 
+end
+
+function ToggleKillAuraV2() 
+    killAuraV2Enabled = not killAuraV2Enabled 
+    ShowMessage("Kill Aura V2 "..(killAuraV2Enabled and "ON" or "OFF")) 
+end
+
+function ToggleAimbotV2() 
+    aimbotV2Enabled = not aimbotV2Enabled 
+    ShowMessage("Silent Aim V2 "..(aimbotV2Enabled and "ON" or "OFF")) 
+end
+
+function ToggleAimbotV3() 
+    aimbotV3Enabled = not aimbotV3Enabled 
+    ShowMessage("Prediction Aim V3 "..(aimbotV3Enabled and "ON" or "OFF")) 
+end
+
+function ToggleResolver() 
+    resolverEnabled = not resolverEnabled 
+    ShowMessage("Resolver "..(resolverEnabled and "ON" or "OFF")) 
+end
+
+function ToggleDesync() 
+    desyncEnabled = not desyncEnabled 
+    ShowMessage("Desync "..(desyncEnabled and "ON" or "OFF")) 
+end
+
+function ToggleTargetLine() 
+    targetLineEnabled = not targetLineEnabled 
+    ShowMessage("Target Line "..(targetLineEnabled and "ON" or "OFF")) 
+end
+
+function ToggleArrowIndicators() 
+    arrowIndicatorsEnabled = not arrowIndicatorsEnabled 
+    ShowMessage("Arrow Indicators "..(arrowIndicatorsEnabled and "ON" or "OFF")) 
+end
+
+function ToggleNoJumpCooldown() 
+    noJumpCdEnabled = not noJumpCdEnabled 
+    ShowMessage("No Jump CD "..(noJumpCdEnabled and "ON" or "OFF")) 
+end
+
+function ToggleBlinkMode() 
+    blinkEnabled = not blinkEnabled 
+    ShowMessage("Blink Mode "..(blinkEnabled and "ON" or "OFF")) 
+end
+
+function ToggleBlockESP() 
+    blockEspEnabled = not blockEspEnabled 
+    ShowMessage("Block ESP "..(blockEspEnabled and "ON" or "OFF")) 
+end
+
+function ToggleDamageIndicators() 
+    damageIndEnabled = not damageIndEnabled 
+    ShowMessage("Damage Indicators "..(damageIndEnabled and "ON" or "OFF")) 
+end
+
+function ToggleStretch() 
+    stretchEnabled = not stretchEnabled 
+    ShowMessage("Stretch "..(stretchEnabled and "ON" or "OFF")) 
+end
+
+function ToggleFullbright() 
+    fullbrightEnabled = not fullbrightEnabled 
+    Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient 
+    ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) 
 end
 
 -- ============================================
@@ -891,58 +1214,6 @@ LP.CharacterAdded:Connect(function()
         end
     end
 end)
-
--- ============================================
--- 🕹️ ОСТАЛЬНЫЕ ФУНКЦИИ
--- ============================================
-function ToggleESP() espEnabled = not espEnabled end
-function ToggleESPV2() espV2Enabled = not espV2Enabled end
-function ToggleESPV3() espV3Enabled = not espV3Enabled end
-function ToggleSkeleton() skeletonEnabled = not skeletonEnabled end
-function ToggleChams() chamsEnabled = not chamsEnabled end
-function ToggleHitboxes() hitboxEnabled = not hitboxEnabled end
-function ToggleHitboxesV2() hitboxV2Enabled = not hitboxV2Enabled end
-function ToggleTracers() tracersEnabled = not tracersEnabled end
-function ToggleFlyV1() pcall(function() loadstring(game:HttpGet("pastebin.com"))() end) ShowMessage("Fly V1 Loaded") end
-function ToggleFlyV2() flyV2Enabled = not flyV2Enabled ShowMessage("Fly V2 AirWalk") end
-function ToggleAutoSprint() autoSprintEnabled = not autoSprintEnabled end
-function ToggleSpin() spinEnabled = not spinEnabled end
-function ToggleInfiniteJump() infJumpEnabled = not infJumpEnabled end
-function ToggleAirWalk() airWalkEnabled = not airWalkEnabled end
-function ToggleNoClip() noClipEnabled = not noClipEnabled end
-function ToggleAimbotV2() aimbotV2Enabled = not aimbotV2Enabled ShowMessage("Silent Aim V2 Toggled") end
-function ToggleAimbotV3() aimbotV3Enabled = not aimbotV3Enabled ShowMessage("Predict Aim V3 Toggled") end
-function ToggleTriggerBot() triggerBotEnabled = not triggerBotEnabled end
-function ToggleAutoClicker() autoClickerEnabled = not autoClickerEnabled end
-function ToggleAutoClickerV2() autoClickerV2Enabled = not autoClickerV2Enabled end
-function ToggleKillAura() killAuraEnabled = not killAuraEnabled end
-function ToggleKillAuraV2() killAuraV2Enabled = not killAuraV2Enabled end
-function ToggleResolver() resolverEnabled = not resolverEnabled end
-function ToggleDesync() desyncEnabled = not desyncEnabled end
-function ToggleTargetLine() targetLineEnabled = not targetLineEnabled end
-function ToggleArrowIndicators() arrowIndicatorsEnabled = not arrowIndicatorsEnabled end
-function ToggleNoJumpCooldown() noJumpCdEnabled = not noJumpCdEnabled end
-function ToggleBlinkMode() blinkEnabled = not blinkEnabled end
-function ToggleBlockESP() blockEspEnabled = not blockEspEnabled end
-function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled end
-function ToggleStretch() stretchEnabled = not stretchEnabled end
-function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled end
-function ToggleTeleportTool() 
-    tpToolEnabled = not tpToolEnabled
-    if tpToolEnabled then
-        teleportTool = Instance.new("Tool", LP.Backpack)
-        teleportTool.RequiresHandle = false
-        teleportTool.Name = "MTY TP Tool 🛠️"
-        teleportTool.Activated:Connect(function()
-            local m = LP:GetMouse()
-            if m and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                LP.Character.HumanoidRootPart.CFrame = CFrame.new(m.Hit.Position + Vector3.new(0,3,0))
-            end
-        end)
-    else
-        if teleportTool then teleportTool:Destroy() end
-    end
-end
 
 -- ============================================
 -- 🖥️ СОЗДАНИЕ МЕНЮ
@@ -1014,7 +1285,7 @@ local function CreateMenu()
         elseif name == "Toggle Invisibility 👤" then return invisibilityEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Helicopter 🚁" then return helicopterEnabled and " [ON]" or " [OFF]"
         elseif name == "CS:GO Auto-Strafe ✈️" then return strafeEnabled and " [ON]" or " [OFF]"
-        elseif name == "Long Jump + Strafe 🔥" then return longJumpEnabled and " [ON]" or " [OFF]"
+        elseif name == "Bunny Hop 🐰" then return bunnyHopEnabled and " [ON]" or " [OFF]"
         end return ""
     end
 
@@ -1079,7 +1350,7 @@ local function CreateMenu()
                 elseif name == "Toggle Invisibility 👤" then ToggleInvisibility()
                 elseif name == "Toggle Helicopter 🚁" then ToggleHelicopter()
                 elseif name == "CS:GO Auto-Strafe ✈️" then ToggleStrafe()
-                elseif name == "Long Jump + Strafe 🔥" then ToggleLongJump()
+                elseif name == "Bunny Hop 🐰" then ToggleBunnyHop()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
                 elseif name == "Aimbot Speed" then OpenTextInput("Aimbot Speed", "0.01-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end)
@@ -1107,7 +1378,7 @@ local function CreateMenu()
     
     local categories = {
         VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥"},
-        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Long Jump + Strafe 🔥"},
+        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰"},
         COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Tool Reach 📏", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡"},
         HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓"},
         SETTINGS = {"Optimize Textures"}
@@ -1121,4 +1392,4 @@ local function CreateMenu()
 end
 
 CreateMenu()
-print("MTY HUB v5.5 ULTIMATE FULLY FIXED! 🚀")
+print("MTY HUB v5.5 COMPLETE FULLY FIXED! 🚀")
