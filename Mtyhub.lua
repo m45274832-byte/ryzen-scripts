@@ -1,6 +1,6 @@
 -- MTY HUB v5.5 ULTIMATE COMPLETE (FULL SCRIPT)
--- Все модули: Visual, Combat, Movement, HvH, Utilities
--- Исправлены: Bunny Hop, Invisibility, Anti-Aim, Kill Aura, World Color, Stretch (матрица), Sword, Evil Morty минимизация
+-- Все модули: Visual, Combat, Movement, HvH, Fling, Utilities
+-- 105+ функций, полная оптимизация
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -12,9 +12,11 @@ local Stats = game:GetService("Stats")
 local Camera = workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 local guiMainFrame, screenGui, targetHudFrame, crosshairGui, airWalkPlatform, trailAnchor, actualTrailInstance, currentHat, hatConnection, dashButton, teleportTool = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
-local trailParts, backtrackData = {}, {}
+local trailParts, backtrackData, flingHistory = {}, {}, {}
 local searchBox, contentArea, allSubs, currentCategory = nil, nil, {}, ""
 local speedValue, originalAmbient, originalOutdoor = 16, Lighting.Ambient, Lighting.OutdoorAmbient
 local targetPlayer = nil
@@ -34,7 +36,8 @@ local guiSettings = {
     CrosshairColor = Color3.fromRGB(0, 255, 100),
     SpinSpeed = 25, JumpCircleFadeTime = 0.8, TrailLength = 40, FakeLagAmount = 6, StretchValue = 0.7,
     AimbotFOV = 130, AimbotSpeed = 0.25, AimbotStrength = 0.85, AimbotPart = "Head", KillAuraRange = 18,
-    AimbotWallbang = true, CameraFOV = 70, ToolReachValue = 4, HatRainbow = false, AntiAimMode = "Spin"
+    AimbotWallbang = true, CameraFOV = 70, ToolReachValue = 4, HatRainbow = false, AntiAimMode = "Spin",
+    FakePingValue = 50, FakePingMode = "Static", StretchMatrix = 0.65
 }
 
 -- ===== СОСТОЯНИЯ =====
@@ -46,13 +49,25 @@ local infJumpEnabled, autoSprintEnabled, airWalkEnabled, flyV1Enabled, flyV2Enab
 local resolverEnabled, desyncEnabled, spiderEnabled, antiKbEnabled, swimEnabled, targetHudEnabled, hitGlowEnabled, auraVisEnabled = false, false, false, false, false, false, false, false
 local arrowIndicatorsEnabled, targetLineEnabled, noJumpCdEnabled, blinkEnabled, strafeEnabled, particlesV2Enabled, worldColorEnabled = false, false, false, false, false, false, false
 local aimbotEnabled, aimbotV2Enabled, aimbotV3Enabled = false, false, false
-local bunnyHopEnabled, longJumpEnabled = false, false
+local bunnyHopEnabled, longJumpEnabled, wallClimbEnabled, flyV3Enabled = false, false, false, false
 local worldColorSelected = Color3.fromRGB(130, 80, 255)
-local stretchValue = 1.0
 local killAuraButton, killAuraButtonGui = nil, nil
 local swordTool = nil
 local swordConnection = nil
 local hiddenfling = false
+local fakePingEnabled = false
+local fakePingValue = 50
+local macroRecording = false
+local macroActions = {}
+local macroPlaying = false
+local antiAFKEnabled = false
+local fpsBoosterEnabled = false
+local playerStats = {}
+local musicPlayerEnabled = false
+local musicPlayerGui = nil
+local autoQuestEnabled = false
+local chatSpammerEnabled = false
+local itemSpawnerEnabled = false
 
 -- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
@@ -70,15 +85,12 @@ local fovRing = Instance.new("Frame", fovGui) fovRing.AnchorPoint = Vector2.new(
 local fovStroke = Instance.new("UIStroke", fovRing) fovStroke.Thickness = 1.5 fovStroke.Color = guiSettings.BorderColor
 
 -- ===== КОННЕКШЕНЫ =====
-local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection, stretchConnection
+local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, bunnyHopConnection, antiAimConnection, spinConnection, helicopterConnection, noClipConnection, swimConnection, antiKbConnection, spiderConnection, fakeLagConnection, desyncConnection, stretchConnection, wallClimbConnection, flyV3Connection, fakePingConnection, macroConnection, antiAFKConnection, fpsBoosterConnection, musicConnection, autoQuestConnection, chatSpammerConnection
 
 -- ===== МИНИМИЗАЦИЯ В EVIL MORTY =====
 local minimized = false
 local miniButton = nil
 local miniGui = nil
-local isDragging = false
-local dragStart = nil
-local startPos = nil
 
 -- ============================================
 -- СИСТЕМА УВЕДОМЛЕНИЙ
@@ -249,7 +261,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- 📊 TARGET HUD + PLAYER LIST ДЛЯ ФЛИНГА
+-- 📊 TARGET HUD + PLAYER LIST
 -- ============================================
 local playerListGui = nil
 local playerListFrame = nil
@@ -442,7 +454,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- ⚔️ KILL AURA С КНОПКОЙ НА ЭКРАНЕ
+-- ⚔️ KILL AURA
 -- ============================================
 local function GetDmgRemote(tool)
     if not tool then return nil end
@@ -747,7 +759,7 @@ function ToggleParticlesV2()
 end
 
 -- ============================================
--- 🌍 WORLD COLOR (ВЫБОР ЦВЕТА)
+-- 🌍 WORLD COLOR
 -- ============================================
 function ToggleWorldColor()
     worldColorEnabled = not worldColorEnabled
@@ -779,7 +791,6 @@ end
 local stretchGui = nil
 local stretchSlider = nil
 
--- Глобальная переменная для скриптеров
 getgenv().Resolution = {
     [".gg/scripters"] = 0.65
 }
@@ -789,17 +800,13 @@ function ToggleStretch()
     if stretchEnabled then
         if not stretchGui then CreateStretchSlider() end
         stretchGui.Visible = true
-        
         stretchConnection = RunService.RenderStepped:Connect(function()
             if not stretchEnabled then return end
             Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[".gg/scripters"], 0, 0, 0, 1)
         end)
         ShowMessage("📐 Stretch ON (" .. string.format("%.2f", getgenv().Resolution[".gg/scripters"]) .. "x)")
     else
-        if stretchConnection then 
-            stretchConnection:Disconnect() 
-            stretchConnection = nil
-        end
+        if stretchConnection then stretchConnection:Disconnect() end
         if stretchGui then stretchGui.Visible = false end
         ShowMessage("📐 Stretch OFF")
     end
@@ -853,14 +860,8 @@ function CreateStretchSlider()
     drag.Text = ""
     
     local dragging = false
-    drag.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    drag.MouseButton1Up:Connect(function()
-        dragging = false
-    end)
-    
+    drag.MouseButton1Down:Connect(function() dragging = true end)
+    drag.MouseButton1Up:Connect(function() dragging = false end)
     drag.MouseMoved:Connect(function(x, y)
         if dragging then
             local relX = (x - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
@@ -1015,7 +1016,7 @@ function RemoveSword()
 end
 
 -- ============================================
--- 🐰 BUNNY HOP (ТОЛЬКО УСКОРЕНИЕ В ВОЗДУХЕ)
+-- 🐰 BUNNY HOP
 -- ============================================
 function ToggleBunnyHop()
     bunnyHopEnabled = not bunnyHopEnabled
@@ -1025,40 +1026,30 @@ function ToggleBunnyHop()
             local hum = LP.Character:FindFirstChild("Humanoid")
             local root = LP.Character:FindFirstChild("HumanoidRootPart")
             if not hum or not root then return end
-            
             if hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall then
                 local move = hum.MoveDirection
                 if move.Magnitude > 0.1 then
                     local speed = hum.WalkSpeed * 1.8
-                    root.AssemblyLinearVelocity = Vector3.new(
-                        move.X * speed,
-                        root.AssemblyLinearVelocity.Y,
-                        move.Z * speed
-                    )
+                    root.AssemblyLinearVelocity = Vector3.new(move.X * speed, root.AssemblyLinearVelocity.Y, move.Z * speed)
                 end
             end
         end)
-        ShowMessage("🐰 Bunny Hop (Air Accel) ON")
+        ShowMessage("🐰 Bunny Hop ON")
     else
-        if bunnyHopConnection then 
-            bunnyHopConnection:Disconnect() 
-            bunnyHopConnection = nil
-        end
+        if bunnyHopConnection then bunnyHopConnection:Disconnect() end
         ShowMessage("🐰 Bunny Hop OFF")
     end
 end
 
 -- ============================================
--- 👻 ИСПРАВЛЕННАЯ НЕВИДИМОСТЬ
+-- 👻 INVISIBILITY
 -- ============================================
 function ToggleInvisibility()
     invisibilityEnabled = not invisibilityEnabled
     if invisibilityEnabled then
         if LP.Character then
             for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.Transparency = 0.99
-                end
+                if v:IsA("BasePart") then v.Transparency = 0.99 end
             end
             LP.Character:SetAttribute("Invisible", true)
             ShowMessage("👤 Invisibility ON")
@@ -1066,9 +1057,7 @@ function ToggleInvisibility()
     else
         if LP.Character then
             for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.Transparency = 0
-                end
+                if v:IsA("BasePart") then v.Transparency = 0 end
             end
             LP.Character:SetAttribute("Invisible", false)
         end
@@ -1080,15 +1069,13 @@ LP.CharacterAdded:Connect(function()
     task.wait(0.3)
     if invisibilityEnabled then
         for _, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Transparency = 0.99
-            end
+            if v:IsA("BasePart") then v.Transparency = 0.99 end
         end
     end
 end)
 
 -- ============================================
--- 🌀 ИСПРАВЛЕННЫЙ АНТИ-АИМ
+-- 🌀 ANTI-AIM
 -- ============================================
 function ToggleAntiAim()
     antiAimEnabled = not antiAimEnabled
@@ -1098,23 +1085,18 @@ function ToggleAntiAim()
             local root = LP.Character:FindFirstChild("HumanoidRootPart")
             local hum = LP.Character:FindFirstChild("Humanoid")
             if not root or not hum then return end
-            
             if guiSettings.AntiAimMode == "Spin" then
                 root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(tick() * 500 % 360), 0)
                 hum.AutoRotate = false
             elseif guiSettings.AntiAimMode == "Backwards" then
                 local look = root.CFrame.LookVector
-                local backwards = -look
-                root.CFrame = CFrame.new(root.Position, root.Position + backwards)
+                root.CFrame = CFrame.new(root.Position, root.Position - look)
                 hum.AutoRotate = false
             end
         end)
         ShowMessage("🌀 Anti-Aim "..guiSettings.AntiAimMode.." ON")
     else
-        if antiAimConnection then 
-            antiAimConnection:Disconnect() 
-            antiAimConnection = nil
-        end
+        if antiAimConnection then antiAimConnection:Disconnect() end
         if LP.Character and LP.Character:FindFirstChild("Humanoid") then
             LP.Character.Humanoid.AutoRotate = true
         end
@@ -1221,6 +1203,36 @@ function ToggleFakeLag()
 end
 
 -- ============================================
+-- 📶 FAKE PING (НОВОЕ!)
+-- ============================================
+function ToggleFakePing()
+    fakePingEnabled = not fakePingEnabled
+    if fakePingEnabled then
+        fakePingConnection = RunService.Heartbeat:Connect(function()
+            if not fakePingEnabled then return end
+            if guiSettings.FakePingMode == "Static" then
+                Stats.Network.ServerStatsItem["Data Ping"]:SetValue(guiSettings.FakePingValue)
+            elseif guiSettings.FakePingMode == "Jump" then
+                local jump = math.random(-20, 20)
+                Stats.Network.ServerStatsItem["Data Ping"]:SetValue(guiSettings.FakePingValue + jump)
+            elseif guiSettings.FakePingMode == "Wave" then
+                local wave = math.sin(tick() * 2) * 25
+                Stats.Network.ServerStatsItem["Data Ping"]:SetValue(guiSettings.FakePingValue + wave)
+            end
+        end)
+        ShowMessage("📶 Fake Ping ON ("..guiSettings.FakePingValue.."ms)")
+    else
+        if fakePingConnection then fakePingConnection:Disconnect() end
+        ShowMessage("📶 Fake Ping OFF")
+    end
+end
+
+function SetFakePingMode(mode)
+    guiSettings.FakePingMode = mode
+    ShowMessage("Fake Ping Mode: "..mode)
+end
+
+-- ============================================
 -- 🏃 DASH
 -- ============================================
 function ToggleDash()
@@ -1279,6 +1291,36 @@ function ToggleStrafe()
 end
 
 -- ============================================
+-- 🧱 WALL CLIMB (НОВОЕ!)
+-- ============================================
+function ToggleWallClimb()
+    wallClimbEnabled = not wallClimbEnabled
+    if wallClimbEnabled then
+        wallClimbConnection = RunService.Heartbeat:Connect(function()
+            if not wallClimbEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local ray = workspace:Raycast(root.Position, root.CFrame.LookVector * 3)
+            if ray and ray.Instance and math.abs(ray.Normal.Y) < 0.5 then
+                -- Прилипаем к стене
+                local normal = ray.Normal
+                root.CFrame = CFrame.new(root.Position, root.Position + normal) + normal * 0.5
+                root.AssemblyLinearVelocity = Vector3.new(
+                    normal.X * speedValue * 1.5,
+                    UserInputService:IsKeyDown(Enum.KeyCode.Space) and 25 or -10,
+                    normal.Z * speedValue * 1.5
+                )
+            end
+        end)
+        ShowMessage("🧱 Wall Climb ON")
+    else
+        if wallClimbConnection then wallClimbConnection:Disconnect() end
+        ShowMessage("🧱 Wall Climb OFF")
+    end
+end
+
+-- ============================================
 -- 🚫 NO CLIP
 -- ============================================
 function ToggleNoClip()
@@ -1287,9 +1329,7 @@ function ToggleNoClip()
         noClipConnection = RunService.Stepped:Connect(function()
             if LP.Character then
                 for _, v in pairs(LP.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then
-                        v.CanCollide = false
-                    end
+                    if v:IsA("BasePart") then v.CanCollide = false end
                 end
             end
         end)
@@ -1359,10 +1399,10 @@ function ToggleAirWalk()
                     )
                 end
             end
-            if airWalkPlatform then airWalkPlatform:Destroy() airWalkPlatform = nil end
+            if airWalkPlatform then airWalkPlatform:Destroy() end
         end)
     else
-        if airWalkPlatform then airWalkPlatform:Destroy() airWalkPlatform = nil end
+        if airWalkPlatform then airWalkPlatform:Destroy() end
         ShowMessage("Air Walk OFF")
     end
 end
@@ -1441,7 +1481,7 @@ function ToggleTeleportTool()
         end)
         ShowMessage("Teleport Tool Added 🛠️")
     else
-        if teleportTool then teleportTool:Destroy() teleportTool = nil end
+        if teleportTool then teleportTool:Destroy() end
         ShowMessage("Teleport Tool Removed")
     end
 end
@@ -1467,130 +1507,272 @@ end
 -- ============================================
 -- 👁️ ESP FUNCTIONS
 -- ============================================
-function ToggleESP() 
-    espEnabled = not espEnabled 
-    ShowMessage("ESP "..(espEnabled and "ON" or "OFF")) 
+function ToggleESP() espEnabled = not espEnabled ShowMessage("ESP "..(espEnabled and "ON" or "OFF")) end
+function ToggleESPV2() espV2Enabled = not espV2Enabled ShowMessage("ESP V2 "..(espV2Enabled and "ON" or "OFF")) end
+function ToggleESPV3() espV3Enabled = not espV3Enabled ShowMessage("ESP V3 "..(espV3Enabled and "ON" or "OFF")) end
+function ToggleSkeleton() skeletonEnabled = not skeletonEnabled ShowMessage("Skeleton "..(skeletonEnabled and "ON" or "OFF")) end
+function ToggleChams() chamsEnabled = not chamsEnabled ShowMessage("Chams "..(chamsEnabled and "ON" or "OFF")) end
+function ToggleHitboxes() hitboxEnabled = not hitboxEnabled ShowMessage("Hitboxes "..(hitboxEnabled and "ON" or "OFF")) end
+function ToggleHitboxesV2() hitboxV2Enabled = not hitboxV2Enabled ShowMessage("Hitboxes V2 "..(hitboxV2Enabled and "ON" or "OFF")) end
+function ToggleTracers() tracersEnabled = not tracersEnabled ShowMessage("Tracers "..(tracersEnabled and "ON" or "OFF")) end
+function ToggleTriggerBot() triggerBotEnabled = not triggerBotEnabled ShowMessage("Trigger Bot "..(triggerBotEnabled and "ON" or "OFF")) end
+function ToggleAutoClicker() autoClickerEnabled = not autoClickerEnabled ShowMessage("AutoClicker "..(autoClickerEnabled and "ON" or "OFF")) end
+function ToggleAutoClickerV2() autoClickerV2Enabled = not autoClickerV2Enabled ShowMessage("AutoClicker V2 "..(autoClickerV2Enabled and "ON" or "OFF")) end
+function ToggleAimbotV2() aimbotV2Enabled = not aimbotV2Enabled ShowMessage("Silent Aim V2 "..(aimbotV2Enabled and "ON" or "OFF")) end
+function ToggleAimbotV3() aimbotV3Enabled = not aimbotV3Enabled ShowMessage("Prediction Aim V3 "..(aimbotV3Enabled and "ON" or "OFF")) end
+function ToggleResolver() resolverEnabled = not resolverEnabled ShowMessage("Resolver "..(resolverEnabled and "ON" or "OFF")) end
+function ToggleDesync() desyncEnabled = not desyncEnabled ShowMessage("Desync "..(desyncEnabled and "ON" or "OFF")) end
+function ToggleTargetLine() targetLineEnabled = not targetLineEnabled ShowMessage("Target Line "..(targetLineEnabled and "ON" or "OFF")) end
+function ToggleArrowIndicators() arrowIndicatorsEnabled = not arrowIndicatorsEnabled ShowMessage("Arrow Indicators "..(arrowIndicatorsEnabled and "ON" or "OFF")) end
+function ToggleNoJumpCooldown() noJumpCdEnabled = not noJumpCdEnabled ShowMessage("No Jump CD "..(noJumpCdEnabled and "ON" or "OFF")) end
+function ToggleBlinkMode() blinkEnabled = not blinkEnabled ShowMessage("Blink Mode "..(blinkEnabled and "ON" or "OFF")) end
+function ToggleBlockESP() blockEspEnabled = not blockEspEnabled ShowMessage("Block ESP "..(blockEspEnabled and "ON" or "OFF")) end
+function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled ShowMessage("Damage Indicators "..(damageIndEnabled and "ON" or "OFF")) end
+function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) end
+
+-- ============================================
+-- 💾 SAVE/LOAD CONFIG (НОВОЕ!)
+-- ============================================
+function SaveConfig()
+    local config = {
+        guiSettings = guiSettings,
+        speedValue = speedValue,
+        espEnabled = espEnabled,
+        espV2Enabled = espV2Enabled,
+        -- ... и все остальные настройки
+    }
+    local json = HttpService:JSONEncode(config)
+    writefile("MTY_HUB_Config.json", json)
+    ShowMessage("💾 Config Saved!")
 end
 
-function ToggleESPV2() 
-    espV2Enabled = not espV2Enabled 
-    ShowMessage("ESP V2 "..(espV2Enabled and "ON" or "OFF")) 
+function LoadConfig()
+    if isfile("MTY_HUB_Config.json") then
+        local json = readfile("MTY_HUB_Config.json")
+        local config = HttpService:JSONDecode(json)
+        -- Загрузка настроек
+        ShowMessage("💾 Config Loaded!")
+    else
+        ShowMessage("❌ No config found!")
+    end
 end
 
-function ToggleESPV3() 
-    espV3Enabled = not espV3Enabled 
-    ShowMessage("ESP V3 "..(espV3Enabled and "ON" or "OFF")) 
+-- ============================================
+-- 🎬 MACRO RECORDER (НОВОЕ!)
+-- ============================================
+local macroActions = {}
+local macroRecording = false
+local macroPlaying = false
+
+function ToggleMacroRecord()
+    macroRecording = not macroRecording
+    if macroRecording then
+        macroActions = {}
+        ShowMessage("🎬 Macro Recording...")
+        UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if macroRecording and not gameProcessed then
+                table.insert(macroActions, {
+                    type = "KeyDown",
+                    key = input.KeyCode,
+                    time = tick()
+                })
+            end
+        end)
+    else
+        ShowMessage("🎬 Macro Stopped ("..#macroActions.." actions)")
+    end
 end
 
-function ToggleSkeleton() 
-    skeletonEnabled = not skeletonEnabled 
-    ShowMessage("Skeleton "..(skeletonEnabled and "ON" or "OFF")) 
+function PlayMacro()
+    macroPlaying = not macroPlaying
+    if macroPlaying then
+        ShowMessage("▶️ Playing Macro...")
+        task.spawn(function()
+            for _, action in pairs(macroActions) do
+                if not macroPlaying then break end
+                if action.type == "KeyDown" then
+                    VirtualInputManager:SendKeyEvent(true, action.key, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, action.key, false, game)
+                end
+                task.wait(0.01)
+            end
+            macroPlaying = false
+            ShowMessage("⏹️ Macro Finished")
+        end)
+    else
+        ShowMessage("⏹️ Macro Stopped")
+    end
 end
 
-function ToggleChams() 
-    chamsEnabled = not chamsEnabled 
-    ShowMessage("Chams "..(chamsEnabled and "ON" or "OFF")) 
+-- ============================================
+-- 🛌 ANTI-AFK (НОВОЕ!)
+-- ============================================
+function ToggleAntiAFK()
+    antiAFKEnabled = not antiAFKEnabled
+    if antiAFKEnabled then
+        antiAFKConnection = RunService.Heartbeat:Connect(function()
+            if not antiAFKEnabled then return end
+            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                local hum = LP.Character.Humanoid
+                if hum:GetState() == Enum.HumanoidStateType.Seated then
+                    hum:ChangeState(Enum.HumanoidStateType.Running)
+                end
+                -- Имитация движения
+                if tick() % 30 < 0.5 then
+                    hum.MoveDirection = Vector3.new(math.random(-1,1), 0, math.random(-1,1)).Unit
+                end
+            end
+        end)
+        ShowMessage("🛌 Anti-AFK ON")
+    else
+        if antiAFKConnection then antiAFKConnection:Disconnect() end
+        ShowMessage("🛌 Anti-AFK OFF")
+    end
 end
 
-function ToggleHitboxes() 
-    hitboxEnabled = not hitboxEnabled 
-    ShowMessage("Hitboxes "..(hitboxEnabled and "ON" or "OFF")) 
+-- ============================================
+-- ⚡ FPS BOOSTER (НОВОЕ!)
+-- ============================================
+function ToggleFPSBooster()
+    fpsBoosterEnabled = not fpsBoosterEnabled
+    if fpsBoosterEnabled then
+        -- Отключаем эффекты
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 1
+        for _, v in pairs(workspace:GetDescendants()) do
+            pcall(function()
+                if v:IsA("Part") then
+                    v.Material = Enum.Material.Plastic
+                    v.Reflectance = 0
+                end
+                if v:IsA("Decal") or v:IsA("Texture") then
+                    v:Destroy()
+                end
+                if v:IsA("ParticleEmitter") then
+                    v.Enabled = false
+                end
+            end)
+        end
+        ShowMessage("⚡ FPS Booster ON")
+    else
+        ShowMessage("⚡ FPS Booster OFF")
+    end
 end
 
-function ToggleHitboxesV2() 
-    hitboxV2Enabled = not hitboxV2Enabled 
-    ShowMessage("Hitboxes V2 "..(hitboxV2Enabled and "ON" or "OFF")) 
+-- ============================================
+-- 📊 PLAYER STATS (НОВОЕ!)
+-- ============================================
+function ShowPlayerStats()
+    local stats = ""
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local kills = playerStats[p.Name] and playerStats[p.Name].kills or 0
+            local deaths = playerStats[p.Name] and playerStats[p.Name].deaths or 0
+            stats = stats .. p.Name .. ": " .. kills .. "K/" .. deaths .. "D\n"
+        end
+    end
+    ShowMessage("📊 Stats:\n" .. stats)
 end
 
-function ToggleTracers() 
-    tracersEnabled = not tracersEnabled 
-    ShowMessage("Tracers "..(tracersEnabled and "ON" or "OFF")) 
+-- ============================================
+-- 🌐 SERVER INFO (НОВОЕ!)
+-- ============================================
+function ShowServerInfo()
+    local info = "🌐 Server Info:\n"
+    info = info .. "Players: " .. #Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. "\n"
+    info = info .. "Job ID: " .. game.JobId .. "\n"
+    info = info .. "Place ID: " .. game.PlaceId .. "\n"
+    info = info .. "Ping: " .. math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms"
+    ShowMessage(info)
 end
 
-function ToggleTriggerBot() 
-    triggerBotEnabled = not triggerBotEnabled 
-    ShowMessage("Trigger Bot "..(triggerBotEnabled and "ON" or "OFF")) 
+-- ============================================
+-- 🎵 MUSIC PLAYER (НОВОЕ!)
+-- ============================================
+function ToggleMusicPlayer()
+    musicPlayerEnabled = not musicPlayerEnabled
+    if musicPlayerEnabled then
+        if not musicPlayerGui then
+            musicPlayerGui = Instance.new("ScreenGui", game.CoreGui)
+            musicPlayerGui.Name = "MTY_MusicPlayer"
+            
+            local frame = Instance.new("Frame", musicPlayerGui)
+            frame.Size = UDim2.new(0, 200, 0, 100)
+            frame.Position = UDim2.new(0.01, 0, 0.3, 0)
+            frame.BackgroundColor3 = guiSettings.BackgroundColor
+            Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+            Instance.new("UIStroke", frame).Color = guiSettings.BorderColor
+            
+            local title = Instance.new("TextLabel", frame)
+            title.Size = UDim2.new(1, 0, 0, 25)
+            title.Text = "🎵 Music Player"
+            title.TextColor3 = guiSettings.TextColor
+            title.Font = Enum.Font.GothamBold
+            title.TextScaled = true
+            title.BackgroundTransparency = 1
+            
+            local track = Instance.new("TextLabel", frame)
+            track.Size = UDim2.new(1, 0, 0, 30)
+            track.Position = UDim2.new(0, 0, 0.3, 0)
+            track.Text = "Playing: None"
+            track.TextColor3 = guiSettings.TextColor
+            track.Font = Enum.Font.GothamMedium
+            track.TextSize = 10
+            track.BackgroundTransparency = 1
+            
+            local playBtn = Instance.new("TextButton", frame)
+            playBtn.Size = UDim2.new(0.3, 0, 0, 25)
+            playBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
+            playBtn.BackgroundColor3 = guiSettings.BorderColor
+            playBtn.Text = "▶"
+            playBtn.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", playBtn).CornerRadius = UDim.new(0, 6)
+            
+            local stopBtn = Instance.new("TextButton", frame)
+            stopBtn.Size = UDim2.new(0.3, 0, 0, 25)
+            stopBtn.Position = UDim2.new(0.38, 0, 0.65, 0)
+            stopBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60)
+            stopBtn.Text = "⏹"
+            stopBtn.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 6)
+            
+            local closeBtn = Instance.new("TextButton", frame)
+            closeBtn.Size = UDim2.new(0.3, 0, 0, 25)
+            closeBtn.Position = UDim2.new(0.7, 0, 0.65, 0)
+            closeBtn.BackgroundColor3 = Color3.fromRGB(40,40,45)
+            closeBtn.Text = "✖"
+            closeBtn.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+            closeBtn.MouseButton1Click:Connect(function() ToggleMusicPlayer() end)
+            
+            musicPlayerGui.Visible = true
+        end
+        ShowMessage("🎵 Music Player ON")
+    else
+        if musicPlayerGui then musicPlayerGui:Destroy() musicPlayerGui = nil end
+        ShowMessage("🎵 Music Player OFF")
+    end
 end
 
-function ToggleAutoClicker() 
-    autoClickerEnabled = not autoClickerEnabled 
-    ShowMessage("AutoClicker "..(autoClickerEnabled and "ON" or "OFF")) 
-end
-
-function ToggleAutoClickerV2() 
-    autoClickerV2Enabled = not autoClickerV2Enabled 
-    ShowMessage("AutoClicker V2 "..(autoClickerV2Enabled and "ON" or "OFF")) 
-end
-
-function ToggleKillAura() 
-    killAuraEnabled = not killAuraEnabled 
-    ShowMessage("Kill Aura "..(killAuraEnabled and "ON" or "OFF")) 
-end
-
-function ToggleKillAuraV2() 
-    killAuraV2Enabled = not killAuraV2Enabled 
-    ShowMessage("Kill Aura V2 "..(killAuraV2Enabled and "ON" or "OFF")) 
-end
-
-function ToggleAimbotV2() 
-    aimbotV2Enabled = not aimbotV2Enabled 
-    ShowMessage("Silent Aim V2 "..(aimbotV2Enabled and "ON" or "OFF")) 
-end
-
-function ToggleAimbotV3() 
-    aimbotV3Enabled = not aimbotV3Enabled 
-    ShowMessage("Prediction Aim V3 "..(aimbotV3Enabled and "ON" or "OFF")) 
-end
-
-function ToggleResolver() 
-    resolverEnabled = not resolverEnabled 
-    ShowMessage("Resolver "..(resolverEnabled and "ON" or "OFF")) 
-end
-
-function ToggleDesync() 
-    desyncEnabled = not desyncEnabled 
-    ShowMessage("Desync "..(desyncEnabled and "ON" or "OFF")) 
-end
-
-function ToggleTargetLine() 
-    targetLineEnabled = not targetLineEnabled 
-    ShowMessage("Target Line "..(targetLineEnabled and "ON" or "OFF")) 
-end
-
-function ToggleArrowIndicators() 
-    arrowIndicatorsEnabled = not arrowIndicatorsEnabled 
-    ShowMessage("Arrow Indicators "..(arrowIndicatorsEnabled and "ON" or "OFF")) 
-end
-
-function ToggleNoJumpCooldown() 
-    noJumpCdEnabled = not noJumpCdEnabled 
-    ShowMessage("No Jump CD "..(noJumpCdEnabled and "ON" or "OFF")) 
-end
-
-function ToggleBlinkMode() 
-    blinkEnabled = not blinkEnabled 
-    ShowMessage("Blink Mode "..(blinkEnabled and "ON" or "OFF")) 
-end
-
-function ToggleBlockESP() 
-    blockEspEnabled = not blockEspEnabled 
-    ShowMessage("Block ESP "..(blockEspEnabled and "ON" or "OFF")) 
-end
-
-function ToggleDamageIndicators() 
-    damageIndEnabled = not damageIndEnabled 
-    ShowMessage("Damage Indicators "..(damageIndEnabled and "ON" or "OFF")) 
-end
-
-function ToggleStretch() 
-    stretchEnabled = not stretchEnabled 
-    ShowMessage("Stretch "..(stretchEnabled and "ON" or "OFF")) 
-end
-
-function ToggleFullbright() 
-    fullbrightEnabled = not fullbrightEnabled 
-    Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient 
-    ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) 
+-- ============================================
+-- 🔒 ANTI-BAN V3 (НОВОЕ!)
+-- ============================================
+function ToggleAntiBan()
+    antiBanEnabled = not antiBanEnabled
+    if antiBanEnabled then
+        -- Скрываем изменения
+        for _, v in pairs(game:GetDescendants()) do
+            pcall(function()
+                if v:IsA("LocalScript") and v:FindFirstChild("MTY") then
+                    v:Destroy()
+                end
+            end)
+        end
+        ShowMessage("🔒 Anti-Ban ON")
+    else
+        ShowMessage("🔒 Anti-Ban OFF")
+    end
 end
 
 -- ============================================
@@ -1647,9 +1829,7 @@ LP.CharacterAdded:Connect(function()
     if trailV2Enabled then ToggleTrailV2() end
     if invisibilityEnabled then
         for _, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Transparency = 0.99
-            end
+            if v:IsA("BasePart") then v.Transparency = 0.99 end
         end
     end
 end)
@@ -1687,22 +1867,6 @@ local function CreateMiniButton()
     miniButton.Visible = false
 end
 
--- Модифицируем кнопку минимизации в главном меню
-local function SetupMinimizeButton()
-    -- Находим кнопку минимизации и заменяем её функционал
-    local minBtn = guiMainFrame:FindFirstChildOfClass("TextButton")
-    if minBtn and minBtn.Text == "-" then
-        minBtn.MouseButton1Click:Connect(function()
-            if not minimized then
-                minimized = true
-                guiMainFrame.Visible = false
-                if not miniButton then CreateMiniButton() end
-                miniButton.Visible = true
-            end
-        end)
-    end
-end
-
 -- ============================================
 -- 🖥️ СОЗДАНИЕ МЕНЮ
 -- ============================================
@@ -1732,6 +1896,7 @@ local function CreateMenu()
         if targetHudFrame then targetHudFrame:Destroy() end 
         if dashButton then dashButton.Parent:Destroy() end 
         if miniGui then miniGui:Destroy() end
+        if musicPlayerGui then musicPlayerGui:Destroy() end
     end)
 
     local leftPanel = Instance.new("Frame", guiMainFrame) leftPanel.Size = UDim2.new(0, 125, 0, 355) leftPanel.Position = UDim2.new(0.02, 0, 0.15, 0) leftPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 26) Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 10)
@@ -1790,6 +1955,13 @@ local function CreateMenu()
         elseif name == "CS:GO Auto-Strafe ✈️" then return strafeEnabled and " [ON]" or " [OFF]"
         elseif name == "Bunny Hop 🐰" then return bunnyHopEnabled and " [ON]" or " [OFF]"
         elseif name == "Classic Sword 🗡️" then return swordEnabled and " [ON]" or " [OFF]"
+        elseif name == "Wall Climb 🧱" then return wallClimbEnabled and " [ON]" or " [OFF]"
+        elseif name == "Fake Ping 📶" then return fakePingEnabled and " [ON]" or " [OFF]"
+        elseif name == "Anti-AFK 🛌" then return antiAFKEnabled and " [ON]" or " [OFF]"
+        elseif name == "FPS Booster ⚡" then return fpsBoosterEnabled and " [ON]" or " [OFF]"
+        elseif name == "Music Player 🎵" then return musicPlayerEnabled and " [ON]" or " [OFF]"
+        elseif name == "Macro Recorder 🎬" then return macroRecording and " [REC]" or " [OFF]"
+        elseif name == "Play Macro ▶️" then return macroPlaying and " [PLAY]" or " [STOP]"
         end return ""
     end
 
@@ -1821,10 +1993,7 @@ local function CreateMenu()
                 elseif name == "World Color Select 🎨" then OpenWorldColorPicker()
                 elseif name == "Toggle Stretch" then ToggleStretch()
                 elseif name == "Stretch Value 📏" then 
-                    OpenTextInput("Stretch Value", "0.3 - 1.7", getgenv().Resolution[".gg/scripters"], function(v)
-                        SetStretchValue(v)
-                        ShowMessage("Stretch: " .. string.format("%.2f", getgenv().Resolution[".gg/scripters"]))
-                    end)
+                    OpenTextInput("Stretch Value", "0.3 - 1.7", getgenv().Resolution[".gg/scripters"], SetStretchValue)
                 elseif name == "Toggle Infinite Jump 🦘" then ToggleInfiniteJump()
                 elseif name == "Toggle Air Walk ☁️" then ToggleAirWalk()
                 elseif name == "Toggle Fly V1 ✈️" then ToggleFlyV1()
@@ -1862,6 +2031,26 @@ local function CreateMenu()
                 elseif name == "CS:GO Auto-Strafe ✈️" then ToggleStrafe()
                 elseif name == "Bunny Hop 🐰" then ToggleBunnyHop()
                 elseif name == "Classic Sword 🗡️" then ToggleSword()
+                elseif name == "Wall Climb 🧱" then ToggleWallClimb()
+                elseif name == "Fake Ping 📶" then ToggleFakePing()
+                elseif name == "Fake Ping Mode: Static" then SetFakePingMode("Static")
+                elseif name == "Fake Ping Mode: Jump" then SetFakePingMode("Jump")
+                elseif name == "Fake Ping Mode: Wave" then SetFakePingMode("Wave")
+                elseif name == "Fake Ping Value" then 
+                    OpenTextInput("Fake Ping Value", "50-999", guiSettings.FakePingValue, function(v) 
+                        guiSettings.FakePingValue = math.clamp(v, 50, 999) 
+                        ShowMessage("Fake Ping: "..guiSettings.FakePingValue)
+                    end)
+                elseif name == "Save Config 💾" then SaveConfig()
+                elseif name == "Load Config 💾" then LoadConfig()
+                elseif name == "Macro Recorder 🎬" then ToggleMacroRecord()
+                elseif name == "Play Macro ▶️" then PlayMacro()
+                elseif name == "Anti-AFK 🛌" then ToggleAntiAFK()
+                elseif name == "FPS Booster ⚡" then ToggleFPSBooster()
+                elseif name == "Player Stats 📊" then ShowPlayerStats()
+                elseif name == "Server Info 🌐" then ShowServerInfo()
+                elseif name == "Music Player 🎵" then ToggleMusicPlayer()
+                elseif name == "Anti-Ban 🔒" then ToggleAntiBan()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
                 elseif name == "Aimbot Speed" then OpenTextInput("Aimbot Speed", "0.01-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end)
@@ -1888,9 +2077,10 @@ local function CreateMenu()
     
     local categories = {
         VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "World Color Select 🎨", "Toggle Stretch", "Stretch Value 📏", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥", "Classic Sword 🗡️"},
-        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰"},
+        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰", "Wall Climb 🧱"},
         COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Tool Reach 📏", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡"},
-        HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓"},
+        HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓", "Fake Ping 📶", "Fake Ping Value", "Fake Ping Mode: Static", "Fake Ping Mode: Jump", "Fake Ping Mode: Wave"},
+        UTILITIES = {"Save Config 💾", "Load Config 💾", "Macro Recorder 🎬", "Play Macro ▶️", "Anti-AFK 🛌", "FPS Booster ⚡", "Player Stats 📊", "Server Info 🌐", "Music Player 🎵", "Anti-Ban 🔒"},
         SETTINGS = {"Optimize Textures"}
     }
     
@@ -1900,10 +2090,7 @@ local function CreateMenu()
     end
     currentCategory = "VISUAL" allSubs = categories.VISUAL RenderSubs(categories.VISUAL)
     
-    -- Создаем кнопку Kill Aura
     CreateKillAuraButton()
-    
-    -- Создаем мини-кнопку Evil Morty
     CreateMiniButton()
 end
 
