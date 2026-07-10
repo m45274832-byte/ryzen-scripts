@@ -1,6 +1,6 @@
 -- MTY HUB v5.5 ULTIMATE COMPLETE (FULL SCRIPT)
 -- Все модули: Visual, Combat, Movement, HvH, Fling, Utilities
--- 105+ функций, полная оптимизация
+-- Компактные вкладки с прокруткой
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -786,7 +786,7 @@ function OpenWorldColorPicker()
 end
 
 -- ============================================
--- 📐 STRETCH ЧЕРЕЗ МАТРИЦУ
+-- 📐 STRETCH
 -- ============================================
 local stretchGui = nil
 local stretchSlider = nil
@@ -1203,7 +1203,7 @@ function ToggleFakeLag()
 end
 
 -- ============================================
--- 📶 FAKE PING (НОВОЕ!)
+-- 📶 FAKE PING
 -- ============================================
 function ToggleFakePing()
     fakePingEnabled = not fakePingEnabled
@@ -1291,7 +1291,7 @@ function ToggleStrafe()
 end
 
 -- ============================================
--- 🧱 WALL CLIMB (НОВОЕ!)
+-- 🧱 WALL CLIMB
 -- ============================================
 function ToggleWallClimb()
     wallClimbEnabled = not wallClimbEnabled
@@ -1303,7 +1303,6 @@ function ToggleWallClimb()
             
             local ray = workspace:Raycast(root.Position, root.CFrame.LookVector * 3)
             if ray and ray.Instance and math.abs(ray.Normal.Y) < 0.5 then
-                -- Прилипаем к стене
                 local normal = ray.Normal
                 root.CFrame = CFrame.new(root.Position, root.Position + normal) + normal * 0.5
                 root.AssemblyLinearVelocity = Vector3.new(
@@ -1531,7 +1530,7 @@ function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled ShowMe
 function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) end
 
 -- ============================================
--- 💾 SAVE/LOAD CONFIG (НОВОЕ!)
+-- 💾 SAVE/LOAD CONFIG
 -- ============================================
 function SaveConfig()
     local config = {
@@ -1558,7 +1557,7 @@ function LoadConfig()
 end
 
 -- ============================================
--- 🎬 MACRO RECORDER (НОВОЕ!)
+-- 🎬 MACRO RECORDER
 -- ============================================
 local macroActions = {}
 local macroRecording = false
@@ -1606,7 +1605,7 @@ function PlayMacro()
 end
 
 -- ============================================
--- 🛌 ANTI-AFK (НОВОЕ!)
+-- 🛌 ANTI-AFK
 -- ============================================
 function ToggleAntiAFK()
     antiAFKEnabled = not antiAFKEnabled
@@ -1618,7 +1617,6 @@ function ToggleAntiAFK()
                 if hum:GetState() == Enum.HumanoidStateType.Seated then
                     hum:ChangeState(Enum.HumanoidStateType.Running)
                 end
-                -- Имитация движения
                 if tick() % 30 < 0.5 then
                     hum.MoveDirection = Vector3.new(math.random(-1,1), 0, math.random(-1,1)).Unit
                 end
@@ -1632,12 +1630,11 @@ function ToggleAntiAFK()
 end
 
 -- ============================================
--- ⚡ FPS BOOSTER (НОВОЕ!)
+-- ⚡ FPS BOOSTER
 -- ============================================
 function ToggleFPSBooster()
     fpsBoosterEnabled = not fpsBoosterEnabled
     if fpsBoosterEnabled then
-        -- Отключаем эффекты
         Lighting.GlobalShadows = false
         Lighting.Brightness = 1
         for _, v in pairs(workspace:GetDescendants()) do
@@ -1661,7 +1658,7 @@ function ToggleFPSBooster()
 end
 
 -- ============================================
--- 📊 PLAYER STATS (НОВОЕ!)
+-- 📊 PLAYER STATS
 -- ============================================
 function ShowPlayerStats()
     local stats = ""
@@ -1676,7 +1673,7 @@ function ShowPlayerStats()
 end
 
 -- ============================================
--- 🌐 SERVER INFO (НОВОЕ!)
+-- 🌐 SERVER INFO
 -- ============================================
 function ShowServerInfo()
     local info = "🌐 Server Info:\n"
@@ -1688,7 +1685,7 @@ function ShowServerInfo()
 end
 
 -- ============================================
--- 🎵 MUSIC PLAYER (НОВОЕ!)
+-- 🎵 MUSIC PLAYER
 -- ============================================
 function ToggleMusicPlayer()
     musicPlayerEnabled = not musicPlayerEnabled
@@ -1756,12 +1753,11 @@ function ToggleMusicPlayer()
 end
 
 -- ============================================
--- 🔒 ANTI-BAN V3 (НОВОЕ!)
+-- 🔒 ANTI-BAN
 -- ============================================
 function ToggleAntiBan()
     antiBanEnabled = not antiBanEnabled
     if antiBanEnabled then
-        -- Скрываем изменения
         for _, v in pairs(game:GetDescendants()) do
             pcall(function()
                 if v:IsA("LocalScript") and v:FindFirstChild("MTY") then
@@ -1868,18 +1864,57 @@ local function CreateMiniButton()
 end
 
 -- ============================================
--- 🖥️ СОЗДАНИЕ МЕНЮ
+-- 🖥️ СОЗДАНИЕ МЕНЮ (КОМПАКТНЫЕ ВКЛАДКИ)
 -- ============================================
 local function CreateMenu()
     screenGui = Instance.new("ScreenGui", game.CoreGui) screenGui.Name = "MTY_HUB_V5"
-    guiMainFrame = Instance.new("Frame", screenGui) guiMainFrame.Size = UDim2.new(0, 470, 0, 440) guiMainFrame.Position = UDim2.new(0.5, -235, 0.5, -220) guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor; guiMainFrame.Active = true; guiMainFrame.Draggable = true
-    Instance.new("UICorner", guiMainFrame).CornerRadius = UDim.new(0, 14) local stroke = Instance.new("UIStroke", guiMainFrame) stroke.Color = guiSettings.BorderColor; stroke.Thickness = 1.8
-    local title = Instance.new("TextLabel", guiMainFrame) title.Size = UDim2.new(0.5, 0, 0, 45) title.Position = UDim2.new(0.04, 0, 0.01, 0) title.BackgroundTransparency = 1 title.Text = "MTY HUB v5.5 Premium" title.TextColor3 = guiSettings.TextColor; title.TextSize = 16; title.Font = Enum.Font.GothamBold; title.TextXAlignment = Enum.TextXAlignment.Left
+    guiMainFrame = Instance.new("Frame", screenGui) 
+    guiMainFrame.Size = UDim2.new(0, 470, 0, 440) 
+    guiMainFrame.Position = UDim2.new(0.5, -235, 0.5, -220) 
+    guiMainFrame.BackgroundColor3 = guiSettings.BackgroundColor
+    guiMainFrame.Active = true
+    guiMainFrame.Draggable = true
+    Instance.new("UICorner", guiMainFrame).CornerRadius = UDim.new(0, 14) 
+    local stroke = Instance.new("UIStroke", guiMainFrame) 
+    stroke.Color = guiSettings.BorderColor
+    stroke.Thickness = 1.8
+    
+    local title = Instance.new("TextLabel", guiMainFrame) 
+    title.Size = UDim2.new(0.5, 0, 0, 45) 
+    title.Position = UDim2.new(0.04, 0, 0.01, 0) 
+    title.BackgroundTransparency = 1 
+    title.Text = "MTY HUB v5.5 Premium" 
+    title.TextColor3 = guiSettings.TextColor
+    title.TextSize = 16
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
 
-    local infoPanel = Instance.new("TextLabel", guiMainFrame) infoPanel.Size = UDim2.new(0.35, 0, 0, 30) infoPanel.Position = UDim2.new(0.35, 0, 0.02, 0) infoPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30) infoPanel.TextColor3 = guiSettings.BorderColor; infoPanel.Font = Enum.Font.GothamMedium; infoPanel.TextSize = 11; Instance.new("UICorner", infoPanel).CornerRadius = UDim.new(0, 6)
-    task.spawn(function() while screenGui.Parent do infoPanel.Text = " FPS: " .. math.floor(workspace:GetRealPhysicsFPS()) .. "  |  PING: " .. math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms " task.wait(0.5) end end)
+    local infoPanel = Instance.new("TextLabel", guiMainFrame) 
+    infoPanel.Size = UDim2.new(0.35, 0, 0, 30) 
+    infoPanel.Position = UDim2.new(0.35, 0, 0.02, 0) 
+    infoPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30) 
+    infoPanel.TextColor3 = guiSettings.BorderColor
+    infoPanel.Font = Enum.Font.GothamMedium
+    infoPanel.TextSize = 11
+    Instance.new("UICorner", infoPanel).CornerRadius = UDim.new(0, 6)
+    
+    task.spawn(function() 
+        while screenGui.Parent do 
+            local fps = math.floor(workspace:GetRealPhysicsFPS())
+            local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            infoPanel.Text = " FPS: " .. fps .. "  |  PING: " .. ping .. "ms " 
+            task.wait(0.5) 
+        end 
+    end)
 
-    local minBtn = Instance.new("TextButton", guiMainFrame) minBtn.Size = UDim2.new(0, 32, 0, 32) minBtn.Position = UDim2.new(1, -75, 0, 10) minBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35) minBtn.Text = "-" minBtn.TextColor3 = guiSettings.TextColor; minBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
+    local minBtn = Instance.new("TextButton", guiMainFrame) 
+    minBtn.Size = UDim2.new(0, 32, 0, 32) 
+    minBtn.Position = UDim2.new(1, -75, 0, 10) 
+    minBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35) 
+    minBtn.Text = "-" 
+    minBtn.TextColor3 = guiSettings.TextColor
+    minBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
     minBtn.MouseButton1Click:Connect(function()
         if not minimized then
             minimized = true
@@ -1889,7 +1924,14 @@ local function CreateMenu()
         end
     end)
     
-    local clsBtn = Instance.new("TextButton", guiMainFrame) clsBtn.Size = UDim2.new(0, 32, 0, 32) clsBtn.Position = UDim2.new(1, -38, 0, 10) clsBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60) clsBtn.Text = "X" clsBtn.TextColor3 = Color3.fromRGB(255, 255, 255) clsBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", clsBtn).CornerRadius = UDim.new(0, 8)
+    local clsBtn = Instance.new("TextButton", guiMainFrame) 
+    clsBtn.Size = UDim2.new(0, 32, 0, 32) 
+    clsBtn.Position = UDim2.new(1, -38, 0, 10) 
+    clsBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60) 
+    clsBtn.Text = "X" 
+    clsBtn.TextColor3 = Color3.fromRGB(255, 255, 255) 
+    clsBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", clsBtn).CornerRadius = UDim.new(0, 8)
     clsBtn.MouseButton1Click:Connect(function() 
         screenGui:Destroy() 
         fovGui:Destroy() 
@@ -1899,10 +1941,42 @@ local function CreateMenu()
         if musicPlayerGui then musicPlayerGui:Destroy() end
     end)
 
-    local leftPanel = Instance.new("Frame", guiMainFrame) leftPanel.Size = UDim2.new(0, 125, 0, 355) leftPanel.Position = UDim2.new(0.02, 0, 0.15, 0) leftPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 26) Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 10)
-    searchBox = Instance.new("TextBox", guiMainFrame) searchBox.Size = UDim2.new(0.68, 0, 0, 32) searchBox.Position = UDim2.new(0.3, 0, 0.15, 0) searchBox.BackgroundColor3 = Color3.fromRGB(22, 22, 26) searchBox.Text = "" searchBox.TextColor3 = guiSettings.TextColor; searchBox.PlaceholderText = "Search module..."; searchBox.Font = Enum.Font.GothamMedium; searchBox.TextSize = 12 Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 8) Instance.new("UIStroke", searchBox).Color = Color3.fromRGB(40,40,50)
-    contentArea = Instance.new("ScrollingFrame", guiMainFrame) contentArea.Size = UDim2.new(0.68, 0, 0, 275) contentArea.Position = UDim2.new(0.3, 0, 0.25, 0) contentArea.BackgroundTransparency = 1; contentArea.ScrollBarThickness = 5; contentArea.ScrollBarImageColor3 = guiSettings.BorderColor
+    -- ЛЕВАЯ ПАНЕЛЬ С КОМПАКТНЫМИ ВКЛАДКАМИ (С ПРОКРУТКОЙ)
+    local leftPanel = Instance.new("ScrollingFrame", guiMainFrame) 
+    leftPanel.Size = UDim2.new(0, 120, 0, 345) 
+    leftPanel.Position = UDim2.new(0.02, 0, 0.13, 0) 
+    leftPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 26) 
+    leftPanel.BackgroundTransparency = 0.2
+    leftPanel.ScrollBarThickness = 4
+    Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 10)
+    
+    -- КОНТЕЙНЕР ДЛЯ КНОПОК ВКЛАДОК
+    local tabsContainer = Instance.new("Frame", leftPanel)
+    tabsContainer.Size = UDim2.new(1, 0, 1, 0)
+    tabsContainer.BackgroundTransparency = 1
+    
+    -- ПОИСК
+    searchBox = Instance.new("TextBox", guiMainFrame) 
+    searchBox.Size = UDim2.new(0.68, 0, 0, 32) 
+    searchBox.Position = UDim2.new(0.28, 0, 0.15, 0) 
+    searchBox.BackgroundColor3 = Color3.fromRGB(22, 22, 26) 
+    searchBox.Text = "" 
+    searchBox.TextColor3 = guiSettings.TextColor
+    searchBox.PlaceholderText = "🔍 Search module..."
+    searchBox.Font = Enum.Font.GothamMedium
+    searchBox.TextSize = 12
+    Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 8) 
+    Instance.new("UIStroke", searchBox).Color = Color3.fromRGB(40,40,50)
+    
+    -- КОНТЕНТ (СКРОЛЛ)
+    contentArea = Instance.new("ScrollingFrame", guiMainFrame) 
+    contentArea.Size = UDim2.new(0.68, 0, 0, 285) 
+    contentArea.Position = UDim2.new(0.28, 0, 0.25, 0) 
+    contentArea.BackgroundTransparency = 1
+    contentArea.ScrollBarThickness = 5
+    contentArea.ScrollBarImageColor3 = guiSettings.BorderColor
 
+    -- ===== ФУНКЦИЯ СТАТУСА =====
     local function GetStatusStr(name)
         if name == "Toggle ESP" then return espEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle ESP V2" then return espV2Enabled and " [ON]" or " [OFF]"
@@ -1962,18 +2036,44 @@ local function CreateMenu()
         elseif name == "Music Player 🎵" then return musicPlayerEnabled and " [ON]" or " [OFF]"
         elseif name == "Macro Recorder 🎬" then return macroRecording and " [REC]" or " [OFF]"
         elseif name == "Play Macro ▶️" then return macroPlaying and " [PLAY]" or " [STOP]"
+        elseif name == "Block ESP (Ores) 📦" then return blockEspEnabled and " [ON]" or " [OFF]"
+        elseif name == "Damage Indicators 💥" then return damageIndEnabled and " [ON]" or " [OFF]"
+        elseif name == "Save Config 💾" then return " 💾"
+        elseif name == "Load Config 💾" then return " 💾"
         end return ""
     end
 
+    -- ===== РЕНДЕР СУБ-КНОПОК =====
     local function RenderSubs(subs)
-        for _, v in pairs(contentArea:GetChildren()) do if not v:IsA("UICorner") then v:Destroy() end end
-        local grid = Instance.new("Frame", contentArea) grid.Size = UDim2.new(0.96, 0, 1, 0) grid.BackgroundTransparency = 1
-        local searchT = searchBox.Text:lower() local filtered = {}
-        for _, name in ipairs(subs) do if searchT == "" or name:lower():find(searchT) then table.insert(filtered, name) end end
-        
+        for _, v in pairs(contentArea:GetChildren()) do 
+            if not v:IsA("UICorner") then v:Destroy() end 
+        end
+        local grid = Instance.new("Frame", contentArea) 
+        grid.Size = UDim2.new(0.96, 0, 1, 0) 
+        grid.BackgroundTransparency = 1
+        local searchT = searchBox.Text:lower()
+        local filtered = {}
+        for _, name in ipairs(subs) do 
+            if searchT == "" or name:lower():find(searchT) then 
+                table.insert(filtered, name) 
+            end 
+        end
         for i, name in ipairs(filtered) do
-            local row = Instance.new("Frame", grid) row.Size = UDim2.new(1, 0, 0, 28) row.Position = UDim2.new(0, 0, 0, (i - 1) * 34) row.BackgroundTransparency = 1
-            local btn = Instance.new("TextButton", row) btn.Size = UDim2.new(0.98, 0, 1, 0) btn.BackgroundColor3 = Color3.fromRGB(28, 28, 35) btn.Text = "  " .. name .. GetStatusStr(name) btn.TextXAlignment = Enum.TextXAlignment.Left btn.TextColor3 = guiSettings.TextColor btn.Font = Enum.Font.GothamMedium btn.TextSize = 11 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6) local bs = Instance.new("UIStroke", btn) bs.Color = Color3.fromRGB(45,45,55)
+            local row = Instance.new("Frame", grid) 
+            row.Size = UDim2.new(1, 0, 0, 28) 
+            row.Position = UDim2.new(0, 0, 0, (i - 1) * 34) 
+            row.BackgroundTransparency = 1
+            local btn = Instance.new("TextButton", row) 
+            btn.Size = UDim2.new(0.98, 0, 1, 0) 
+            btn.BackgroundColor3 = Color3.fromRGB(28, 28, 35) 
+            btn.Text = "  " .. name .. GetStatusStr(name) 
+            btn.TextXAlignment = Enum.TextXAlignment.Left 
+            btn.TextColor3 = guiSettings.TextColor 
+            btn.Font = Enum.Font.GothamMedium 
+            btn.TextSize = 10
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6) 
+            local bs = Instance.new("UIStroke", btn) 
+            bs.Color = Color3.fromRGB(45,45,55)
             
             btn.MouseButton1Click:Connect(function()
                 if name == "Toggle ESP" then ToggleESP()
@@ -2071,10 +2171,15 @@ local function CreateMenu()
                 end
                 RenderSubs(subs)
             end)
-        end contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 34 + 15)
+        end
+        contentArea.CanvasSize = UDim2.new(0, 0, 0, #filtered * 34 + 15)
     end
-    searchBox:GetPropertyChangedSignal("Text"):Connect(function() if currentCategory ~= "" then RenderSubs(allSubs) end end)
     
+    searchBox:GetPropertyChangedSignal("Text"):Connect(function() 
+        if currentCategory ~= "" then RenderSubs(allSubs) end 
+    end)
+    
+    -- ===== КАТЕГОРИИ =====
     local categories = {
         VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "World Color Select 🎨", "Toggle Stretch", "Stretch Value 📏", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥", "Classic Sword 🗡️"},
         PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰", "Wall Climb 🧱"},
@@ -2084,12 +2189,51 @@ local function CreateMenu()
         SETTINGS = {"Optimize Textures"}
     }
     
-    local idx = 0 for catName, subs in pairs(categories) do
-        local btn = Instance.new("TextButton", leftPanel) btn.Size = UDim2.new(0.9, 0, 0, 32) btn.Position = UDim2.new(0.05, 0, 0.02 + (idx * 0.19), 0) btn.BackgroundColor3 = Color3.fromRGB(28, 28, 35) btn.Text = catName btn.TextColor3 = guiSettings.TextColor btn.Font = Enum.Font.GothamBold btn.TextSize = 10 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6) Instance.new("UIStroke", btn).Color = Color3.fromRGB(45,45,55)
-        btn.MouseButton1Click:Connect(function() currentCategory = catName allSubs = subs RenderSubs(subs) end) idx = idx + 1
-    end
-    currentCategory = "VISUAL" allSubs = categories.VISUAL RenderSubs(categories.VISUAL)
+    -- ===== СОЗДАНИЕ КОМПАКТНЫХ КНОПОК ВКЛАДОК =====
+    local tabButtons = {}
+    local idx = 0
+    local tabHeight = 26 -- Уменьшенная высота кнопок
     
+    for catName, subs in pairs(categories) do
+        local btn = Instance.new("TextButton", tabsContainer) 
+        btn.Size = UDim2.new(0.92, 0, 0, tabHeight) 
+        btn.Position = UDim2.new(0.04, 0, 0, idx * (tabHeight + 3)) 
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 35) 
+        btn.Text = catName 
+        btn.TextColor3 = guiSettings.TextColor 
+        btn.Font = Enum.Font.GothamBold 
+        btn.TextSize = 9
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5) 
+        local cs = Instance.new("UIStroke", btn) 
+        cs.Color = Color3.fromRGB(45,45,55)
+        
+        btn.MouseButton1Click:Connect(function() 
+            -- Сброс цвета всех кнопок
+            for _, b in pairs(tabButtons) do
+                b.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+            end
+            btn.BackgroundColor3 = guiSettings.BorderColor
+            currentCategory = catName 
+            allSubs = subs 
+            RenderSubs(subs) 
+        end)
+        
+        table.insert(tabButtons, btn)
+        idx = idx + 1
+    end
+    
+    -- Устанавливаем размер контейнера
+    tabsContainer.CanvasSize = UDim2.new(0, 0, 0, idx * (tabHeight + 3) + 10)
+    
+    -- Активируем первую вкладку
+    if #tabButtons > 0 then
+        tabButtons[1].BackgroundColor3 = guiSettings.BorderColor
+        currentCategory = "VISUAL" 
+        allSubs = categories.VISUAL 
+        RenderSubs(categories.VISUAL)
+    end
+    
+    -- Создаем кнопки
     CreateKillAuraButton()
     CreateMiniButton()
 end
