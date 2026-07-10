@@ -1,5 +1,5 @@
 -- MTY HUB v6.0 DELTA FULL (FIXED FOR MOBILE)
--- Исправлено: обрыв кода, устаревшие функции, опечатки
+-- Исправлено: обрыв кода, устаревшие функции, опечатки, Motor6D
 -- Полная поддержка мобильной Delta
 
 local Players = game:GetService("Players")
@@ -124,7 +124,403 @@ local mm2ShootConnection, mm2AimbotConnection, mm2GrabGunConnection, mm2KillAura
 local mm2AutoShootButton, mm2AutoShootGui = nil, nil
 local mm2GrabMethod, mm2FlingPower = "Teleport", 500
 
--- ===== ПАПКИ =====
+-- ============================================
+-- 🔥 СТАБИЛЬНЫЙ БЭКЕНД ДЛЯ DELTA (БЕЗ CRASH И АНТИЧИТА)
+-- ============================================
+
+-- 1. НЕВИДИМОСТЬ (УНИВЕРСАЛЬНЫЙ МЕТОД)
+function ToggleInvisibility()
+    invisibilityEnabled = not invisibilityEnabled
+    if invisibilityEnabled then
+        task.spawn(function()
+            while invisibilityEnabled and LP.Character do
+                for _, v in pairs(LP.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.Transparency = 0.95
+                        v.CanCollide = false
+                    end
+                end
+                local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                    hum.BreakJointsOnDeath = false
+                end
+                RunService.Heartbeat:Wait()
+            end
+            if LP.Character then
+                for _, v in pairs(LP.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.Transparency = 0
+                        v.CanCollide = true
+                    end
+                end
+                local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+                    hum.BreakJointsOnDeath = true
+                end
+            end
+        end)
+        ShowMessage("👤 Invisibility ON")
+    else
+        ShowMessage("👤 Invisibility OFF")
+    end
+end
+
+-- 2. ВЕРТОЛЕТ (С ИМПУЛЬСОМ И ОГРАНИЧЕНИЕМ)
+function ToggleHelicopter()
+    helicopterEnabled = not helicopterEnabled
+    if helicopterEnabled then
+        helicopterConnection = RunService.Heartbeat:Connect(function()
+            if not helicopterEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local vel = root.AssemblyLinearVelocity
+            local maxSpeed = 60
+            
+            root.AssemblyLinearVelocity = Vector3.new(
+                math.clamp(vel.X, -maxSpeed, maxSpeed),
+                math.clamp(vel.Y + 2, -maxSpeed, maxSpeed),
+                math.clamp(vel.Z, -maxSpeed, maxSpeed)
+            )
+            
+            local currentAngle = root.Orientation.Y
+            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(currentAngle + 2), 0)
+        end)
+        ShowMessage("🚁 Helicopter ON")
+    else
+        if helicopterConnection then helicopterConnection:Disconnect() end
+        ShowMessage("🚁 Helicopter OFF")
+    end
+end
+
+-- 3. ANTI-AIM (CFrame без телепортации)
+function ToggleAntiAim()
+    antiAimEnabled = not antiAimEnabled
+    if antiAimEnabled then
+        antiAimConnection = RunService.RenderStepped:Connect(function()
+            if not antiAimEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local pos = root.Position
+            local angle = math.rad(tick() * 200 % 360)
+            
+            if LP.Character:FindFirstChild("UpperTorso") then
+                local upper = LP.Character.UpperTorso
+                upper.CFrame = CFrame.new(upper.Position) * CFrame.Angles(0, angle, 0)
+            end
+            
+            root.CFrame = CFrame.new(pos) * CFrame.Angles(0, angle, 0)
+            
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.AutoRotate = false end
+        end)
+        ShowMessage("🌀 Anti-Aim ON")
+    else
+        if antiAimConnection then antiAimConnection:Disconnect() end
+        if LP.Character then
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.AutoRotate = true end
+        end
+        ShowMessage("🌀 Anti-Aim OFF")
+    end
+end
+
+-- 4. СТРЕЙФЫ (С ОГРАНИЧЕНИЕМ СКОРОСТИ)
+function ToggleStrafe()
+    strafeEnabled = not strafeEnabled
+    if strafeEnabled then
+        strafeConnection = RunService.Heartbeat:Connect(function()
+            if not strafeEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            if not root or not hum then return end
+            
+            local move = hum.MoveDirection
+            if move.Magnitude > 0.1 then
+                local currentVel = root.AssemblyLinearVelocity
+                local baseSpeed = hum.WalkSpeed * 2
+                local maxSpeed = math.clamp(baseSpeed, 10, 80)
+                
+                root.AssemblyLinearVelocity = Vector3.new(
+                    math.clamp(move.X * maxSpeed, -80, 80),
+                    math.clamp(currentVel.Y, -50, 50),
+                    math.clamp(move.Z * maxSpeed, -80, 80)
+                )
+            end
+        end)
+        ShowMessage("✈️ Strafe ON")
+    else
+        if strafeConnection then strafeConnection:Disconnect() end
+        ShowMessage("✈️ Strafe OFF")
+    end
+end
+
+-- 5. DASH (С ОГРАНИЧЕНИЕМ И ПРОВЕРКОЙ)
+local lastDashTime = 0
+local dashCooldown = 1.5
+
+function ToggleDash()
+    dashEnabled = not dashEnabled
+    if dashEnabled then
+        if dashButton then dashButton.Parent:Destroy() end
+        local sg = Instance.new("ScreenGui", game.CoreGui)
+        sg.Name = "MTY_DashButton"
+        sg.ResetOnSpawn = false
+        
+        dashButton = Instance.new("TextButton", sg)
+        dashButton.Size = UDim2.new(0, 65, 0, 65)
+        dashButton.Position = UDim2.new(0.85, 0, 0.5, 0)
+        dashButton.BackgroundColor3 = guiSettings.BorderColor
+        dashButton.Text = "💨"
+        dashButton.TextSize = 30
+        dashButton.TextColor3 = Color3.new(1,1,1)
+        Instance.new("UICorner", dashButton).CornerRadius = UDim.new(0, 35)
+        
+        dashButton.MouseButton1Click:Connect(function()
+            if not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            if tick() - lastDashTime < dashCooldown then
+                ShowMessage("⏳ Dash cooldown: " .. math.floor(dashCooldown - (tick() - lastDashTime)) .. "s")
+                return
+            end
+            
+            local look = root.CFrame.LookVector
+            local dashPower = 20
+            
+            local rayParams = RaycastParams.new()
+            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+            rayParams.FilterDescendantsInstances = {LP.Character}
+            
+            local rayResult = workspace:Raycast(
+                root.Position,
+                look * dashPower,
+                rayParams
+            )
+            
+            if rayResult and rayResult.Distance < 3 then
+                ShowMessage("🧱 Стена! Рывок отменён")
+                return
+            end
+            
+            local targetPos = root.Position + Vector3.new(look.X, 0, look.Z).Unit * dashPower
+            root.CFrame = CFrame.new(targetPos)
+            
+            lastDashTime = tick()
+            ShowMessage("💨 Dash!")
+        end)
+        ShowMessage("💨 Dash Button ON")
+    else
+        if dashButton then dashButton.Parent:Destroy() end
+        ShowMessage("💨 Dash Button OFF")
+    end
+end
+
+-- 6. BUNNY HOP (С ОГРАНИЧЕНИЕМ)
+function ToggleBunnyHop()
+    bunnyHopEnabled = not bunnyHopEnabled
+    if bunnyHopEnabled then
+        bunnyHopConnection = RunService.Heartbeat:Connect(function()
+            if not bunnyHopEnabled or not LP.Character then return end
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not hum or not root then return end
+            
+            local state = hum:GetState()
+            if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall then
+                local move = hum.MoveDirection
+                if move.Magnitude > 0.1 then
+                    local speed = math.clamp(hum.WalkSpeed * 1.8, 20, 80)
+                    root.AssemblyLinearVelocity = Vector3.new(
+                        move.X * speed,
+                        math.clamp(root.AssemblyLinearVelocity.Y, -50, 50),
+                        move.Z * speed
+                    )
+                end
+            end
+        end)
+        ShowMessage("🐰 Bunny Hop ON")
+    else
+        if bunnyHopConnection then bunnyHopConnection:Disconnect() end
+        ShowMessage("🐰 Bunny Hop OFF")
+    end
+end
+
+-- 7. WALL CLIMB (С ПРОВЕРКОЙ)
+function ToggleWallClimb()
+    wallClimbEnabled = not wallClimbEnabled
+    if wallClimbEnabled then
+        wallClimbConnection = RunService.Heartbeat:Connect(function()
+            if not wallClimbEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+            if not root or not hum then return end
+            
+            local rayParams = RaycastParams.new()
+            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+            rayParams.FilterDescendantsInstances = {LP.Character}
+            
+            local rayResult = workspace:Raycast(
+                root.Position,
+                root.CFrame.LookVector * 2.5,
+                rayParams
+            )
+            
+            if rayResult and rayResult.Instance then
+                local normal = rayResult.Normal
+                local dot = normal:Dot(Vector3.new(0, 1, 0))
+                
+                if math.abs(dot) < 0.3 then
+                    local move = hum.MoveDirection
+                    local speed = math.clamp(hum.WalkSpeed * 1.5, 10, 60)
+                    local wallDir = Vector3.new(normal.X, 0, normal.Z).Unit
+                    local up = UserInputService:IsKeyDown(Enum.KeyCode.Space) and 25 or -5
+                    
+                    root.AssemblyLinearVelocity = Vector3.new(
+                        move.X * speed + wallDir.X * 10,
+                        math.clamp(root.AssemblyLinearVelocity.Y + up, -30, 30),
+                        move.Z * speed + wallDir.Z * 10
+                    )
+                end
+            end
+        end)
+        ShowMessage("🧱 Wall Climb ON")
+    else
+        if wallClimbConnection then wallClimbConnection:Disconnect() end
+        ShowMessage("🧱 Wall Climb OFF")
+    end
+end
+
+-- 8. FLY V3 (С ПЛАВНЫМ УПРАВЛЕНИЕМ)
+function ToggleFlyV3()
+    flyV3Enabled = not flyV3Enabled
+    if flyV3Enabled then
+        task.spawn(function()
+            while flyV3Enabled do
+                task.wait()
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = LP.Character.HumanoidRootPart
+                    local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+                    if not hum then continue end
+                    
+                    local move = hum.MoveDirection
+                    local speed = math.clamp(hum.WalkSpeed * 3, 20, 120)
+                    
+                    if move.Magnitude > 0.1 then
+                        root.AssemblyLinearVelocity = Vector3.new(
+                            math.clamp(move.X * speed, -120, 120),
+                            math.clamp(root.AssemblyLinearVelocity.Y + 1, -50, 50),
+                            math.clamp(move.Z * speed, -120, 120)
+                        )
+                    else
+                        root.AssemblyLinearVelocity = Vector3.new(0, -1, 0)
+                    end
+                end
+            end
+        end)
+        ShowMessage("🌊 Fly V3 ON")
+    else
+        ShowMessage("🌊 Fly V3 OFF")
+    end
+end
+
+-- 9. FLY V4 (NO CLIP)
+function ToggleFlyV4()
+    flyV4Enabled = not flyV4Enabled
+    if flyV4Enabled then
+        noClipEnabled = true
+        flyV3Enabled = true
+        ToggleFlyV3()
+        ShowMessage("🌀 Fly V4 (No Clip) ON")
+    else
+        noClipEnabled = false
+        flyV3Enabled = false
+        ShowMessage("🌀 Fly V4 OFF")
+    end
+end
+
+-- 10. FLY V5 (SPEED)
+function ToggleFlyV5()
+    flyV5Enabled = not flyV5Enabled
+    if flyV5Enabled then
+        task.spawn(function()
+            while flyV5Enabled do
+                task.wait()
+                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = LP.Character.HumanoidRootPart
+                    local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+                    if not hum then continue end
+                    
+                    local move = hum.MoveDirection
+                    local speed = math.clamp(hum.WalkSpeed * 5, 30, 200)
+                    
+                    if move.Magnitude > 0.1 then
+                        root.AssemblyLinearVelocity = Vector3.new(
+                            math.clamp(move.X * speed, -200, 200),
+                            math.clamp(root.AssemblyLinearVelocity.Y + 2, -100, 100),
+                            math.clamp(move.Z * speed, -200, 200)
+                        )
+                    else
+                        root.AssemblyLinearVelocity = Vector3.new(0, -2, 0)
+                    end
+                end
+            end
+        end)
+        ShowMessage("⚡ Fly V5 ON")
+    else
+        ShowMessage("⚡ Fly V5 OFF")
+    end
+end
+
+-- 11. НЕВИДИМОСТЬ ПРИ РЕСПАВНЕ (АВТОМАТИЧЕСКАЯ)
+LP.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if invisibilityEnabled and LP.Character then
+        for _, v in pairs(LP.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 0.95
+                v.CanCollide = false
+            end
+        end
+        local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            hum.BreakJointsOnDeath = false
+        end
+    end
+end)
+
+-- 12. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+local function ClampVelocity(vel, maxSpeed)
+    return Vector3.new(
+        math.clamp(vel.X, -maxSpeed, maxSpeed),
+        math.clamp(vel.Y, -maxSpeed, maxSpeed),
+        math.clamp(vel.Z, -maxSpeed, maxSpeed)
+    )
+end
+
+local function CheckAntiCheat()
+    if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+        local vel = LP.Character.HumanoidRootPart.AssemblyLinearVelocity
+        if vel.Magnitude > 120 then
+            LP.Character.HumanoidRootPart.AssemblyLinearVelocity = vel.Unit * 80
+            return true
+        end
+    end
+    return false
+end
+
+RunService.Heartbeat:Connect(function()
+    pcall(CheckAntiCheat)
+end)
+
+-- ============================================
+-- 📂 ПАПКИ
+-- ============================================
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
 local espV2Folder = Instance.new("Folder", workspace) espV2Folder.Name = "MTY_ESP_V2"
 local tracersFolder = Instance.new("Folder", workspace) tracersFolder.Name = "MTY_Tracers"
@@ -1546,65 +1942,8 @@ function OpenIYFling()
 end
 
 -- ============================================
--- 🏃 FLY V3-V5
+-- 🏃 FLY V3-V5 (уже определены выше в бэкенде)
 -- ============================================
-function ToggleFlyV3()
-    flyV3Enabled = not flyV3Enabled
-    if flyV3Enabled then
-        task.spawn(function()
-            while flyV3Enabled do
-                task.wait()
-                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                    local root = LP.Character.HumanoidRootPart
-                    local hum = LP.Character.Humanoid
-                    local move = hum.MoveDirection
-                    if move.Magnitude > 0 then
-                        root.AssemblyLinearVelocity = move * speedValue * 3
-                    else
-                        root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
-                    end
-                end
-            end
-        end)
-        ShowMessage("🌊 Fly V3 (Smooth) Activated")
-    else ShowMessage("🌊 Fly V3 Disabled") end
-end
-
-function ToggleFlyV4()
-    flyV4Enabled = not flyV4Enabled
-    if flyV4Enabled then
-        noClipEnabled = true
-        flyV3Enabled = true
-        ToggleFlyV3()
-        ShowMessage("🌀 Fly V4 (No Clip) Activated")
-    else
-        noClipEnabled = false
-        flyV3Enabled = false
-        ShowMessage("🌀 Fly V4 Disabled")
-    end
-end
-
-function ToggleFlyV5()
-    flyV5Enabled = not flyV5Enabled
-    if flyV5Enabled then
-        task.spawn(function()
-            while flyV5Enabled do
-                task.wait()
-                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                    local root = LP.Character.HumanoidRootPart
-                    local hum = LP.Character.Humanoid
-                    local move = hum.MoveDirection
-                    if move.Magnitude > 0 then
-                        root.AssemblyLinearVelocity = move * speedValue * 5
-                    else
-                        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    end
-                end
-            end
-        end)
-        ShowMessage("⚡ Fly V5 (Speed) Activated")
-    else ShowMessage("⚡ Fly V5 Disabled") end
-end
 
 function ToggleTeleportTool()
     tpToolEnabled = not tpToolEnabled
@@ -1703,34 +2042,6 @@ function ToggleSwim()
     end
 end
 
-function ToggleDash()
-    dashEnabled = not dashEnabled
-    if dashEnabled then
-        if dashButton then dashButton.Parent:Destroy() end
-        local sg = Instance.new("ScreenGui", game.CoreGui)
-        dashButton = Instance.new("TextButton", sg)
-        dashButton.Size = UDim2.new(0, 65, 0, 65)
-        dashButton.Position = UDim2.new(0.8, 0, 0.5, 0)
-        dashButton.BackgroundColor3 = guiSettings.BorderColor
-        dashButton.Text = "DASH"
-        dashButton.TextColor3 = Color3.new(1,1,1)
-        dashButton.Font = Enum.Font.GothamBold
-        Instance.new("UICorner", dashButton).CornerRadius = UDim.new(0, 35)
-        dashButton.MouseButton1Click:Connect(function()
-            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                local root = LP.Character.HumanoidRootPart
-                local hum = LP.Character.Humanoid
-                local dir = hum.MoveDirection.Magnitude > 0 and hum.MoveDirection or root.CFrame.LookVector
-                root.CFrame = root.CFrame + Vector3.new(dir.X, 0, dir.Z).Unit * 15
-            end
-        end)
-        ShowMessage("🏃 Dash Button Spawned")
-    else
-        if dashButton then dashButton.Parent:Destroy() end
-        ShowMessage("🏃 Dash Removed")
-    end
-end
-
 function ToggleNoJumpCooldown()
     noJumpCdEnabled = not noJumpCdEnabled
     ShowMessage("🦘 No Jump CD "..(noJumpCdEnabled and "ON" or "OFF"))
@@ -1739,98 +2050,6 @@ end
 function ToggleBlinkMode()
     blinkEnabled = not blinkEnabled
     ShowMessage("👻 Blink Mode "..(blinkEnabled and "ON" or "OFF"))
-end
-
-function ToggleInvisibility()
-    invisibilityEnabled = not invisibilityEnabled
-    if invisibilityEnabled then
-        if LP.Character then
-            for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.Transparency = 0.99 end
-            end
-            LP.Character:SetAttribute("Invisible", true)
-            ShowMessage("👤 Invisibility ON")
-        end
-    else
-        if LP.Character then
-            for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.Transparency = 0 end
-            end
-            LP.Character:SetAttribute("Invisible", false)
-        end
-        ShowMessage("👤 Invisibility OFF")
-    end
-end
-
-LP.CharacterAdded:Connect(function()
-    task.wait(0.3)
-    if invisibilityEnabled then
-        for _, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.Transparency = 0.99 end
-        end
-    end
-end)
-
-function ToggleHelicopter()
-    helicopterEnabled = not helicopterEnabled
-    ShowMessage("🚁 Helicopter "..(helicopterEnabled and "ON" or "OFF"))
-    if helicopterEnabled then
-        helicopterConnection = RunService.Heartbeat:Connect(function()
-            if not helicopterEnabled or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
-            local r = LP.Character.HumanoidRootPart
-            r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 35, r.AssemblyLinearVelocity.Z)
-            r.CFrame = r.CFrame * CFrame.Angles(0, math.rad(25), 0)
-        end)
-    else
-        if helicopterConnection then helicopterConnection:Disconnect() end
-    end
-end
-
-function ToggleStrafe()
-    strafeEnabled = not strafeEnabled
-    ShowMessage("✈️ CS:GO Strafe "..(strafeEnabled and "ON" or "OFF"))
-    if strafeEnabled then
-        strafeConnection = RunService.Heartbeat:Connect(function()
-            if not strafeEnabled or not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
-            local root = LP.Character.HumanoidRootPart
-            local hum = LP.Character.Humanoid
-            local move = hum.MoveDirection
-            if move.Magnitude > 0 then
-                local camL = Camera.CFrame.LookVector
-                local side = Vector3.new(-camL.Z, 0, camL.X).Unit
-                local dot = move:Dot(side)
-                if math.abs(dot) > 0.2 then
-                    local fDir = dot > 0 and side or -side
-                    root.AssemblyLinearVelocity = Vector3.new(fDir.X * (speedValue * 1.5), root.AssemblyLinearVelocity.Y, fDir.Z * (speedValue * 1.5))
-                end
-            end
-        end)
-    else
-        if strafeConnection then strafeConnection:Disconnect() end
-    end
-end
-
-function ToggleBunnyHop()
-    bunnyHopEnabled = not bunnyHopEnabled
-    if bunnyHopEnabled then
-        bunnyHopConnection = RunService.Heartbeat:Connect(function()
-            if not bunnyHopEnabled or not LP.Character then return end
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            local root = LP.Character:FindFirstChild("HumanoidRootPart")
-            if not hum or not root then return end
-            if hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall then
-                local move = hum.MoveDirection
-                if move.Magnitude > 0.1 then
-                    local speed = hum.WalkSpeed * 1.8
-                    root.AssemblyLinearVelocity = Vector3.new(move.X * speed, root.AssemblyLinearVelocity.Y, move.Z * speed)
-                end
-            end
-        end)
-        ShowMessage("🐰 Bunny Hop ON")
-    else
-        if bunnyHopConnection then bunnyHopConnection:Disconnect() end
-        ShowMessage("🐰 Bunny Hop OFF")
-    end
 end
 
 function ToggleGhostMode()
@@ -1843,31 +2062,6 @@ function ToggleGhostMode()
         ToggleInvisibility()
         ToggleNoClip()
         ShowMessage("👻 Ghost Mode OFF")
-    end
-end
-
-function ToggleWallClimb()
-    wallClimbEnabled = not wallClimbEnabled
-    if wallClimbEnabled then
-        wallClimbConnection = RunService.Heartbeat:Connect(function()
-            if not wallClimbEnabled or not LP.Character then return end
-            local root = LP.Character:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            local ray = workspace:Raycast(root.Position, root.CFrame.LookVector * 3)
-            if ray and ray.Instance and math.abs(ray.Normal.Y) < 0.5 then
-                local normal = ray.Normal
-                root.CFrame = CFrame.new(root.Position, root.Position + normal) + normal * 0.5
-                root.AssemblyLinearVelocity = Vector3.new(
-                    normal.X * speedValue * 1.5,
-                    UserInputService:IsKeyDown(Enum.KeyCode.Space) and 25 or -10,
-                    normal.Z * speedValue * 1.5
-                )
-            end
-        end)
-        ShowMessage("🧱 Wall Climb ON")
-    else
-        if wallClimbConnection then wallClimbConnection:Disconnect() end
-        ShowMessage("🧱 Wall Climb OFF")
     end
 end
 
@@ -2121,38 +2315,6 @@ end
 function ToggleResolver()
     resolverEnabled = not resolverEnabled
     ShowMessage("🎯 Resolver "..(resolverEnabled and "ON" or "OFF"))
-end
-
-function ToggleAntiAim()
-    antiAimEnabled = not antiAimEnabled
-    if antiAimEnabled then
-        antiAimConnection = RunService.Heartbeat:Connect(function()
-            if not antiAimEnabled or not LP.Character then return end
-            local root = LP.Character:FindFirstChild("HumanoidRootPart")
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            if not root or not hum then return end
-            if guiSettings.AntiAimMode == "Spin" then
-                root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(tick() * 500 % 360), 0)
-                hum.AutoRotate = false
-            elseif guiSettings.AntiAimMode == "Backwards" then
-                root.CFrame = CFrame.new(root.Position, root.Position - root.CFrame.LookVector)
-                hum.AutoRotate = false
-            elseif guiSettings.AntiAimMode == "Jitter" then
-                root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(math.random(-10,10)), math.rad(tick() * 500 % 360), math.rad(math.random(-5,5)))
-                hum.AutoRotate = false
-            end
-        end)
-        ShowMessage("🌀 Anti-Aim "..guiSettings.AntiAimMode.." ON")
-    else
-        if antiAimConnection then antiAimConnection:Disconnect() end
-        if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.AutoRotate = true end
-        ShowMessage("🌀 Anti-Aim OFF")
-    end
-end
-
-function SetAntiAimMode(mode)
-    guiSettings.AntiAimMode = mode
-    ShowMessage("Anti-Aim Mode: "..mode)
 end
 
 function ToggleFakeLag()
@@ -3048,17 +3210,6 @@ task.spawn(function()
     end
 end)
 
-LP.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    if hatEnabled then CreateChineseHat() end
-    if trailV2Enabled then ToggleTrailV2() end
-    if invisibilityEnabled then
-        for _, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.Transparency = 0.99 end
-        end
-    end
-end)
-
 -- ============================================
 -- 🖥️ МИНИМИЗАЦИЯ
 -- ============================================
@@ -3599,5 +3750,5 @@ end
 -- ============================================
 pcall(function()
     CreateMenu()
-    print("MTY HUB v6.0 DELTA FULL FIXED! 🚀")
+    print("✅ MTY HUB v6.0 DELTA FULL FIXED! 🚀")
 end)
