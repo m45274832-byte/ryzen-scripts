@@ -1377,7 +1377,7 @@ function ToggleMM2AntiKnife()
 end
 
 -- ============================================
--- ОСТАЛЬНЫЕ ФУНКЦИИ (СОХРАНЕНЫ)
+-- ОСТАЛЬНЫЕ ФУНКЦИИ
 -- ============================================
 function ToggleBunnyHop()
     bunnyHopEnabled = not bunnyHopEnabled
@@ -1807,6 +1807,9 @@ function ToggleAutoSprint()
     end
 end
 
+-- ============================================
+-- ESP FUNCTIONS
+-- ============================================
 function ToggleESP() espEnabled = not espEnabled ShowMessage("ESP "..(espEnabled and "ON" or "OFF")) end
 function ToggleESPV2() espV2Enabled = not espV2Enabled ShowMessage("ESP V2 "..(espV2Enabled and "ON" or "OFF")) end
 function ToggleESPV3() espV3Enabled = not espV3Enabled ShowMessage("ESP V3 "..(espV3Enabled and "ON" or "OFF")) end
@@ -1830,6 +1833,9 @@ function ToggleBlockESP() blockEspEnabled = not blockEspEnabled ShowMessage("Blo
 function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled ShowMessage("Damage Indicators "..(damageIndEnabled and "ON" or "OFF")) end
 function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) end
 
+-- ============================================
+-- UTILITIES FUNCTIONS
+-- ============================================
 function SaveConfig()
     local config = {
         guiSettings = guiSettings,
@@ -2042,6 +2048,9 @@ function ToggleAntiBan()
     end
 end
 
+-- ============================================
+-- АВТО-ОБНОВЛЕНИЕ ПРИ СМЕРТИ
+-- ============================================
 local function SafeAdorn(folder, char, size, color)
     if not char:FindFirstChild("HumanoidRootPart") then return end
     local b = Instance.new("BoxHandleAdornment", folder) 
@@ -2098,6 +2107,9 @@ LP.CharacterAdded:Connect(function()
     end
 end)
 
+-- ============================================
+-- МИНИМИЗАЦИЯ В EVIL MORTY
+-- ============================================
 local function CreateMiniButton()
     if miniGui then miniGui:Destroy() end
     
@@ -2129,7 +2141,7 @@ local function CreateMiniButton()
 end
 
 -- ============================================
--- 🖥️ СОЗДАНИЕ МЕНЮ (КОМПАКТНЫЕ ВКЛАДКИ)
+-- СОЗДАНИЕ МЕНЮ
 -- ============================================
 local function CreateMenu()
     screenGui = Instance.new("ScreenGui", game.CoreGui) screenGui.Name = "MTY_HUB_V5"
@@ -2206,7 +2218,7 @@ local function CreateMenu()
         if musicPlayerGui then musicPlayerGui:Destroy() end
     end)
 
-    -- ЛЕВАЯ ПАНЕЛЬ С КОМПАКТНЫМИ ВКЛАДКАМИ (С ПРОКРУТКОЙ)
+    -- ЛЕВАЯ ПАНЕЛЬ С КОМПАКТНЫМИ ВКЛАДКАМИ
     local leftPanel = Instance.new("ScrollingFrame", guiMainFrame) 
     leftPanel.Size = UDim2.new(0, 120, 0, 345) 
     leftPanel.Position = UDim2.new(0.02, 0, 0.13, 0) 
@@ -2215,12 +2227,10 @@ local function CreateMenu()
     leftPanel.ScrollBarThickness = 4
     Instance.new("UICorner", leftPanel).CornerRadius = UDim.new(0, 10)
     
-    -- КОНТЕЙНЕР ДЛЯ КНОПОК ВКЛАДОК
     local tabsContainer = Instance.new("Frame", leftPanel)
     tabsContainer.Size = UDim2.new(1, 0, 1, 0)
     tabsContainer.BackgroundTransparency = 1
     
-    -- ПОИСК
     searchBox = Instance.new("TextBox", guiMainFrame) 
     searchBox.Size = UDim2.new(0.68, 0, 0, 32) 
     searchBox.Position = UDim2.new(0.28, 0, 0.15, 0) 
@@ -2233,7 +2243,6 @@ local function CreateMenu()
     Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 8) 
     Instance.new("UIStroke", searchBox).Color = Color3.fromRGB(40,40,50)
     
-    -- КОНТЕНТ (СКРОЛЛ)
     contentArea = Instance.new("ScrollingFrame", guiMainFrame) 
     contentArea.Size = UDim2.new(0.68, 0, 0, 285) 
     contentArea.Position = UDim2.new(0.28, 0, 0.25, 0) 
@@ -2241,7 +2250,7 @@ local function CreateMenu()
     contentArea.ScrollBarThickness = 5
     contentArea.ScrollBarImageColor3 = guiSettings.BorderColor
 
-    -- ===== ФУНКЦИЯ СТАТУСА =====
+    -- ФУНКЦИЯ СТАТУСА
     local function GetStatusStr(name)
         if name == "Toggle ESP" then return espEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle ESP V2" then return espV2Enabled and " [ON]" or " [OFF]"
@@ -2305,7 +2314,6 @@ local function CreateMenu()
         elseif name == "Damage Indicators 💥" then return damageIndEnabled and " [ON]" or " [OFF]"
         elseif name == "Save Config 💾" then return " 💾"
         elseif name == "Load Config 💾" then return " 💾"
-        -- MM2 статусы
         elseif name == "MM2 ESP 🔪" then return mm2EspEnabled and " [ON]" or " [OFF]"
         elseif name == "MM2 Aimbot 🎯" then return mm2AimbotEnabled and " [ON]" or " [OFF]"
         elseif name == "MM2 Trigger Bot 🔫" then return mm2TriggerBotEnabled and " [ON]" or " [OFF]"
@@ -2315,7 +2323,7 @@ local function CreateMenu()
         end return ""
     end
 
-    -- ===== РЕНДЕР СУБ-КНОПОК =====
+    -- РЕНДЕР КНОПОК
     local function RenderSubs(subs)
         for _, v in pairs(contentArea:GetChildren()) do 
             if not v:IsA("UICorner") then v:Destroy() end 
@@ -2425,7 +2433,6 @@ local function CreateMenu()
                 elseif name == "Anti-Ban 🔒" then ToggleAntiBan()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
-                -- MM2 функции
                 elseif name == "MM2 ESP 🔪" then ToggleMM2ESP()
                 elseif name == "MM2 Aimbot 🎯" then ToggleMM2Aimbot()
                 elseif name == "MM2 Trigger Bot 🔫" then ToggleMM2TriggerBot()
@@ -2458,7 +2465,7 @@ local function CreateMenu()
         if currentCategory ~= "" then RenderSubs(allSubs) end 
     end)
     
-    -- ===== КАТЕГОРИИ =====
+    -- КАТЕГОРИИ
     local categories = {
         VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "World Color Select 🎨", "Toggle Stretch", "Stretch Value 📏", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥", "Classic Sword 🗡️"},
         PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰", "Wall Climb 🧱"},
@@ -2469,7 +2476,7 @@ local function CreateMenu()
         SETTINGS = {"Optimize Textures"}
     }
     
-    -- ===== СОЗДАНИЕ КОМПАКТНЫХ КНОПОК ВКЛАДОК =====
+    -- КОМПАКТНЫЕ КНОПКИ ВКЛАДОК
     local tabButtons = {}
     local idx = 0
     local tabHeight = 26
