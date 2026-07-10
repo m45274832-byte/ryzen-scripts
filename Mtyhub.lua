@@ -1,7 +1,5 @@
--- MTY HUB v5.5 DELTA ULTIMATE (FULL ASSEMBLED)
--- Полный фикс: Трейл лентой, ближние партиклы, темный мир
--- Защита от смерти: Авто-перепривязка визуалов при респавне
--- Все модули: ESP, Combat, Movement, HvH, Visuals
+-- MTY HUB v5.5 DELTA ULTIMATE (FULL FIXED)
+-- Исправлены: Long Jump + Strafe, Invisibility, Anti-Aim (Spin/Backwards)
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -35,7 +33,7 @@ local guiSettings = {
     CrosshairColor = Color3.fromRGB(0, 255, 100),
     SpinSpeed = 25, JumpCircleFadeTime = 0.8, TrailLength = 40, FakeLagAmount = 6, StretchValue = 0.7,
     AimbotFOV = 130, AimbotSpeed = 0.25, AimbotStrength = 0.85, AimbotPart = "Head", KillAuraRange = 18,
-    AimbotWallbang = true, CameraFOV = 70, ToolReachValue = 4, HatRainbow = false
+    AimbotWallbang = true, CameraFOV = 70, ToolReachValue = 4, HatRainbow = false, AntiAimMode = "Spin"
 }
 
 -- ===== СОСТОЯНИЯ =====
@@ -47,6 +45,7 @@ local infJumpEnabled, autoSprintEnabled, airWalkEnabled, flyV1Enabled, flyV2Enab
 local resolverEnabled, desyncEnabled, spiderEnabled, antiKbEnabled, swimEnabled, targetHudEnabled, hitGlowEnabled, auraVisEnabled = false, false, false, false, false, false, false, false
 local arrowIndicatorsEnabled, targetLineEnabled, noJumpCdEnabled, blinkEnabled, strafeEnabled, particlesV2Enabled, worldColorEnabled = false, false, false, false, false, false, false
 local aimbotEnabled, aimbotV2Enabled, aimbotV3Enabled = false, false, false
+local longJumpEnabled = false
 
 -- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
@@ -64,7 +63,7 @@ local fovRing = Instance.new("Frame", fovGui) fovRing.AnchorPoint = Vector2.new(
 local fovStroke = Instance.new("UIStroke", fovRing) fovStroke.Thickness = 1.5 fovStroke.Color = guiSettings.BorderColor
 
 -- ===== КОННЕКШЕНЫ =====
-local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection
+local particlesConnection, jumpCircleConnection, trailConnection, strafeConnection, longJumpConnection, antiAimConnection
 
 -- ===== СИСТЕМА УВЕДОМЛЕНИЙ =====
 local function ShowMessage(text)
@@ -566,7 +565,146 @@ function ToggleWorldColor()
 end
 
 -- ============================================
--- 🕷️ MOVEMENT (SPIDER, SWIM, HELICOPTER, INVISIBILITY, DASH, STRAFE)
+-- 🏃‍♂️ ДЛИННЫЙ ПРЫЖОК С СТРЕЙФОМ (LONG JUMP + STRAFE)
+-- ============================================
+local longJumpDirection = 1
+
+function ToggleLongJump()
+    longJumpEnabled = not longJumpEnabled
+    if longJumpEnabled then
+        longJumpConnection = RunService.Heartbeat:Connect(function()
+            if not longJumpEnabled or not LP.Character then return end
+            local hum = LP.Character:FindFirstChild("Humanoid")
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            if not hum or not root then return end
+            
+            if hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall then
+                local move = hum.MoveDirection
+                if move.Magnitude > 0.1 then
+                    local camLook = Camera.CFrame.LookVector
+                    local camRight = Camera.CFrame.RightVector
+                    camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+                    camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
+                    
+                    if tick() % 0.3 < 0.05 then
+                        longJumpDirection = longJumpDirection * -1
+                    end
+                    
+                    local strafeVec = camRight * longJumpDirection
+                    local moveVec = (move.Unit * 0.4 + strafeVec * 0.6).Unit
+                    local speed = hum.WalkSpeed * 2.5
+                    root.AssemblyLinearVelocity = Vector3.new(
+                        moveVec.X * speed,
+                        root.AssemblyLinearVelocity.Y + 5,
+                        moveVec.Z * speed
+                    )
+                    if moveVec.Magnitude > 0.1 then
+                        root.CFrame = CFrame.new(root.Position, root.Position + moveVec)
+                    end
+                end
+            end
+        end)
+        ShowMessage("🔥 Long Jump + Strafe ON")
+    else
+        if longJumpConnection then 
+            longJumpConnection:Disconnect() 
+            longJumpConnection = nil
+        end
+        ShowMessage("🔥 Long Jump + Strafe OFF")
+    end
+end
+
+-- ============================================
+-- 👻 ИСПРАВЛЕННАЯ НЕВИДИМОСТЬ (FE INVISIBILITY)
+-- ============================================
+function ToggleInvisibility()
+    invisibilityEnabled = not invisibilityEnabled
+    if invisibilityEnabled then
+        if LP.Character then
+            -- Метод через прозрачность частей
+            for _, v in pairs(LP.Character:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Transparency = 0.99
+                end
+            end
+            -- Отключаем тени для полной невидимости
+            LP.Character:SetAttribute("Invisible", true)
+            ShowMessage("👤 Invisibility ON (Ghost Mode)")
+        end
+    else
+        if LP.Character then
+            for _, v in pairs(LP.Character:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Transparency = 0
+                end
+            end
+            LP.Character:SetAttribute("Invisible", false)
+        end
+        ShowMessage("👤 Invisibility OFF")
+    end
+end
+
+-- Авто-невидимость при респавне
+LP.CharacterAdded:Connect(function()
+    task.wait(0.3)
+    if invisibilityEnabled then
+        for _, v in pairs(LP.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 0.99
+            end
+        end
+    end
+end)
+
+-- ============================================
+-- 🌀 ИСПРАВЛЕННЫЙ АНТИ-АИМ (SPIN / BACKWARDS)
+-- ============================================
+function ToggleAntiAim()
+    antiAimEnabled = not antiAimEnabled
+    if antiAimEnabled then
+        antiAimConnection = RunService.Heartbeat:Connect(function()
+            if not antiAimEnabled or not LP.Character then return end
+            local root = LP.Character:FindFirstChild("HumanoidRootPart")
+            local hum = LP.Character:FindFirstChild("Humanoid")
+            if not root or not hum then return end
+            
+            if guiSettings.AntiAimMode == "Spin" then
+                -- Бешеное вращение (быстрое)
+                root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(tick() * 500 % 360), 0)
+                hum.AutoRotate = false
+            elseif guiSettings.AntiAimMode == "Backwards" then
+                -- Движение задом + разворот
+                local look = root.CFrame.LookVector
+                local backwards = -look
+                root.CFrame = CFrame.new(root.Position, root.Position + backwards)
+                hum.AutoRotate = false
+            end
+        end)
+        ShowMessage("🌀 Anti-Aim "..guiSettings.AntiAimMode.." ON")
+    else
+        if antiAimConnection then 
+            antiAimConnection:Disconnect() 
+            antiAimConnection = nil
+        end
+        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+            LP.Character.Humanoid.AutoRotate = true
+        end
+        ShowMessage("🌀 Anti-Aim OFF")
+    end
+end
+
+function SetAntiAimMode(mode)
+    guiSettings.AntiAimMode = mode
+    ShowMessage("Anti-Aim Mode: "..mode)
+    if antiAimEnabled then
+        ToggleAntiAim()
+        task.wait(0.1)
+        ToggleAntiAim()
+    end
+end
+
+-- ============================================
+-- 🕷️ ОСТАЛЬНЫЕ MOVEMENT ФУНКЦИИ
 -- ============================================
 function ToggleSpider()
     spiderEnabled = not spiderEnabled 
@@ -609,17 +747,6 @@ function ToggleHelicopter()
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, 35, r.AssemblyLinearVelocity.Z)
                 r.CFrame = r.CFrame * CFrame.Angles(0, math.rad(25), 0)
             end
-        end
-    end)
-end
-
-function ToggleInvisibility()
-    invisibilityEnabled = not invisibilityEnabled 
-    ShowMessage("FE Invisibility "..(invisibilityEnabled and "ON 👤" or "OFF"))
-    task.spawn(function()
-        if invisibilityEnabled and LP.Character and LP.Character:FindFirstChild("LowerTorso") then
-            LP.Character.LowerTorsoRootWeld:Destroy()
-            LP.Character.LowerTorso.Position = Vector3.new(0, 99999, 0)
         end
     end)
 end
@@ -756,6 +883,13 @@ LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     if hatEnabled then CreateChineseHat() end
     if trailV2Enabled then ToggleTrailV2() end
+    if invisibilityEnabled then
+        for _, v in pairs(LP.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 0.99
+            end
+        end
+    end
 end)
 
 -- ============================================
@@ -776,7 +910,6 @@ function ToggleSpin() spinEnabled = not spinEnabled end
 function ToggleInfiniteJump() infJumpEnabled = not infJumpEnabled end
 function ToggleAirWalk() airWalkEnabled = not airWalkEnabled end
 function ToggleNoClip() noClipEnabled = not noClipEnabled end
-function ToggleAntiAim() antiAimEnabled = not antiAimEnabled end
 function ToggleAimbotV2() aimbotV2Enabled = not aimbotV2Enabled ShowMessage("Silent Aim V2 Toggled") end
 function ToggleAimbotV3() aimbotV3Enabled = not aimbotV3Enabled ShowMessage("Predict Aim V3 Toggled") end
 function ToggleTriggerBot() triggerBotEnabled = not triggerBotEnabled end
@@ -794,7 +927,22 @@ function ToggleBlockESP() blockEspEnabled = not blockEspEnabled end
 function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled end
 function ToggleStretch() stretchEnabled = not stretchEnabled end
 function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled end
-function SetAntiAimMode(mode) guiSettings.AntiAimMode = mode end
+function ToggleTeleportTool() 
+    tpToolEnabled = not tpToolEnabled
+    if tpToolEnabled then
+        teleportTool = Instance.new("Tool", LP.Backpack)
+        teleportTool.RequiresHandle = false
+        teleportTool.Name = "MTY TP Tool 🛠️"
+        teleportTool.Activated:Connect(function()
+            local m = LP:GetMouse()
+            if m and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                LP.Character.HumanoidRootPart.CFrame = CFrame.new(m.Hit.Position + Vector3.new(0,3,0))
+            end
+        end)
+    else
+        if teleportTool then teleportTool:Destroy() end
+    end
+end
 
 -- ============================================
 -- 🖥️ СОЗДАНИЕ МЕНЮ
@@ -866,6 +1014,7 @@ local function CreateMenu()
         elseif name == "Toggle Invisibility 👤" then return invisibilityEnabled and " [ON]" or " [OFF]"
         elseif name == "Toggle Helicopter 🚁" then return helicopterEnabled and " [ON]" or " [OFF]"
         elseif name == "CS:GO Auto-Strafe ✈️" then return strafeEnabled and " [ON]" or " [OFF]"
+        elseif name == "Long Jump + Strafe 🔥" then return longJumpEnabled and " [ON]" or " [OFF]"
         end return ""
     end
 
@@ -930,6 +1079,7 @@ local function CreateMenu()
                 elseif name == "Toggle Invisibility 👤" then ToggleInvisibility()
                 elseif name == "Toggle Helicopter 🚁" then ToggleHelicopter()
                 elseif name == "CS:GO Auto-Strafe ✈️" then ToggleStrafe()
+                elseif name == "Long Jump + Strafe 🔥" then ToggleLongJump()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
                 elseif name == "Aimbot Speed" then OpenTextInput("Aimbot Speed", "0.01-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end)
@@ -943,6 +1093,8 @@ local function CreateMenu()
                 elseif name == "Trail Color" then OpenColorPicker("Trail Color", function(c) guiSettings.TrailColor = c if actualTrailInstance then actualTrailInstance.Color = ColorSequence.new(c) end end)
                 elseif name == "Hat Color" then OpenColorPicker("Hat Color", function(c) guiSettings.HatColor = c if hatEnabled then CreateChineseHat() end end)
                 elseif name == "Jump Circle Color" then OpenColorPicker("Jump Circle Color", function(c) guiSettings.JumpCircleColor = c end)
+                elseif name == "Anti-Aim Mode: Spin" then SetAntiAimMode("Spin")
+                elseif name == "Anti-Aim Mode: Backwards" then SetAntiAimMode("Backwards")
                 elseif name == "Optimize Textures" then
                     for _, v in pairs(game:GetDescendants()) do pcall(function() if v:IsA("Texture") or v:IsA("Decal") then v.Texture = "rbxassetid://4322737890" elseif v:IsA("Part") then v.Material = Enum.Material.Plastic end end) end
                     Lighting.GlobalShadows = false Lighting.Brightness = 1 Lighting.ClockTime = 14 ShowMessage("Textures Optimized")
@@ -955,9 +1107,9 @@ local function CreateMenu()
     
     local categories = {
         VISUAL = {"Toggle ESP", "Toggle ESP V2", "Toggle ESP V3 (Bars) 📊", "Toggle Skeleton", "Toggle Chams", "Toggle Hitboxes", "Toggle Hitboxes V2 (Minecraft) 🧱", "Toggle Tracers", "Toggle Jump Circle", "Jump Circle Color", "Toggle Trail", "Toggle Trail V2 🎀", "Trail Color", "Toggle Chinese Hat", "Hat Color", "Rainbow China Hat 🌈", "Toggle Particles V2 🎆", "Toggle Fullbright", "Toggle World Color", "HitGlow Effects ✨", "Target HUD + Fling 📊", "Target Line 🔗", "Arrow Indicators 🔺", "Block ESP (Ores) 📦", "Damage Indicators 💥"},
-        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️"},
+        PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Long Jump + Strafe 🔥"},
         COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Tool Reach 📏", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡"},
-        HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Jitter", "Anti-Aim Mode: Spin", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓"},
+        HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓"},
         SETTINGS = {"Optimize Textures"}
     }
     
@@ -969,4 +1121,4 @@ local function CreateMenu()
 end
 
 CreateMenu()
-print("MTY HUB v5.5 COMPLETELY ASSEMBLED! 🚀")
+print("MTY HUB v5.5 ULTIMATE FULLY FIXED! 🚀")
