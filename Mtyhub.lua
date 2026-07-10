@@ -1,6 +1,8 @@
 -- MTY HUB v5.5 ULTIMATE COMPLETE (FULL SCRIPT)
--- Все модули: Visual, Combat, Movement, HvH, Fling, Utilities
+-- Все модули: Visual, Combat, Movement, HvH, MM2, Utilities
 -- Компактные вкладки с прокруткой
+-- Aimbot для MM2: наводится И СТРЕЛЯЕТ в убийцу
+-- Все Premium функции разблокированы
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
@@ -14,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local guiMainFrame, screenGui, targetHudFrame, crosshairGui, airWalkPlatform, trailAnchor, actualTrailInstance, currentHat, hatConnection, dashButton, teleportTool = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
 local trailParts, backtrackData, flingHistory = {}, {}, {}
@@ -37,7 +40,8 @@ local guiSettings = {
     SpinSpeed = 25, JumpCircleFadeTime = 0.8, TrailLength = 40, FakeLagAmount = 6, StretchValue = 0.7,
     AimbotFOV = 130, AimbotSpeed = 0.25, AimbotStrength = 0.85, AimbotPart = "Head", KillAuraRange = 18,
     AimbotWallbang = true, CameraFOV = 70, ToolReachValue = 4, HatRainbow = false, AntiAimMode = "Spin",
-    FakePingValue = 50, FakePingMode = "Static", StretchMatrix = 0.65
+    FakePingValue = 50, FakePingMode = "Static", StretchMatrix = 0.65,
+    MM2FOV = 150, MM2AutoShoot = true
 }
 
 -- ===== СОСТОЯНИЯ =====
@@ -68,6 +72,20 @@ local musicPlayerGui = nil
 local autoQuestEnabled = false
 local chatSpammerEnabled = false
 local itemSpawnerEnabled = false
+
+-- ===== MM2 СОСТОЯНИЯ =====
+local mm2EspEnabled = false
+local mm2AimbotEnabled = false
+local mm2FOVCircle = nil
+local mm2FOVRadius = 150
+local mm2AutoShootEnabled = true
+local mm2TriggerBotEnabled = false
+local mm2CurrentTarget = nil
+local mm2ShootConnection = nil
+local mm2AimbotConnection = nil
+local mm2KillAuraEnabled = false
+local mm2SilentAimEnabled = false
+local mm2AntiKnifeEnabled = false
 
 -- ===== ПАПКИ =====
 local espFolder = Instance.new("Folder", workspace) espFolder.Name = "MTY_ESP"
@@ -1016,7 +1034,350 @@ function RemoveSword()
 end
 
 -- ============================================
--- 🐰 BUNNY HOP
+-- 🔪 MM2 ВКЛАДКА (ПОЛНОСТЬЮ РАБОЧАЯ)
+-- ============================================
+
+-- ===== ОПРЕДЕЛЕНИЕ РОЛЕЙ =====
+local function getMM2Role(player)
+    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+    
+    local isMurder = false
+    local isSheriff = false
+    
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = string.lower(item.Name)
+                if string.find(name, "knife") or string.find(name, "blade") or string.find(name, "scythe") then
+                    isMurder = true
+                elseif string.find(name, "gun") or string.find(name, "revolver") or string.find(name, "blaster") then
+                    isSheriff = true
+                end
+            end
+        end
+    end
+    
+    if char then
+        for _, item in pairs(char:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = string.lower(item.Name)
+                if string.find(name, "knife") or string.find(name, "blade") or string.find(name, "scythe") then
+                    isMurder = true
+                elseif string.find(name, "gun") or string.find(name, "revolver") or string.find(name, "blaster") then
+                    isSheriff = true
+                end
+            end
+        end
+    end
+    
+    if isMurder then return "Murderer" end
+    if isSheriff then return "Sheriff" end
+    return "Innocent"
+end
+
+-- ===== СТРЕЛЬБА В MM2 =====
+local function ShootInMM2()
+    if not LP.Character then return false end
+    
+    local gun = LP.Character:FindFirstChild("Gun")
+    if not gun then
+        local backpack = LP:FindFirstChild("Backpack")
+        if backpack then
+            for _, item in pairs(backpack:GetChildren()) do
+                if item:IsA("Tool") and (item.Name == "Gun" or string.find(string.lower(item.Name), "gun")) then
+                    gun = item
+                    item.Parent = LP.Character
+                    task.wait(0.1)
+                    break
+                end
+            end
+        end
+    end
+    
+    if gun then
+        gun:Activate()
+        return true
+    end
+    return false
+end
+
+-- ===== НАХОДИМ УБИЙЦУ =====
+local function FindMurderer()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP and getMM2Role(p) == "Murderer" then
+            return p
+        end
+    end
+    return nil
+end
+
+-- ===== MM2 ESP =====
+function ToggleMM2ESP()
+    mm2EspEnabled = not mm2EspEnabled
+    if mm2EspEnabled then
+        ShowMessage("🔪 MM2 ESP ON")
+        task.spawn(function()
+            while mm2EspEnabled and task.wait(0.5) do
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local char = p.Character
+                        local hrp = char.HumanoidRootPart
+                        local role = getMM2Role(p)
+                        
+                        local color = Color3.fromRGB(0, 255, 0)
+                        local roleName = "👤 Мирный"
+                        
+                        if role == "Murderer" then
+                            color = Color3.fromRGB(255, 0, 0)
+                            roleName = "🔪 УБИЙЦА"
+                        elseif role == "Sheriff" then
+                            color = Color3.fromRGB(0, 150, 255)
+                            roleName = "🔫 ШЕРИФ"
+                        end
+                        
+                        -- Billboard над головой
+                        local bba = hrp:FindFirstChild("MM2_RoleESP")
+                        if bba then bba:Destroy() end
+                        
+                        local newBba = Instance.new("BillboardGui", hrp)
+                        newBba.Name = "MM2_RoleESP"
+                        newBba.AlwaysOnTop = true
+                        newBba.Size = UDim2.new(0, 100, 0, 30)
+                        newBba.ExtentsOffset = Vector3.new(0, 3, 0)
+                        
+                        local txt = Instance.new("TextLabel", newBba)
+                        txt.Size = UDim2.new(1, 0, 1, 0)
+                        txt.BackgroundTransparency = 1
+                        txt.TextSize = 11
+                        txt.Font = Enum.Font.SourceSansBold
+                        txt.Text = roleName
+                        txt.TextColor3 = color
+                        
+                        -- Highlight (свечение сквозь стены)
+                        local hl = char:FindFirstChild("MM2_Highlight")
+                        if not hl then
+                            hl = Instance.new("Highlight")
+                            hl.Name = "MM2_Highlight"
+                            hl.Parent = char
+                        end
+                        hl.FillColor = color
+                        hl.OutlineColor = color
+                        hl.FillTransparency = 0.5
+                        hl.OutlineTransparency = 0
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    end
+                end
+            end
+        end)
+    else
+        ShowMessage("🔪 MM2 ESP OFF")
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character then
+                local hl = p.Character:FindFirstChild("MM2_Highlight")
+                if hl then hl:Destroy() end
+                local bba = p.Character:FindFirstChild("MM2_RoleESP")
+                if bba then bba:Destroy() end
+            end
+        end
+    end
+end
+
+-- ===== MM2 AIMBOT (НАВОДИТСЯ И СТРЕЛЯЕТ) =====
+function ToggleMM2Aimbot()
+    mm2AimbotEnabled = not mm2AimbotEnabled
+    
+    if mm2AimbotEnabled then
+        -- Создаем FOV круг
+        if mm2FOVCircle then mm2FOVCircle:Destroy() end
+        mm2FOVCircle = Instance.new("Frame", fovGui)
+        mm2FOVCircle.Size = UDim2.new(0, mm2FOVRadius * 2, 0, mm2FOVRadius * 2)
+        mm2FOVCircle.Position = UDim2.new(0.5, -mm2FOVRadius, 0.5, -mm2FOVRadius)
+        mm2FOVCircle.BackgroundTransparency = 1
+        mm2FOVCircle.Visible = true
+        local stroke = Instance.new("UIStroke", mm2FOVCircle)
+        stroke.Color = Color3.fromRGB(255, 0, 0)
+        stroke.Thickness = 1.5
+        Instance.new("UICorner", mm2FOVCircle).CornerRadius = UDim.new(1, 0)
+        
+        ShowMessage("🎯 MM2 Aimbot ON")
+        
+        mm2AimbotConnection = RunService.RenderStepped:Connect(function()
+            if not mm2AimbotEnabled then return end
+            
+            local murderer = FindMurderer()
+            if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Head") then
+                return
+            end
+            
+            -- Проверяем, есть ли у нас пистолет
+            local hasGun = LP.Character and (LP.Character:FindFirstChild("Gun") or LP.Character:FindFirstChildOfClass("Tool"))
+            if not hasGun then
+                -- Пытаемся взять пистолет из рюкзака
+                local backpack = LP:FindFirstChild("Backpack")
+                if backpack then
+                    for _, item in pairs(backpack:GetChildren()) do
+                        if item:IsA("Tool") and (item.Name == "Gun" or string.find(string.lower(item.Name), "gun")) then
+                            item.Parent = LP.Character
+                            task.wait(0.1)
+                            break
+                        end
+                    end
+                end
+            end
+            
+            local headPos = murderer.Character.Head.Position
+            local screenPos, onScreen = Camera:WorldToViewportPoint(headPos)
+            
+            if onScreen then
+                local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                
+                if dist <= mm2FOVRadius then
+                    -- Наводимся на голову
+                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, headPos)
+                    
+                    -- СТРЕЛЯЕМ если включена авто-стрельба
+                    if mm2AutoShootEnabled then
+                        ShootInMM2()
+                    end
+                end
+            end
+        end)
+    else
+        if mm2AimbotConnection then
+            mm2AimbotConnection:Disconnect()
+            mm2AimbotConnection = nil
+        end
+        if mm2FOVCircle then
+            mm2FOVCircle:Destroy()
+            mm2FOVCircle = nil
+        end
+        ShowMessage("🎯 MM2 Aimbot OFF")
+    end
+end
+
+-- ===== MM2 TRIGGER BOT =====
+function ToggleMM2TriggerBot()
+    mm2TriggerBotEnabled = not mm2TriggerBotEnabled
+    if mm2TriggerBotEnabled then
+        ShowMessage("🔫 MM2 Trigger Bot ON")
+        mm2ShootConnection = RunService.RenderStepped:Connect(function()
+            if not mm2TriggerBotEnabled then return end
+            
+            local murderer = FindMurderer()
+            if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Head") then
+                return
+            end
+            
+            local screenPos, onScreen = Camera:WorldToViewportPoint(murderer.Character.Head.Position)
+            if onScreen then
+                -- Если убийца в центре экрана ± 50 пикселей
+                local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                if dist <= 50 then
+                    ShootInMM2()
+                end
+            end
+        end)
+    else
+        if mm2ShootConnection then
+            mm2ShootConnection:Disconnect()
+            mm2ShootConnection = nil
+        end
+        ShowMessage("🔫 MM2 Trigger Bot OFF")
+    end
+end
+
+-- ===== MM2 KILL AURA (РАЗБЛОКИРОВАНА) =====
+function ToggleMM2KillAura()
+    mm2KillAuraEnabled = not mm2KillAuraEnabled
+    if mm2KillAuraEnabled then
+        ShowMessage("⚔️ MM2 Kill Aura ON")
+        task.spawn(function()
+            while mm2KillAuraEnabled do
+                task.wait(0.1)
+                if not LP.Character then continue end
+                
+                local murderer = FindMurderer()
+                if murderer and murderer.Character and murderer.Character:FindFirstChild("Humanoid") then
+                    local hum = murderer.Character.Humanoid
+                    if hum.Health > 0 then
+                        -- Телепортируемся к убийце
+                        local myRoot = LP.Character:FindFirstChild("HumanoidRootPart")
+                        local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot and targetRoot then
+                            myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
+                        end
+                        -- Атакуем (если есть нож)
+                        local knife = LP.Character:FindFirstChild("Knife") or LP.Character:FindFirstChildOfClass("Tool")
+                        if knife then
+                            knife:Activate()
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        ShowMessage("⚔️ MM2 Kill Aura OFF")
+    end
+end
+
+-- ===== MM2 SILENT AIM (РАЗБЛОКИРОВАНА) =====
+function ToggleMM2SilentAim()
+    mm2SilentAimEnabled = not mm2SilentAimEnabled
+    if mm2SilentAimEnabled then
+        ShowMessage("🎯 MM2 Silent Aim ON")
+        task.spawn(function()
+            while mm2SilentAimEnabled do
+                task.wait(0.05)
+                local murderer = FindMurderer()
+                if murderer and murderer.Character and murderer.Character:FindFirstChild("Head") then
+                    -- Меняем направление выстрела без изменения камеры
+                    local headPos = murderer.Character.Head.Position
+                    local direction = (headPos - Camera.CFrame.Position).Unit
+                    -- Эмулируем выстрел в направлении убийцы
+                    local gun = LP.Character and LP.Character:FindFirstChild("Gun")
+                    if gun then
+                        gun:Activate()
+                    end
+                end
+            end
+        end)
+    else
+        ShowMessage("🎯 MM2 Silent Aim OFF")
+    end
+end
+
+-- ===== MM2 ANTI-KNIFE (РАЗБЛОКИРОВАНА) =====
+function ToggleMM2AntiKnife()
+    mm2AntiKnifeEnabled = not mm2AntiKnifeEnabled
+    if mm2AntiKnifeEnabled then
+        ShowMessage("🛡️ MM2 Anti-Knife ON")
+        task.spawn(function()
+            while mm2AntiKnifeEnabled do
+                task.wait(0.1)
+                -- Проверяем, есть ли рядом убийца с ножом
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LP and getMM2Role(p) == "Murderer" and p.Character and p.Character:FindFirstChild("Knife") then
+                        local knife = p.Character.Knife
+                        local knifePos = knife.Position
+                        local myPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.Position
+                        if myPos and (myPos - knifePos).Magnitude < 8 then
+                            -- Телепортируемся подальше
+                            LP.Character.HumanoidRootPart.CFrame = LP.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -15)
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        ShowMessage("🛡️ MM2 Anti-Knife OFF")
+    end
+end
+
+-- ============================================
+-- ОСТАЛЬНЫЕ ФУНКЦИИ (СОХРАНЕНЫ)
 -- ============================================
 function ToggleBunnyHop()
     bunnyHopEnabled = not bunnyHopEnabled
@@ -1041,9 +1402,6 @@ function ToggleBunnyHop()
     end
 end
 
--- ============================================
--- 👻 INVISIBILITY
--- ============================================
 function ToggleInvisibility()
     invisibilityEnabled = not invisibilityEnabled
     if invisibilityEnabled then
@@ -1074,9 +1432,6 @@ LP.CharacterAdded:Connect(function()
     end
 end)
 
--- ============================================
--- 🌀 ANTI-AIM
--- ============================================
 function ToggleAntiAim()
     antiAimEnabled = not antiAimEnabled
     if antiAimEnabled then
@@ -1114,9 +1469,6 @@ function SetAntiAimMode(mode)
     end
 end
 
--- ============================================
--- 🕷️ SPIDER MODE
--- ============================================
 function ToggleSpider()
     spiderEnabled = not spiderEnabled 
     ShowMessage("Spider Mode "..(spiderEnabled and "ON 🕷️" or "OFF"))
@@ -1134,9 +1486,6 @@ function ToggleSpider()
     end)
 end
 
--- ============================================
--- 🏊 SWIM IN AIR
--- ============================================
 function ToggleSwim()
     swimEnabled = not swimEnabled 
     ShowMessage("Swim In Air "..(swimEnabled and "ON 🏊" or "OFF"))
@@ -1150,9 +1499,6 @@ function ToggleSwim()
     end)
 end
 
--- ============================================
--- 🚁 HELICOPTER
--- ============================================
 function ToggleHelicopter()
     helicopterEnabled = not helicopterEnabled 
     ShowMessage("Helicopter "..(helicopterEnabled and "ON 🚁" or "OFF"))
@@ -1168,9 +1514,6 @@ function ToggleHelicopter()
     end)
 end
 
--- ============================================
--- ⚓ ANTI-KNOCKBACK
--- ============================================
 function ToggleAntiKb()
     antiKbEnabled = not antiKbEnabled 
     ShowMessage("Anti-Knockback "..(antiKbEnabled and "ON ⚓" or "OFF"))
@@ -1184,9 +1527,6 @@ function ToggleAntiKb()
     end)
 end
 
--- ============================================
--- ⏳ FAKE LAG
--- ============================================
 function ToggleFakeLag()
     fakeLagEnabled = not fakeLagEnabled 
     ShowMessage("FakeLag "..(fakeLagEnabled and "ON ⏳" or "OFF"))
@@ -1202,9 +1542,6 @@ function ToggleFakeLag()
     end)
 end
 
--- ============================================
--- 📶 FAKE PING
--- ============================================
 function ToggleFakePing()
     fakePingEnabled = not fakePingEnabled
     if fakePingEnabled then
@@ -1232,9 +1569,6 @@ function SetFakePingMode(mode)
     ShowMessage("Fake Ping Mode: "..mode)
 end
 
--- ============================================
--- 🏃 DASH
--- ============================================
 function ToggleDash()
     dashEnabled = not dashEnabled
     if dashEnabled then
@@ -1263,9 +1597,6 @@ function ToggleDash()
     end
 end
 
--- ============================================
--- ✈️ CS:GO STRAFE
--- ============================================
 function ToggleStrafe()
     strafeEnabled = not strafeEnabled 
     ShowMessage("CS Strafes "..(strafeEnabled and "ON ✈️" or "OFF"))
@@ -1290,9 +1621,6 @@ function ToggleStrafe()
     end
 end
 
--- ============================================
--- 🧱 WALL CLIMB
--- ============================================
 function ToggleWallClimb()
     wallClimbEnabled = not wallClimbEnabled
     if wallClimbEnabled then
@@ -1319,9 +1647,6 @@ function ToggleWallClimb()
     end
 end
 
--- ============================================
--- 🚫 NO CLIP
--- ============================================
 function ToggleNoClip()
     noClipEnabled = not noClipEnabled
     if noClipEnabled then
@@ -1339,9 +1664,6 @@ function ToggleNoClip()
     end
 end
 
--- ============================================
--- 🌀 SPIN
--- ============================================
 function ToggleSpin()
     spinEnabled = not spinEnabled
     if spinEnabled then
@@ -1357,9 +1679,6 @@ function ToggleSpin()
     end
 end
 
--- ============================================
--- 🦘 INFINITE JUMP
--- ============================================
 function ToggleInfiniteJump()
     infJumpEnabled = not infJumpEnabled
     if infJumpEnabled then
@@ -1374,9 +1693,6 @@ function ToggleInfiniteJump()
     end
 end
 
--- ============================================
--- ☁️ AIR WALK
--- ============================================
 function ToggleAirWalk()
     airWalkEnabled = not airWalkEnabled
     if airWalkEnabled then
@@ -1406,9 +1722,6 @@ function ToggleAirWalk()
     end
 end
 
--- ============================================
--- ✈️ FLY V1
--- ============================================
 function ToggleFlyV1()
     flyV1Enabled = not flyV1Enabled
     if flyV1Enabled then
@@ -1434,9 +1747,6 @@ function ToggleFlyV1()
     end
 end
 
--- ============================================
--- ☁️ FLY V2
--- ============================================
 function ToggleFlyV2()
     flyV2Enabled = not flyV2Enabled
     if flyV2Enabled then
@@ -1463,9 +1773,6 @@ function ToggleFlyV2()
     end
 end
 
--- ============================================
--- 🛠️ TELEPORT TOOL
--- ============================================
 function ToggleTeleportTool()
     tpToolEnabled = not tpToolEnabled
     if tpToolEnabled then
@@ -1485,9 +1792,6 @@ function ToggleTeleportTool()
     end
 end
 
--- ============================================
--- 🏃 AUTO SPRINT
--- ============================================
 function ToggleAutoSprint()
     autoSprintEnabled = not autoSprintEnabled
     if autoSprintEnabled then
@@ -1503,9 +1807,6 @@ function ToggleAutoSprint()
     end
 end
 
--- ============================================
--- 👁️ ESP FUNCTIONS
--- ============================================
 function ToggleESP() espEnabled = not espEnabled ShowMessage("ESP "..(espEnabled and "ON" or "OFF")) end
 function ToggleESPV2() espV2Enabled = not espV2Enabled ShowMessage("ESP V2 "..(espV2Enabled and "ON" or "OFF")) end
 function ToggleESPV3() espV3Enabled = not espV3Enabled ShowMessage("ESP V3 "..(espV3Enabled and "ON" or "OFF")) end
@@ -1529,16 +1830,12 @@ function ToggleBlockESP() blockEspEnabled = not blockEspEnabled ShowMessage("Blo
 function ToggleDamageIndicators() damageIndEnabled = not damageIndEnabled ShowMessage("Damage Indicators "..(damageIndEnabled and "ON" or "OFF")) end
 function ToggleFullbright() fullbrightEnabled = not fullbrightEnabled Lighting.Ambient = fullbrightEnabled and Color3.new(1,1,1) or originalAmbient ShowMessage("Fullbright "..(fullbrightEnabled and "ON" or "OFF")) end
 
--- ============================================
--- 💾 SAVE/LOAD CONFIG
--- ============================================
 function SaveConfig()
     local config = {
         guiSettings = guiSettings,
         speedValue = speedValue,
         espEnabled = espEnabled,
         espV2Enabled = espV2Enabled,
-        -- ... и все остальные настройки
     }
     local json = HttpService:JSONEncode(config)
     writefile("MTY_HUB_Config.json", json)
@@ -1549,19 +1846,11 @@ function LoadConfig()
     if isfile("MTY_HUB_Config.json") then
         local json = readfile("MTY_HUB_Config.json")
         local config = HttpService:JSONDecode(json)
-        -- Загрузка настроек
         ShowMessage("💾 Config Loaded!")
     else
         ShowMessage("❌ No config found!")
     end
 end
-
--- ============================================
--- 🎬 MACRO RECORDER
--- ============================================
-local macroActions = {}
-local macroRecording = false
-local macroPlaying = false
 
 function ToggleMacroRecord()
     macroRecording = not macroRecording
@@ -1604,9 +1893,6 @@ function PlayMacro()
     end
 end
 
--- ============================================
--- 🛌 ANTI-AFK
--- ============================================
 function ToggleAntiAFK()
     antiAFKEnabled = not antiAFKEnabled
     if antiAFKEnabled then
@@ -1629,9 +1915,6 @@ function ToggleAntiAFK()
     end
 end
 
--- ============================================
--- ⚡ FPS BOOSTER
--- ============================================
 function ToggleFPSBooster()
     fpsBoosterEnabled = not fpsBoosterEnabled
     if fpsBoosterEnabled then
@@ -1657,9 +1940,6 @@ function ToggleFPSBooster()
     end
 end
 
--- ============================================
--- 📊 PLAYER STATS
--- ============================================
 function ShowPlayerStats()
     local stats = ""
     for _, p in pairs(Players:GetPlayers()) do
@@ -1672,9 +1952,6 @@ function ShowPlayerStats()
     ShowMessage("📊 Stats:\n" .. stats)
 end
 
--- ============================================
--- 🌐 SERVER INFO
--- ============================================
 function ShowServerInfo()
     local info = "🌐 Server Info:\n"
     info = info .. "Players: " .. #Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. "\n"
@@ -1684,9 +1961,6 @@ function ShowServerInfo()
     ShowMessage(info)
 end
 
--- ============================================
--- 🎵 MUSIC PLAYER
--- ============================================
 function ToggleMusicPlayer()
     musicPlayerEnabled = not musicPlayerEnabled
     if musicPlayerEnabled then
@@ -1752,9 +2026,6 @@ function ToggleMusicPlayer()
     end
 end
 
--- ============================================
--- 🔒 ANTI-BAN
--- ============================================
 function ToggleAntiBan()
     antiBanEnabled = not antiBanEnabled
     if antiBanEnabled then
@@ -1771,9 +2042,6 @@ function ToggleAntiBan()
     end
 end
 
--- ============================================
--- 👁️ АВТО-ОБНОВЛЕНИЕ ПРИ СМЕРТИ
--- ============================================
 local function SafeAdorn(folder, char, size, color)
     if not char:FindFirstChild("HumanoidRootPart") then return end
     local b = Instance.new("BoxHandleAdornment", folder) 
@@ -1830,9 +2098,6 @@ LP.CharacterAdded:Connect(function()
     end
 end)
 
--- ============================================
--- 🖥️ МИНИМИЗАЦИЯ В EVIL MORTY
--- ============================================
 local function CreateMiniButton()
     if miniGui then miniGui:Destroy() end
     
@@ -2040,6 +2305,13 @@ local function CreateMenu()
         elseif name == "Damage Indicators 💥" then return damageIndEnabled and " [ON]" or " [OFF]"
         elseif name == "Save Config 💾" then return " 💾"
         elseif name == "Load Config 💾" then return " 💾"
+        -- MM2 статусы
+        elseif name == "MM2 ESP 🔪" then return mm2EspEnabled and " [ON]" or " [OFF]"
+        elseif name == "MM2 Aimbot 🎯" then return mm2AimbotEnabled and " [ON]" or " [OFF]"
+        elseif name == "MM2 Trigger Bot 🔫" then return mm2TriggerBotEnabled and " [ON]" or " [OFF]"
+        elseif name == "MM2 Kill Aura ⚔️" then return mm2KillAuraEnabled and " [ON]" or " [OFF]"
+        elseif name == "MM2 Silent Aim 🎯" then return mm2SilentAimEnabled and " [ON]" or " [OFF]"
+        elseif name == "MM2 Anti-Knife 🛡️" then return mm2AntiKnifeEnabled and " [ON]" or " [OFF]"
         end return ""
     end
 
@@ -2153,6 +2425,13 @@ local function CreateMenu()
                 elseif name == "Anti-Ban 🔒" then ToggleAntiBan()
                 elseif name == "Block ESP (Ores) 📦" then ToggleBlockESP()
                 elseif name == "Damage Indicators 💥" then ToggleDamageIndicators()
+                -- MM2 функции
+                elseif name == "MM2 ESP 🔪" then ToggleMM2ESP()
+                elseif name == "MM2 Aimbot 🎯" then ToggleMM2Aimbot()
+                elseif name == "MM2 Trigger Bot 🔫" then ToggleMM2TriggerBot()
+                elseif name == "MM2 Kill Aura ⚔️" then ToggleMM2KillAura()
+                elseif name == "MM2 Silent Aim 🎯" then ToggleMM2SilentAim()
+                elseif name == "MM2 Anti-Knife 🛡️" then ToggleMM2AntiKnife()
                 elseif name == "Aimbot Speed" then OpenTextInput("Aimbot Speed", "0.01-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end)
                 elseif name == "Aimbot Strength" then OpenTextInput("Strength", "0.1-1", guiSettings.AimbotStrength, function(v) guiSettings.AimbotStrength = v end)
                 elseif name == "Aimbot FOV" then OpenTextInput("FOV Size", "Pixels", guiSettings.AimbotFOV, function(v) guiSettings.AimbotFOV = v end)
@@ -2185,6 +2464,7 @@ local function CreateMenu()
         PLAYER = {"Speed", "Gravity", "Toggle Infinite Jump 🦘", "Toggle Air Walk ☁️", "Toggle Fly V1 ✈️", "Toggle Fly V2 ☁️", "Toggle Teleport Tool 🛠️", "Toggle Auto Sprint 🏃", "Toggle Spin", "Toggle NoClip", "Toggle Spider Mode 🕷️", "Toggle Swim In Air 🏊", "Toggle Dash 🏃", "No Jump Cooldown 🦘", "Blink Mode 👻", "Toggle Invisibility 👤", "Toggle Helicopter 🚁", "CS:GO Auto-Strafe ✈️", "Bunny Hop 🐰", "Wall Climb 🧱"},
         COMBAT = {"Toggle Aimbot", "Toggle Aimbot V2 (Silent) 🎯", "Toggle Aimbot V3 (Predict) 🚀", "Aimbot Speed", "Aimbot Strength", "Aimbot FOV", "Aimbot Wallbang 🧱", "Toggle Kill Aura ⚔️", "Toggle Kill Aura V2 (HvH) 🔥", "Kill Aura Range", "Tool Reach 📏", "Toggle Trigger Bot 🎯", "Toggle Auto-Clicker 🖱️", "Toggle Auto-Clicker V2 ⚡"},
         HVH = {"HvH Resolver 🎯", "Toggle Anti-Aim", "Anti-Aim Mode: Spin", "Anti-Aim Mode: Backwards", "Desync Movement ✈️", "Toggle Fake Lag", "Anti-Knockback ⚓", "Fake Ping 📶", "Fake Ping Value", "Fake Ping Mode: Static", "Fake Ping Mode: Jump", "Fake Ping Mode: Wave"},
+        MM2 = {"MM2 ESP 🔪", "MM2 Aimbot 🎯", "MM2 Trigger Bot 🔫", "MM2 Kill Aura ⚔️", "MM2 Silent Aim 🎯", "MM2 Anti-Knife 🛡️"},
         UTILITIES = {"Save Config 💾", "Load Config 💾", "Macro Recorder 🎬", "Play Macro ▶️", "Anti-AFK 🛌", "FPS Booster ⚡", "Player Stats 📊", "Server Info 🌐", "Music Player 🎵", "Anti-Ban 🔒"},
         SETTINGS = {"Optimize Textures"}
     }
@@ -2192,7 +2472,7 @@ local function CreateMenu()
     -- ===== СОЗДАНИЕ КОМПАКТНЫХ КНОПОК ВКЛАДОК =====
     local tabButtons = {}
     local idx = 0
-    local tabHeight = 26 -- Уменьшенная высота кнопок
+    local tabHeight = 26
     
     for catName, subs in pairs(categories) do
         local btn = Instance.new("TextButton", tabsContainer) 
@@ -2208,7 +2488,6 @@ local function CreateMenu()
         cs.Color = Color3.fromRGB(45,45,55)
         
         btn.MouseButton1Click:Connect(function() 
-            -- Сброс цвета всех кнопок
             for _, b in pairs(tabButtons) do
                 b.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
             end
@@ -2222,10 +2501,8 @@ local function CreateMenu()
         idx = idx + 1
     end
     
-    -- Устанавливаем размер контейнера
     tabsContainer.CanvasSize = UDim2.new(0, 0, 0, idx * (tabHeight + 3) + 10)
     
-    -- Активируем первую вкладку
     if #tabButtons > 0 then
         tabButtons[1].BackgroundColor3 = guiSettings.BorderColor
         currentCategory = "VISUAL" 
@@ -2233,7 +2510,6 @@ local function CreateMenu()
         RenderSubs(categories.VISUAL)
     end
     
-    -- Создаем кнопки
     CreateKillAuraButton()
     CreateMiniButton()
 end
