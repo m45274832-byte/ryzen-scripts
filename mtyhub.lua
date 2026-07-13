@@ -1,5 +1,5 @@
 -- ============================================================================
--- 🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ
+-- 🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ (ИСПРАВЛЕННАЯ)
 -- ============================================================================
 
 local Players = game:GetService("Players")
@@ -706,8 +706,7 @@ function ToggleAimbot()
                                         remote:FireServer(hit)
                                     end
                                 end
-                            end
-                        end
+                            end                        end
                     end
                 end)
             end
@@ -2222,7 +2221,8 @@ function FlingLastPlayer()
             hum.Sit = true
             hrp.AssemblyLinearVelocity = dir * 5000
             ShowMessage("🏴‍☠️ Fling Last: " .. target.Name)
-        end    end
+        end
+    end
 end
 
 function OpenIYFling() ShowMessage("🏴‍☠️ IY Fling opened") end
