@@ -1,5 +1,5 @@
 -- ============================================================================
--- 🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ С OBSIDIAN
+-- 🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ
 -- ============================================================================
 
 local Players = game:GetService("Players")
@@ -17,7 +17,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- ============================================================================
--- 🏴‍☠️ GUI (НЕ ПРОПАДАЕТ ПОСЛЕ СМЕРТИ)
+-- 🏴‍☠️ GUI
 -- ============================================================================
 
 local gui = Instance.new("ScreenGui")
@@ -84,6 +84,9 @@ local guiSettings = {
     ObsidianHipHeight = 0,
     ObsidianGroupColor = Color3.fromRGB(0, 170, 255),
     ObsidianTracerOrigin = "Default",
+    -- CUSTOM CURSOR
+    CustomCursorImage = "rbxassetid://11716557686",
+    CustomCursorSize = 50,
 }
 
 -- ============================================================================
@@ -116,6 +119,9 @@ local toggles = {
     obsidianAutoFb = false, obsidianNoShadows = false, obsidianNoFog = false,
     obsidianWalkfling = false, obsidianNoVoid = false, obsidianGodMode = false,
     obsidianNoPromptCooldown = false,
+    -- НОВЫЕ
+    antiFling = true,
+    customCursor = false,
 }
 
 -- ОСТАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -165,6 +171,14 @@ local obsidianData = {
     espObsFolder = nil,
     selectedPlayer = "All",
 }
+
+-- ANTI-FLING ПЕРЕМЕННЫЕ
+local antiFlingConnections = {}
+
+-- CUSTOM CURSOR ПЕРЕМЕННЫЕ
+local cursorGui = nil
+local cursorImage = nil
+local cursorConnection = nil
 
 local connections = {}
 
@@ -564,7 +578,7 @@ local function getMM2Role(p)
 end
 
 -- ============================================================================
--- 🏴‍☠️ ANTI-AIM V2 (С ВЫБОРОМ МОДОВ)
+-- 🏴‍☠️ ANTI-AIM V2
 -- ============================================================================
 
 function ToggleAntiAim()
@@ -630,7 +644,7 @@ function CycleAntiAimMode()
 end
 
 -- ============================================================================
--- 🏴‍☠️ AIMBOT (С ВЫБОРОМ МОДОВ)
+-- 🏴‍☠️ AIMBOT
 -- ============================================================================
 
 function ToggleAimbot()
@@ -717,7 +731,7 @@ function CycleAimbotMode()
 end
 
 -- ============================================================================
--- 📋 ВСЕ ТВОИ ФУНКЦИИ MTY (ОРИГИНАЛ)
+-- 📋 ВСЕ ТВОИ ФУНКЦИИ MTY
 -- ============================================================================
 
 -- VISUAL
@@ -2208,8 +2222,7 @@ function FlingLastPlayer()
             hum.Sit = true
             hrp.AssemblyLinearVelocity = dir * 5000
             ShowMessage("🏴‍☠️ Fling Last: " .. target.Name)
-        end
-    end
+        end    end
 end
 
 function OpenIYFling() ShowMessage("🏴‍☠️ IY Fling opened") end
@@ -2505,6 +2518,147 @@ function TeleportToGun()
         end
     end)
 end
+
+-- ============================================================================
+-- 🏴‍☠️ ANTI-FLING (ФУНКЦИЯ ДЛЯ МЕНЮ)
+-- ============================================================================
+
+local function disableCollide(part)
+    if toggles.antiFling and part:IsA("BasePart") then
+        part.CanCollide = false
+    end
+end
+
+local function setupCharacter(char)
+    if not char then return end
+    
+    for _, part in ipairs(char:GetChildren()) do
+        disableCollide(part)
+    end
+    
+    local childConn = char.ChildAdded:Connect(disableCollide)
+    
+    local steppedConn = RunService.Stepped:Connect(function()
+        if toggles.antiFling and char:IsDescendantOf(workspace) then
+            for _, part in ipairs(char:GetChildren()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+    
+    char.Destroying:Connect(function()
+        childConn:Disconnect()
+        steppedConn:Disconnect()
+    end)
+end
+
+local function trackPlayer(plr)
+    if plr == player then return end
+    local conn = plr.CharacterAdded:Connect(setupCharacter)
+    if plr.Character then
+        setupCharacter(plr.Character)
+    end
+    antiFlingConnections[plr] = conn
+end
+
+local function untrackPlayer(plr)
+    if antiFlingConnections[plr] then
+        antiFlingConnections[plr]:Disconnect()
+        antiFlingConnections[plr] = nil
+    end
+end
+
+function ToggleAntiFling()
+    toggles.antiFling = not toggles.antiFling
+    
+    if toggles.antiFling then
+        ShowMessage("🛡️ Anti-Fling ON")
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player then
+                trackPlayer(plr)
+            end
+        end
+    else
+        ShowMessage("🛡️ Anti-Fling OFF")
+        for plr, conn in pairs(antiFlingConnections) do
+            conn:Disconnect()
+        end
+        antiFlingConnections = {}
+    end
+end
+
+Players.PlayerAdded:Connect(trackPlayer)
+Players.PlayerRemoving:Connect(untrackPlayer)
+
+-- АВТОЗАПУСК БЕЗ СООБЩЕНИЯ
+task.spawn(function()
+    wait(1)
+    toggles.antiFling = true
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player then
+            trackPlayer(plr)
+        end
+    end
+end)
+
+-- ============================================================================
+-- 🏴‍☠️ CUSTOM CURSOR
+-- ============================================================================
+
+function ToggleCustomCursor()
+    toggles.customCursor = not toggles.customCursor
+    
+    if toggles.customCursor then
+        ShowMessage("🌟 Custom Cursor ON")
+        
+        cursorGui = Instance.new("ScreenGui")
+        cursorGui.Name = "MTY_CustomCursor"
+        cursorGui.IgnoreGuiInset = true
+        cursorGui.DisplayOrder = 10000000
+        cursorGui.ResetOnSpawn = false
+        cursorGui.Parent = player:WaitForChild("PlayerGui")
+        
+        cursorImage = Instance.new("ImageLabel", cursorGui)
+        cursorImage.BackgroundTransparency = 1
+        cursorImage.Size = UDim2.new(0, guiSettings.CustomCursorSize, 0, guiSettings.CustomCursorSize)
+        cursorImage.AnchorPoint = Vector2.new(0.5, 0.5)
+        cursorImage.Image = guiSettings.CustomCursorImage
+        cursorImage.ZIndex = 100
+        
+        cursorConnection = RunService.RenderStepped:Connect(function()
+            if not toggles.customCursor then return end
+            local pos = UserInputService:GetMouseLocation()
+            cursorImage.Position = UDim2.new(0, pos.X, 0, pos.Y)
+            
+            if UserInputService.MouseIconEnabled then
+                UserInputService.MouseIconEnabled = false
+            end
+        end)
+    else
+        ShowMessage("🌟 Custom Cursor OFF")
+        
+        if cursorConnection then
+            cursorConnection:Disconnect()
+            cursorConnection = nil
+        end
+        if cursorGui then
+            cursorGui:Destroy()
+            cursorGui = nil
+        end
+        cursorImage = nil
+        
+        UserInputService.MouseIconEnabled = true
+    end
+end
+
+game:BindToClose(function()
+    if cursorConnection then
+        cursorConnection:Disconnect()
+    end
+    UserInputService.MouseIconEnabled = true
+end)
 
 -- ============================================================================
 -- 📋 OBSIDIAN ФУНКЦИИ (ВКЛАДКА GG)
@@ -3411,6 +3565,7 @@ local categories = {
         {text = "Crosshair", func = ToggleCrosshair, isToggle = true},
         {text = "Hitboxes", func = ToggleHitboxes, isToggle = true},
         {text = "Hitbox Expander", func = ToggleHitboxExpander, isToggle = true},
+        {text = "Custom Cursor", func = ToggleCustomCursor, isToggle = true},
     },
     -- CMB
     {
@@ -3483,7 +3638,7 @@ local categories = {
         {text = "Coin Farm", func = ToggleCoinFarm, isToggle = true},
         {text = "Teleport Gun", func = TeleportToGun, isToggle = false},
     },
-    -- GG (OBSIDIAN)
+    -- GG
     {
         {text = "Speed", func = ToggleObsidianSpeed, isToggle = true},
         {text = "Jump", func = ToggleObsidianJump, isToggle = true},
@@ -3513,6 +3668,7 @@ local categories = {
         {text = "No Void", func = ToggleObsidianNoVoid, isToggle = true},
         {text = "God Mode", func = ToggleObsidianGodMode, isToggle = true},
         {text = "No Prompt CD", func = ToggleObsidianNoPromptCooldown, isToggle = true},
+        {text = "Anti-Fling", func = ToggleAntiFling, isToggle = true},
         {text = "Speed Val", func = function() OpenTextInput("Speed Value", "16-500", guiSettings.ObsidianSpeedValue, function(v) guiSettings.ObsidianSpeedValue = v end) end, isToggle = false},
         {text = "Jump Val", func = function() OpenTextInput("Jump Value", "50-500", guiSettings.ObsidianJumpValue, function(v) guiSettings.ObsidianJumpValue = v end) end, isToggle = false},
         {text = "Fly Val", func = function() OpenTextInput("Fly Value", "10-300", guiSettings.ObsidianFlySpeed, function(v) guiSettings.ObsidianFlySpeed = v end) end, isToggle = false},
@@ -3679,6 +3835,6 @@ end
 print("🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ ЗАГРУЖЕНА!")
 print("🏴‍☠️ 5 вкладок: VIS | CMB | MOV | MM2 | GG")
 print("🏴‍☠️ Вкладка GG содержит ВСЕ функции из Obsidian!")
+print("🏴‍☠️ Добавлены: Anti-Fling 🛡️ и Custom Cursor 🌟")
 print("🏴‍☠️ Все ТВОИ функции работают без изменений!")
-print("🏴‍☠️ GUI не пропадает после смерти!")
 print("🏴‍☠️ Кубик с пиратом 🏴‍☠️ можно двигать!")
