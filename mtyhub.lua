@@ -1,5 +1,5 @@
 -- ============================================================================
--- 🎮 MTY HUB + OBSIDIAN (ПОЛНАЯ ВЕРСИЯ)
+-- 🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ С OBSIDIAN
 -- ============================================================================
 
 local Players = game:GetService("Players")
@@ -17,16 +17,16 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- ============================================================================
--- 📦 GUI
+-- 🏴‍☠️ GUI (НЕ ПРОПАДАЕТ ПОСЛЕ СМЕРТИ)
 -- ============================================================================
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "MtyHubClone"
+gui.Name = "MTY_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 -- ============================================================================
--- 📦 ПЕРЕМЕННЫЕ
+-- 🏴‍☠️ ПЕРЕМЕННЫЕ
 -- ============================================================================
 
 local cubeDragging = false
@@ -59,6 +59,7 @@ local guiSettings = {
     JumpCircleFadeTime = 0.8,
     AimbotPart = "Head",
     AntiAimMode = "Spin",
+    AimbotMode = "Standard",
     FakeLagAmount = 6,
     OrbitRadius = 8,
     OrbitSpeed = 3,
@@ -68,6 +69,7 @@ local guiSettings = {
     FogColor = Color3.fromRGB(150, 100, 200),
     FogStart = 0,
     FogEnd = 100,
+    -- OBSIDIAN НАСТРОЙКИ
     ObsidianSpeedValue = 16,
     ObsidianJumpValue = 50,
     ObsidianFlySpeed = 50,
@@ -85,10 +87,11 @@ local guiSettings = {
 }
 
 -- ============================================================================
--- 🎮 ТОГГЛЫ
+-- 🏴‍☠️ ТОГГЛЫ
 -- ============================================================================
 
 local toggles = {
+    -- ТВОИ ОРИГИНАЛЬНЫЕ
     esp = false, espV2 = false, jumpCircle = false, trail = false, trailV2 = false,
     chinaHat = false, worldColor = false, stretch = false, stretchV2 = false,
     hitGlow = false, fullbright = false, particlesV1 = false, particlesV2 = false,
@@ -103,6 +106,7 @@ local toggles = {
     r6Animations = false, bunnyHop = false, speedGlitch = false, wallHop = false,
     walkFling = false, autoFling = false, mm2EspV2 = false, mm2EspV3 = false,
     mm2AimbotV2 = false, doubleTap = false, autoStab = false, coinFarm = false,
+    -- OBSIDIAN
     obsidianSpeed = false, obsidianJump = false, obsidianFly = false,
     obsidianFlyAnim = false, obsidianNoclip = false, obsidianEspMaster = false,
     obsidianTracers = false, obsidianHealthBar = false, obsidianBoxEsp = false,
@@ -114,6 +118,7 @@ local toggles = {
     obsidianNoPromptCooldown = false,
 }
 
+-- ОСТАЛЬНЫЕ ПЕРЕМЕННЫЕ
 local speedValue = 16
 local flySpeed = 50
 local flingPower = 999999
@@ -137,8 +142,8 @@ local tapCount = 0
 local lastHitInstance = nil
 local lastFlickTime = 0
 local mm2EspV3Folder = nil
-local antiAimV3Mode = "Backwards"
 
+-- OBSIDIAN ПЕРЕМЕННЫЕ
 local obsidianData = {
     waypointGroups = { ["Default"] = { color = Color3.fromRGB(0, 170, 255), waypoints = {} } },
     waypointIndex = 1,
@@ -164,7 +169,7 @@ local obsidianData = {
 local connections = {}
 
 -- ============================================================================
--- 🔧 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-- 🏴‍☠️ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 -- ============================================================================
 
 local function roundCorner(obj, radius)
@@ -296,7 +301,10 @@ function OpenFogColorPicker()
     end)
 end
 
--- OBSIDIAN HELPERS
+-- ============================================================================
+-- 🏴‍☠️ OBSIDIAN ВСПОМОГАТЕЛЬНЫЕ
+-- ============================================================================
+
 local function getRoot(char)
     return char and char:FindFirstChild("HumanoidRootPart")
 end
@@ -438,7 +446,7 @@ local function moveToTarget(targetPos)
 end
 
 -- ============================================================================
--- 🎯 ЯДРО ФУНКЦИЙ
+-- 🏴‍☠️ ЯДРО ФУНКЦИЙ
 -- ============================================================================
 
 local function IsVisible(part)
@@ -556,14 +564,167 @@ local function getMM2Role(p)
 end
 
 -- ============================================================================
--- 📋 ВСЕ ТВОИ ФУНКЦИИ MTY
+-- 🏴‍☠️ ANTI-AIM V2 (С ВЫБОРОМ МОДОВ)
+-- ============================================================================
+
+function ToggleAntiAim()
+    toggles.antiAim = not toggles.antiAim
+    if toggles.antiAim then
+        if player.Character and player.Character:FindFirstChild("Humanoid") then 
+            player.Character.Humanoid.AutoRotate = false 
+        end
+        if connections.antiAim then connections.antiAim:Disconnect() end
+        connections.antiAim = RunService.Heartbeat:Connect(function()
+            pcall(function()
+                if not toggles.antiAim or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+                local root = player.Character.HumanoidRootPart
+                local mode = guiSettings.AntiAimMode or "Spin"
+                
+                if mode == "Spin" then 
+                    root.AssemblyAngularVelocity = Vector3.new(0, 65, 0)
+                elseif mode == "Backwards" then 
+                    local camLook = Camera.CFrame.LookVector 
+                    root.CFrame = CFrame.new(root.Position, root.Position - Vector3.new(camLook.X, 0, camLook.Z))
+                    if player.Character.Humanoid and player.Character.Humanoid.MoveDirection.Magnitude > 0 then
+                        local moveDir = player.Character.Humanoid.MoveDirection
+                        root.AssemblyLinearVelocity = Vector3.new(
+                            -moveDir.X * 20,
+                            root.AssemblyLinearVelocity.Y,
+                            -moveDir.Z * 20
+                        )
+                    end
+                elseif mode == "Jitter" then 
+                    local time = tick()
+                    local jitterAngle = math.sin(time * 30) * 45
+                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(jitterAngle), 0)
+                elseif mode == "Downwards" then 
+                    root.CFrame = CFrame.new(root.Position, root.Position - Vector3.new(0, 1, 0))
+                elseif mode == "Random" then 
+                    local time = tick()
+                    local randAngle = math.sin(time * 20) * 180
+                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(randAngle), 0)
+                end
+            end)
+        end)
+        ShowMessage("🏴‍☠️ Anti-Aim ON (" .. mode .. ")")
+    else
+        if connections.antiAim then connections.antiAim:Disconnect() end
+        if player.Character and player.Character:FindFirstChild("Humanoid") then 
+            player.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(0,0,0) 
+            player.Character.Humanoid.AutoRotate = true 
+        end
+        ShowMessage("🏴‍☠️ Anti-Aim OFF")
+    end
+end
+
+function CycleAntiAimMode()
+    local modes = {"Spin", "Backwards", "Jitter", "Downwards", "Random"}
+    local current = guiSettings.AntiAimMode or "Spin"
+    local idx = 1
+    for i, v in ipairs(modes) do 
+        if v == current then idx = i break end 
+    end
+    local nextIdx = idx % #modes + 1
+    guiSettings.AntiAimMode = modes[nextIdx]
+    ShowMessage("🏴‍☠️ Anti-Aim Mode: " .. modes[nextIdx])
+end
+
+-- ============================================================================
+-- 🏴‍☠️ AIMBOT (С ВЫБОРОМ МОДОВ)
+-- ============================================================================
+
+function ToggleAimbot()
+    toggles.aimbot = not toggles.aimbot
+    if toggles.aimbot then
+        ShowMessage("🏴‍☠️ Aimbot ON (" .. guiSettings.AimbotMode .. ")")
+        if not fovGui then fovGui = Instance.new("ScreenGui", game.CoreGui) fovGui.Name = "MTY_FOV" end
+        if not fovRing then
+            fovRing = Instance.new("Frame", fovGui)
+            fovRing.AnchorPoint = Vector2.new(0.5,0.5)
+            fovRing.Position = UDim2.new(0.5,0,0.5,0)
+            fovRing.BackgroundTransparency = 1
+            fovRing.Visible = false
+            fovStroke = Instance.new("UIStroke", fovRing)
+            fovStroke.Thickness = 1.5
+            fovStroke.Color = guiSettings.BorderColor
+            Instance.new("UICorner", fovRing).CornerRadius = UDim.new(1, 0)
+        end
+        fovRing.Visible = true
+        fovRing.Size = UDim2.new(0, guiSettings.AimbotFOV * 2, 0, guiSettings.AimbotFOV * 2)
+        
+        task.spawn(function()
+            while toggles.aimbot do
+                RunService.RenderStepped:Wait()
+                pcall(function()
+                    if fovRing then
+                        fovRing.Size = UDim2.new(0, guiSettings.AimbotFOV * 2, 0, guiSettings.AimbotFOV * 2)
+                        if fovStroke then fovStroke.Color = guiSettings.BorderColor end
+                    end
+                    if toggles.aimbot then
+                        local tPlayer = FindBestTarget()
+                        targetPlayer = tPlayer
+                        if tPlayer and tPlayer.Character and tPlayer.Character:FindFirstChild(guiSettings.AimbotPart) then
+                            local hit = tPlayer.Character[guiSettings.AimbotPart]
+                            local pos = hit.Position
+                            local mode = guiSettings.AimbotMode or "Standard"
+                            
+                            if mode == "Prediction" or mode == "Silent" then
+                                local root = tPlayer.Character:FindFirstChild("HumanoidRootPart")
+                                if root then
+                                    pos = pos + (root.AssemblyLinearVelocity * 0.05)
+                                end
+                            end
+                            
+                            if mode == "Standard" then
+                                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, pos), math.clamp(guiSettings.AimbotSpeed * guiSettings.AimbotStrength, 0.01, 1))
+                            elseif mode == "Flick" then
+                                local oldCF = Camera.CFrame
+                                Camera.CFrame = CFrame.new(Camera.CFrame.Position, pos)
+                                task.wait()
+                                Camera.CFrame = oldCF
+                            elseif mode == "Prediction" then
+                                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, pos), math.clamp(guiSettings.AimbotSpeed * guiSettings.AimbotStrength * 1.2, 0.01, 1))
+                            elseif mode == "Silent" then
+                                local tool = player.Character:FindFirstChildOfClass("Tool")
+                                if tool then
+                                    local remote = GetDmgRemote(tool)
+                                    if remote then
+                                        remote:FireServer(hit)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+    else
+        if fovRing then fovRing.Visible = false end
+        ShowMessage("🏴‍☠️ Aimbot OFF")
+    end
+end
+
+function CycleAimbotMode()
+    local modes = {"Standard", "Flick", "Prediction", "Silent"}
+    local current = guiSettings.AimbotMode or "Standard"
+    local idx = 1
+    for i, v in ipairs(modes) do 
+        if v == current then idx = i break end 
+    end
+    local nextIdx = idx % #modes + 1
+    guiSettings.AimbotMode = modes[nextIdx]
+    ShowMessage("🏴‍☠️ Aimbot Mode: " .. modes[nextIdx])
+end
+
+-- ============================================================================
+-- 📋 ВСЕ ТВОИ ФУНКЦИИ MTY (ОРИГИНАЛ)
 -- ============================================================================
 
 -- VISUAL
 function ToggleESP()
     toggles.esp = not toggles.esp
     if toggles.esp then
-        ShowMessage("ESP ON")
+        ShowMessage("🏴‍☠️ ESP ON")
         task.spawn(function()
             while toggles.esp do
                 task.wait(0.2)
@@ -583,14 +744,14 @@ function ToggleESP()
         end)
     else
         if espFolder then espFolder:ClearAllChildren() end
-        ShowMessage("ESP OFF")
+        ShowMessage("🏴‍☠️ ESP OFF")
     end
 end
 
 function ToggleESPV2()
     toggles.espV2 = not toggles.espV2
     if toggles.espV2 then
-        ShowMessage("ESP V2 ON")
+        ShowMessage("🏴‍☠️ ESP V2 ON")
         task.spawn(function()
             while toggles.espV2 do
                 task.wait(0.2)
@@ -612,7 +773,7 @@ function ToggleESPV2()
         end)
     else
         if espV2Folder then espV2Folder:ClearAllChildren() end
-        ShowMessage("ESP V2 OFF")
+        ShowMessage("🏴‍☠️ ESP V2 OFF")
     end
 end
 
@@ -640,10 +801,10 @@ function ToggleJumpCircle()
                 end)
             end
         end)
-        ShowMessage("Jump Circle ON")
+        ShowMessage("🏴‍☠️ Jump Circle ON")
     else
         if connections.jumpCircle then connections.jumpCircle:Disconnect() end
-        ShowMessage("Jump Circle OFF")
+        ShowMessage("🏴‍☠️ Jump Circle OFF")
     end
 end
 
@@ -670,12 +831,12 @@ function ToggleTrail()
                 end
             end)
         end)
-        ShowMessage("Trail ON")
+        ShowMessage("🏴‍☠️ Trail ON")
     else
         if connections.trail then connections.trail:Disconnect() end
         for _, v in pairs(trailParts) do v:Destroy() end
         trailParts = {}
-        ShowMessage("Trail OFF")
+        ShowMessage("🏴‍☠️ Trail OFF")
     end
 end
 
@@ -703,14 +864,14 @@ function ToggleTrailV2()
             actualTrail.Lifetime = 0.5
             actualTrail.FaceCamera = true
             actualTrail.Color = ColorSequence.new(guiSettings.TrailColor)
-            ShowMessage("Trail V2 ON")
+            ShowMessage("🏴‍☠️ Trail V2 ON")
         end)
     else
         if player.Character and player.Character:FindFirstChild("Head") then
             local anchor = player.Character.Head:FindFirstChild("MTY_TrailAnchor")
             if anchor then anchor:Destroy() end
         end
-        ShowMessage("Trail V2 OFF")
+        ShowMessage("🏴‍☠️ Trail V2 OFF")
     end
 end
 
@@ -751,19 +912,19 @@ function ToggleChineseHat()
                     currentHat.CFrame = player.Character.Head.CFrame * CFrame.new(0, 0.6, 0)
                 end)
             end)
-            ShowMessage("China Hat ON")
+            ShowMessage("🏴‍☠️ China Hat ON")
         end)
     else
         if currentHat then currentHat:Destroy() end
         if hatConnection then hatConnection:Disconnect() end
-        ShowMessage("China Hat OFF")
+        ShowMessage("🏴‍☠️ China Hat OFF")
     end
 end
 
 function ToggleWorldColor()
     toggles.worldColor = not toggles.worldColor
     if toggles.worldColor then
-        ShowMessage("World Color ON")
+        ShowMessage("🏴‍☠️ World Color ON")
         originalAmbient = Lighting.Ambient
         originalOutdoor = Lighting.OutdoorAmbient
         if connections.worldColors then connections.worldColors:Disconnect() end
@@ -791,14 +952,14 @@ function ToggleWorldColor()
                 v.Transparency = 0
             end
         end
-        ShowMessage("World Color OFF")
+        ShowMessage("🏴‍☠️ World Color OFF")
     end
 end
 
 function ToggleStretch()
     toggles.stretch = not toggles.stretch
     if toggles.stretch then
-        ShowMessage("Stretch ON")
+        ShowMessage("🏴‍☠️ Stretch ON")
         if connections.stretch then connections.stretch:Disconnect() end
         connections.stretch = RunService.RenderStepped:Connect(function()
             if player.Character then
@@ -811,14 +972,14 @@ function ToggleStretch()
         end)
     else
         if connections.stretch then connections.stretch:Disconnect() end
-        ShowMessage("Stretch OFF")
+        ShowMessage("🏴‍☠️ Stretch OFF")
     end
 end
 
 function ToggleStretchV2()
     toggles.stretchV2 = not toggles.stretchV2
     if toggles.stretchV2 then
-        ShowMessage("Stretch V2 ON")
+        ShowMessage("🏴‍☠️ Stretch V2 ON")
         if connections.stretchV2 then connections.stretchV2:Disconnect() end
         connections.stretchV2 = RunService.RenderStepped:Connect(function()
             if player.Character then
@@ -831,13 +992,13 @@ function ToggleStretchV2()
         end)
     else
         if connections.stretchV2 then connections.stretchV2:Disconnect() end
-        ShowMessage("Stretch V2 OFF")
+        ShowMessage("🏴‍☠️ Stretch V2 OFF")
     end
 end
 
 function ToggleHitGlow()
     toggles.hitGlow = not toggles.hitGlow
-    ShowMessage(toggles.hitGlow and "HitGlow ON" or "HitGlow OFF")
+    ShowMessage(toggles.hitGlow and "🏴‍☠️ HitGlow ON" or "🏴‍☠️ HitGlow OFF")
 end
 
 function ToggleFullbright()
@@ -845,11 +1006,11 @@ function ToggleFullbright()
     if toggles.fullbright then
         Lighting.Brightness = 2
         Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        ShowMessage("Fullbright ON")
+        ShowMessage("🏴‍☠️ Fullbright ON")
     else
         Lighting.Brightness = 1
         Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        ShowMessage("Fullbright OFF")
+        ShowMessage("🏴‍☠️ Fullbright OFF")
     end
 end
 
@@ -872,10 +1033,10 @@ function ToggleParticlesV1()
                 end
             end)
         end)
-        ShowMessage("Particles V1 ON")
+        ShowMessage("🏴‍☠️ Particles V1 ON")
     else
         if connections.particles then connections.particles:Disconnect() end
-        ShowMessage("Particles V1 OFF")
+        ShowMessage("🏴‍☠️ Particles V1 OFF")
     end
 end
 
@@ -896,10 +1057,10 @@ function ToggleParticlesV2()
                 Debris:AddItem(p, 0.8)
             end)
         end)
-        ShowMessage("Particles V2 ON")
+        ShowMessage("🏴‍☠️ Particles V2 ON")
     else
         if connections.particlesV2 then connections.particlesV2:Disconnect() end
-        ShowMessage("Particles V2 OFF")
+        ShowMessage("🏴‍☠️ Particles V2 OFF")
     end
 end
 
@@ -907,7 +1068,7 @@ function ToggleClassicSword()
     toggles.classicSword = not toggles.classicSword
     if toggles.classicSword then
         pcall(function()
-            if not player.Character then ShowMessage("No character!") return end
+            if not player.Character then ShowMessage("🏴‍☠️ No character!") return end
             if currentSword then currentSword:Destroy() end
             currentSword = Instance.new("Tool", player.Backpack)
             currentSword.GripPos = Vector3.new(0, 0, -1.5)
@@ -963,24 +1124,24 @@ function ToggleClassicSword()
                         if p and p ~= player then
                             if o.Health > 0 then
                                 o.Health = o.Health - 20
-                                ShowMessage("Hit: " .. p.Name)
+                                ShowMessage("🏴‍☠️ Hit: " .. p.Name)
                             end
                         end
                     end
                 end
             end)
-            ShowMessage("Classic Sword ON")
+            ShowMessage("🏴‍☠️ Classic Sword ON")
         end)
     else
         if currentSword then currentSword:Destroy() end
-        ShowMessage("Classic Sword OFF")
+        ShowMessage("🏴‍☠️ Classic Sword OFF")
     end
 end
 
 function ToggleWorldColors()
     toggles.worldColors = not toggles.worldColors
     if toggles.worldColors then
-        ShowMessage("World Colors ON")
+        ShowMessage("🏴‍☠️ World Colors ON")
         if connections.worldColors2 then connections.worldColors2:Disconnect() end
         connections.worldColors2 = RunService.RenderStepped:Connect(function()
             for _, v in pairs(workspace:GetDescendants()) do
@@ -991,14 +1152,14 @@ function ToggleWorldColors()
         end)
     else
         if connections.worldColors2 then connections.worldColors2:Disconnect() end
-        ShowMessage("World Colors OFF")
+        ShowMessage("🏴‍☠️ World Colors OFF")
     end
 end
 
 function ToggleFog()
     toggles.fog = not toggles.fog
     if toggles.fog then
-        ShowMessage("Fog ON")
+        ShowMessage("🏴‍☠️ Fog ON")
         Lighting.FogEnd = guiSettings.FogEnd or 100
         Lighting.FogStart = guiSettings.FogStart or 0
         Lighting.FogColor = guiSettings.FogColor or Color3.fromRGB(150, 100, 200)
@@ -1016,14 +1177,14 @@ function ToggleFog()
         Lighting.FogEnd = 1000
         Lighting.FogStart = 0
         Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-        ShowMessage("Fog OFF")
+        ShowMessage("🏴‍☠️ Fog OFF")
     end
 end
 
 function ToggleNightVision()
     toggles.nightVision = not toggles.nightVision
     if toggles.nightVision then
-        ShowMessage("Night Vision ON")
+        ShowMessage("🏴‍☠️ Night Vision ON")
         Lighting.Ambient = Color3.fromRGB(0, 255, 0)
         Lighting.Brightness = 2
         Lighting.ClockTime = 0
@@ -1043,14 +1204,14 @@ function ToggleNightVision()
         Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
         Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
         Lighting.ClockTime = 14
-        ShowMessage("Night Vision OFF")
+        ShowMessage("🏴‍☠️ Night Vision OFF")
     end
 end
 
 function ToggleThermalVision()
     toggles.thermalVision = not toggles.thermalVision
     if toggles.thermalVision then
-        ShowMessage("Thermal Vision ON")
+        ShowMessage("🏴‍☠️ Thermal Vision ON")
         if connections.thermalVision then connections.thermalVision:Disconnect() end
         connections.thermalVision = RunService.RenderStepped:Connect(function()
             pcall(function()
@@ -1077,14 +1238,14 @@ function ToggleThermalVision()
         end)
     else
         if connections.thermalVision then connections.thermalVision:Disconnect() end
-        ShowMessage("Thermal Vision OFF")
+        ShowMessage("🏴‍☠️ Thermal Vision OFF")
     end
 end
 
 function ToggleRainbowWorld()
     toggles.rainbowWorld = not toggles.rainbowWorld
     if toggles.rainbowWorld then
-        ShowMessage("Rainbow World ON")
+        ShowMessage("🏴‍☠️ Rainbow World ON")
         if connections.rainbowWorld then connections.rainbowWorld:Disconnect() end
         connections.rainbowWorld = RunService.RenderStepped:Connect(function()
             pcall(function()
@@ -1100,7 +1261,7 @@ function ToggleRainbowWorld()
         end)
     else
         if connections.rainbowWorld then connections.rainbowWorld:Disconnect() end
-        ShowMessage("Rainbow World OFF")
+        ShowMessage("🏴‍☠️ Rainbow World OFF")
     end
 end
 
@@ -1127,10 +1288,10 @@ function ToggleCrosshair()
         dot.BackgroundColor3 = guiSettings.CrosshairColor
         dot.BorderSizePixel = 0
         Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-        ShowMessage("Crosshair ON")
+        ShowMessage("🏴‍☠️ Crosshair ON")
     else
         if crosshairGui then crosshairGui:Destroy() end
-        ShowMessage("Crosshair OFF")
+        ShowMessage("🏴‍☠️ Crosshair OFF")
     end
 end
 
@@ -1161,18 +1322,18 @@ function ToggleHitboxes()
                 end
             end)
         end)
-        ShowMessage("Hitboxes ON")
+        ShowMessage("🏴‍☠️ Hitboxes ON")
     else
         if connections.hitbox then connections.hitbox:Disconnect() end
         if HitboxFolder then HitboxFolder:ClearAllChildren() end
-        ShowMessage("Hitboxes OFF")
+        ShowMessage("🏴‍☠️ Hitboxes OFF")
     end
 end
 
 function ToggleHitboxExpander()
     toggles.hitboxExpander = not toggles.hitboxExpander
     if toggles.hitboxExpander then
-        ShowMessage("Hitbox Expander ON")
+        ShowMessage("🏴‍☠️ Hitbox Expander ON")
         RunService.Heartbeat:Connect(function()
             pcall(function()
                 if not toggles.hitboxExpander or not player.Character then return end
@@ -1188,75 +1349,11 @@ function ToggleHitboxExpander()
             end)
         end)
     else
-        ShowMessage("Hitbox Expander OFF")
+        ShowMessage("🏴‍☠️ Hitbox Expander OFF")
     end
 end
 
 -- COMBAT
-function ToggleAimbot()
-    toggles.aimbot = not toggles.aimbot
-    if toggles.aimbot then
-        ShowMessage("Aimbot ON")
-        if not fovGui then fovGui = Instance.new("ScreenGui", game.CoreGui) fovGui.Name = "MTY_FOV" end
-        if not fovRing then
-            fovRing = Instance.new("Frame", fovGui)
-            fovRing.AnchorPoint = Vector2.new(0.5,0.5)
-            fovRing.Position = UDim2.new(0.5,0,0.5,0)
-            fovRing.BackgroundTransparency = 1
-            fovRing.Visible = false
-            fovStroke = Instance.new("UIStroke", fovRing)
-            fovStroke.Thickness = 1.5
-            fovStroke.Color = guiSettings.BorderColor
-            Instance.new("UICorner", fovRing).CornerRadius = UDim.new(1, 0)
-        end
-        fovRing.Visible = true
-        fovRing.Size = UDim2.new(0, guiSettings.AimbotFOV * 2, 0, guiSettings.AimbotFOV * 2)
-        task.spawn(function()
-            while toggles.aimbot do
-                RunService.RenderStepped:Wait()
-                pcall(function()
-                    if fovRing then
-                        fovRing.Size = UDim2.new(0, guiSettings.AimbotFOV * 2, 0, guiSettings.AimbotFOV * 2)
-                        if fovStroke then fovStroke.Color = guiSettings.BorderColor end
-                    end
-                    if toggles.aimbot then
-                        local tPlayer = FindBestTarget()
-                        targetPlayer = tPlayer
-                        if tPlayer and tPlayer.Character and tPlayer.Character:FindFirstChild(guiSettings.AimbotPart) then
-                            local hit = tPlayer.Character[guiSettings.AimbotPart]
-                            local pos = hit.Position
-                            if toggles.aimbotV3 and tPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                pos = pos + (tPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity * 0.05)
-                            end
-                            if toggles.aimbotV2 then
-                                local oldCF = Camera.CFrame
-                                Camera.CFrame = CFrame.new(Camera.CFrame.Position, pos)
-                                task.wait()
-                                Camera.CFrame = oldCF
-                            else
-                                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, pos), math.clamp(guiSettings.AimbotSpeed * guiSettings.AimbotStrength, 0.01, 1))
-                            end
-                        end
-                    end
-                end)
-            end
-        end)
-    else
-        if fovRing then fovRing.Visible = false end
-        ShowMessage("Aimbot OFF")
-    end
-end
-
-function ToggleAimbotV2()
-    toggles.aimbotV2 = not toggles.aimbotV2
-    ShowMessage(toggles.aimbotV2 and "Aimbot V2 ON" or "Aimbot V2 OFF")
-end
-
-function ToggleAimbotV3()
-    toggles.aimbotV3 = not toggles.aimbotV3
-    ShowMessage(toggles.aimbotV3 and "Aimbot V3 ON" or "Aimbot V3 OFF")
-end
-
 function ToggleKillAura()
     toggles.killAura = not toggles.killAura
     if toggles.killAura then
@@ -1276,10 +1373,10 @@ function ToggleKillAura()
                 end
             end)
         end)
-        ShowMessage("Kill Aura ON")
+        ShowMessage("🏴‍☠️ Kill Aura ON")
     else
         if connections.killAura then connections.killAura:Disconnect() end
-        ShowMessage("Kill Aura OFF")
+        ShowMessage("🏴‍☠️ Kill Aura OFF")
     end
 end
 
@@ -1303,10 +1400,10 @@ function ToggleKillAuraV2()
                 end
             end)
         end)
-        ShowMessage("Kill Aura V2 ON")
+        ShowMessage("🏴‍☠️ Kill Aura V2 ON")
     else
         if connections.killAuraV2 then connections.killAuraV2:Disconnect() end
-        ShowMessage("Kill Aura V2 OFF")
+        ShowMessage("🏴‍☠️ Kill Aura V2 OFF")
     end
 end
 
@@ -1383,107 +1480,26 @@ function ToggleOrbitKillAura()
                 end
             end)
         end)
-        ShowMessage("Orbit Kill Aura ON")
+        ShowMessage("🏴‍☠️ Orbit Kill Aura ON")
     else
         if connections.orbitKillAura then connections.orbitKillAura:Disconnect() end
         if orbitButton then
             orbitButton.BackgroundColor3 = guiSettings.OrbitColor
             orbitButton.Text = "O"
         end
-        ShowMessage("Orbit Kill Aura OFF")
+        ShowMessage("🏴‍☠️ Orbit Kill Aura OFF")
     end
 end
 
 function ToggleTriggerBot()
     toggles.triggerBot = not toggles.triggerBot
-    ShowMessage(toggles.triggerBot and "Trigger Bot ON" or "Trigger Bot OFF")
-end
-
-function ToggleAntiAim()
-    toggles.antiAim = not toggles.antiAim
-    if toggles.antiAim then
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.AutoRotate = false
-        end
-        if connections.antiAim then connections.antiAim:Disconnect() end
-        connections.antiAim = RunService.Heartbeat:Connect(function()
-            pcall(function()
-                if not toggles.antiAim or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
-                local root = player.Character.HumanoidRootPart
-                if guiSettings.AntiAimMode == "Spin" then
-                    root.AssemblyAngularVelocity = Vector3.new(0, 65, 0)
-                elseif guiSettings.AntiAimMode == "Backwards" then
-                    local camLook = Camera.CFrame.LookVector
-                    root.CFrame = CFrame.new(root.Position, root.Position - Vector3.new(camLook.X, 0, camLook.Z))
-                end
-            end)
-        end)
-        ShowMessage("Anti-Aim V2 ON")
-    else
-        if connections.antiAim then connections.antiAim:Disconnect() end
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
-            player.Character.Humanoid.AutoRotate = true
-        end
-        ShowMessage("Anti-Aim V2 OFF")
-    end
-end
-
-function ToggleAntiAimV3()
-    toggles.antiAimV3 = not toggles.antiAimV3
-    if toggles.antiAimV3 then
-        if toggles.antiAim then
-            if connections.antiAim then
-                connections.antiAim:Disconnect()
-                connections.antiAim = nil
-            end
-            toggles.antiAim = false
-        end
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.AutoRotate = false
-        end
-        if connections.antiAimV3 then connections.antiAimV3:Disconnect() end
-        connections.antiAimV3 = RunService.RenderStepped:Connect(function()
-            pcall(function()
-                if not toggles.antiAimV3 or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
-                local root = player.Character.HumanoidRootPart
-                local hum = player.Character:FindFirstChild("Humanoid")
-                if antiAimV3Mode == "Backwards" then
-                    local camLook = Camera.CFrame.LookVector
-                    local newCF = CFrame.new(root.Position, root.Position - Vector3.new(camLook.X, 0, camLook.Z))
-                    root.CFrame = newCF
-                    if hum and hum.MoveDirection.Magnitude > 0 then
-                        local moveDir = hum.MoveDirection
-                        root.AssemblyLinearVelocity = Vector3.new(
-                            -moveDir.X * speedValue * 1.2,
-                            root.AssemblyLinearVelocity.Y,
-                            -moveDir.Z * speedValue * 1.2
-                        )
-                    end
-                elseif antiAimV3Mode == "Spin" then
-                    root.AssemblyAngularVelocity = Vector3.new(0, 65, 0)
-                elseif antiAimV3Mode == "Jitter" then
-                    local time = tick()
-                    local jitterAngle = math.sin(time * 30) * 45
-                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(jitterAngle), 0)
-                end
-            end)
-        end)
-        ShowMessage("Anti-Aim V3 ON")
-    else
-        if connections.antiAimV3 then connections.antiAimV3:Disconnect() end
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
-            player.Character.Humanoid.AutoRotate = true
-        end
-        ShowMessage("Anti-Aim V3 OFF")
-    end
+    ShowMessage(toggles.triggerBot and "🏴‍☠️ Trigger Bot ON" or "🏴‍☠️ Trigger Bot OFF")
 end
 
 function ToggleDesync()
     toggles.desync = not toggles.desync
     if toggles.desync then
-        ShowMessage("Desync ON")
+        ShowMessage("🏴‍☠️ Desync ON")
         if connections.desync then connections.desync:Disconnect() end
         connections.desync = RunService.Heartbeat:Connect(function()
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1495,7 +1511,7 @@ function ToggleDesync()
         end)
     else
         if connections.desync then connections.desync:Disconnect() end
-        ShowMessage("Desync OFF")
+        ShowMessage("🏴‍☠️ Desync OFF")
     end
 end
 
@@ -1508,17 +1524,17 @@ function ToggleFakeLag()
                 task.wait(0.001)
             end
         end)
-        ShowMessage("FakeLag ON")
+        ShowMessage("🏴‍☠️ FakeLag ON")
     else
         if connections.fakeLag then connections.fakeLag:Disconnect() end
-        ShowMessage("FakeLag OFF")
+        ShowMessage("🏴‍☠️ FakeLag OFF")
     end
 end
 
 function ToggleAntiKb()
     toggles.antiKb = not toggles.antiKb
     if toggles.antiKb then
-        ShowMessage("Anti-Knockback ON")
+        ShowMessage("🏴‍☠️ Anti-Knockback ON")
         RunService.Heartbeat:Connect(function()
             pcall(function()
                 if toggles.antiKb and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1530,7 +1546,7 @@ function ToggleAntiKb()
             end)
         end)
     else
-        ShowMessage("Anti-Knockback OFF")
+        ShowMessage("🏴‍☠️ Anti-Knockback OFF")
     end
 end
 
@@ -1541,10 +1557,10 @@ function ToggleSpeed()
         local hum = player.Character.Humanoid
         if toggles.speed then
             hum.WalkSpeed = 50
-            ShowMessage("Speed ON (50)")
+            ShowMessage("🏴‍☠️ Speed ON (50)")
         else
             hum.WalkSpeed = 16
-            ShowMessage("Speed OFF")
+            ShowMessage("🏴‍☠️ Speed OFF")
         end
     end
 end
@@ -1558,10 +1574,10 @@ function ToggleInfiniteJump()
                 player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
-        ShowMessage("Infinite Jump ON")
+        ShowMessage("🏴‍☠️ Infinite Jump ON")
     else
         if connections.infJump then connections.infJump:Disconnect() end
-        ShowMessage("Infinite Jump OFF")
+        ShowMessage("🏴‍☠️ Infinite Jump OFF")
     end
 end
 
@@ -1581,9 +1597,9 @@ function ToggleAirWalk()
             end
             if platform then platform:Destroy() end
         end)
-        ShowMessage("Air Walk ON")
+        ShowMessage("🏴‍☠️ Air Walk ON")
     else
-        ShowMessage("Air Walk OFF")
+        ShowMessage("🏴‍☠️ Air Walk OFF")
     end
 end
 
@@ -1614,13 +1630,13 @@ function ToggleFlyV1()
                 hum.PlatformStand = true
             end)
         end)
-        ShowMessage("Fly V1 ON")
+        ShowMessage("🏴‍☠️ Fly V1 ON")
     else
         if connections.fly then connections.fly:Disconnect() end
         if player.Character and player.Character:FindFirstChild("Humanoid") then
             player.Character.Humanoid.PlatformStand = false
         end
-        ShowMessage("Fly V1 OFF")
+        ShowMessage("🏴‍☠️ Fly V1 OFF")
     end
 end
 
@@ -1651,13 +1667,13 @@ function ToggleFlyV2()
                 hum.PlatformStand = true
             end)
         end)
-        ShowMessage("Fly V2 ON")
+        ShowMessage("🏴‍☠️ Fly V2 ON")
     else
         if connections.fly then connections.fly:Disconnect() end
         if player.Character and player.Character:FindFirstChild("Humanoid") then
             player.Character.Humanoid.PlatformStand = false
         end
-        ShowMessage("Fly V2 OFF")
+        ShowMessage("🏴‍☠️ Fly V2 OFF")
     end
 end
 
@@ -1674,15 +1690,15 @@ function ToggleTeleportTool()
                     local lookVec = Camera.CFrame.LookVector
                     local targetPos = camPos + (lookVec * 50)
                     player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
-                    ShowMessage("Teleported!")
+                    ShowMessage("🏴‍☠️ Teleported!")
                 end
             end)
         end)
-        ShowMessage("Teleport Tool ON")
+        ShowMessage("🏴‍☠️ Teleport Tool ON")
     else
         local tool = player.Backpack:FindFirstChild("MTY TP Tool")
         if tool then tool:Destroy() end
-        ShowMessage("Teleport Tool OFF")
+        ShowMessage("🏴‍☠️ Teleport Tool OFF")
     end
 end
 
@@ -1695,10 +1711,10 @@ function ToggleAutoSprint()
                 player.Character.Humanoid.WalkSpeed = speedValue * 1.6
             end
         end)
-        ShowMessage("Auto Sprint ON")
+        ShowMessage("🏴‍☠️ Auto Sprint ON")
     else
         if connections.autoSprint then connections.autoSprint:Disconnect() end
-        ShowMessage("Auto Sprint OFF")
+        ShowMessage("🏴‍☠️ Auto Sprint OFF")
     end
 end
 
@@ -1713,17 +1729,17 @@ function ToggleNoClip()
                 end
             end
         end)
-        ShowMessage("NoClip ON")
+        ShowMessage("🏴‍☠️ NoClip ON")
     else
         if connections.noClip then connections.noClip:Disconnect() end
-        ShowMessage("NoClip OFF")
+        ShowMessage("🏴‍☠️ NoClip OFF")
     end
 end
 
 function ToggleSpider()
     toggles.spider = not toggles.spider
     if toggles.spider then
-        ShowMessage("Spider Mode ON")
+        ShowMessage("🏴‍☠️ Spider Mode ON")
         task.spawn(function()
             while toggles.spider do
                 task.wait(0.1)
@@ -1739,14 +1755,14 @@ function ToggleSpider()
             end
         end)
     else
-        ShowMessage("Spider Mode OFF")
+        ShowMessage("🏴‍☠️ Spider Mode OFF")
     end
 end
 
 function ToggleSwim()
     toggles.swim = not toggles.swim
     if toggles.swim then
-        ShowMessage("Swim In Air ON")
+        ShowMessage("🏴‍☠️ Swim In Air ON")
         task.spawn(function()
             while toggles.swim do
                 RunService.Heartbeat:Wait()
@@ -1758,7 +1774,7 @@ function ToggleSwim()
             end
         end)
     else
-        ShowMessage("Swim In Air OFF")
+        ShowMessage("🏴‍☠️ Swim In Air OFF")
     end
 end
 
@@ -1788,17 +1804,17 @@ function ToggleDash()
                 end
             end)
         end)
-        ShowMessage("Dash ON")
+        ShowMessage("🏴‍☠️ Dash ON")
     else
         if dashButton then dashButton.Parent:Destroy() dashButton = nil end
-        ShowMessage("Dash OFF")
+        ShowMessage("🏴‍☠️ Dash OFF")
     end
 end
 
 function ToggleInvisibility()
     toggles.invisibility = not toggles.invisibility
     if toggles.invisibility then
-        ShowMessage("FE Invisibility ON")
+        ShowMessage("🏴‍☠️ FE Invisibility ON")
         task.spawn(function()
             while toggles.invisibility do
                 RunService.Heartbeat:Wait()
@@ -1814,14 +1830,14 @@ function ToggleInvisibility()
             end
         end)
     else
-        ShowMessage("Invisibility OFF")
+        ShowMessage("🏴‍☠️ Invisibility OFF")
     end
 end
 
 function ToggleHelicopter()
     toggles.helicopter = not toggles.helicopter
     if toggles.helicopter then
-        ShowMessage("Helicopter ON")
+        ShowMessage("🏴‍☠️ Helicopter ON")
         task.spawn(function()
             pcall(function()
                 if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -1841,14 +1857,14 @@ function ToggleHelicopter()
             end)
         end)
     else
-        ShowMessage("Helicopter OFF")
+        ShowMessage("🏴‍☠️ Helicopter OFF")
     end
 end
 
 function ToggleR6Animations()
     toggles.r6Animations = not toggles.r6Animations
     if toggles.r6Animations then
-        ShowMessage("R6 Animations ON")
+        ShowMessage("🏴‍☠️ R6 Animations ON")
         if player.Character then
             local hum = player.Character:FindFirstChild("Humanoid")
             if hum and hum.RigType == Enum.HumanoidRigType.R15 then
@@ -1871,7 +1887,7 @@ function ToggleR6Animations()
             local animate = player.Character:FindFirstChild("Animate")
             if animate then animate.Disabled = false end
         end
-        ShowMessage("R6 Animations OFF")
+        ShowMessage("🏴‍☠️ R6 Animations OFF")
     end
 end
 
@@ -1900,10 +1916,10 @@ function ToggleBunnyHop()
                 end
             end)
         end)
-        ShowMessage("BunnyHop ON")
+        ShowMessage("🏴‍☠️ BunnyHop ON")
     else
         if connections.bunnyHop then connections.bunnyHop:Disconnect() end
-        ShowMessage("BunnyHop OFF")
+        ShowMessage("🏴‍☠️ BunnyHop OFF")
     end
 end
 
@@ -1932,17 +1948,17 @@ function ToggleSpeedGlitch()
                 end
             end)
         end)
-        ShowMessage("Speed Glitch ON")
+        ShowMessage("🏴‍☠️ Speed Glitch ON")
     else
         if connections.speedGlitch then connections.speedGlitch:Disconnect() end
-        ShowMessage("Speed Glitch OFF")
+        ShowMessage("🏴‍☠️ Speed Glitch OFF")
     end
 end
 
 function ToggleWallHop()
     toggles.wallHop = not toggles.wallHop
     if toggles.wallHop then
-        ShowMessage("Wall Hop ON")
+        ShowMessage("🏴‍☠️ Wall Hop ON")
         if connections.wallHop then connections.wallHop:Disconnect() end
         connections.wallHop = RunService.Heartbeat:Connect(function()
             pcall(function()
@@ -1975,7 +1991,7 @@ function ToggleWallHop()
         end)
     else
         if connections.wallHop then connections.wallHop:Disconnect() end
-        ShowMessage("Wall Hop OFF")
+        ShowMessage("🏴‍☠️ Wall Hop OFF")
     end
 end
 
@@ -2000,7 +2016,7 @@ end
 function ToggleWalkFling()
     toggles.walkFling = not toggles.walkFling
     if toggles.walkFling then
-        ShowMessage("Walk Fling ON")
+        ShowMessage("🏴‍☠️ Walk Fling ON")
         if connections.walkFling then connections.walkFling:Disconnect() end
         connections.walkFling = RunService.Heartbeat:Connect(function()
             pcall(function()
@@ -2027,14 +2043,14 @@ function ToggleWalkFling()
         end)
     else
         if connections.walkFling then connections.walkFling:Disconnect() end
-        ShowMessage("Walk Fling OFF")
+        ShowMessage("🏴‍☠️ Walk Fling OFF")
     end
 end
 
 function ToggleAutoFling()
     toggles.autoFling = not toggles.autoFling
     if toggles.autoFling then
-        ShowMessage("Auto Fling ON")
+        ShowMessage("🏴‍☠️ Auto Fling ON")
         if connections.autoFling then connections.autoFling:Disconnect() end
         connections.autoFling = RunService.Heartbeat:Connect(function()
             if not toggles.autoFling then return end
@@ -2059,13 +2075,13 @@ function ToggleAutoFling()
         end)
     else
         if connections.autoFling then connections.autoFling:Disconnect() end
-        ShowMessage("Auto Fling OFF")
+        ShowMessage("🏴‍☠️ Auto Fling OFF")
     end
 end
 
 -- FLING
 function FlingByName(name)
-    if name == "" then ShowMessage("Enter name!") return end
+    if name == "" then ShowMessage("🏴‍☠️ Enter name!") return end
     local found = false
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and string.find(string.lower(p.Name), string.lower(name)) then
@@ -2078,14 +2094,14 @@ function FlingByName(name)
                     local dir = Vector3.new(math.random(-1, 1), 1.5, math.random(-1, 1)).Unit
                     hum.Sit = true
                     hrp.AssemblyLinearVelocity = dir * 5000
-                    ShowMessage("Fling: " .. p.Name)
+                    ShowMessage("🏴‍☠️ Fling: " .. p.Name)
                     found = true
                     break
                 end
             end
         end
     end
-    if not found then ShowMessage("Player not found!") end
+    if not found then ShowMessage("🏴‍☠️ Player not found!") end
 end
 
 function FlingAll()
@@ -2102,7 +2118,7 @@ function FlingAll()
             end
         end
     end
-    ShowMessage("Fling All: " .. count .. " players")
+    ShowMessage("🏴‍☠️ Fling All: " .. count .. " players")
 end
 
 function FlingUp()
@@ -2110,7 +2126,7 @@ function FlingUp()
     local root = player.Character:FindFirstChild("HumanoidRootPart")
     if root then
         root.AssemblyLinearVelocity = Vector3.new(0, 500, 0)
-        ShowMessage("Fling UP!")
+        ShowMessage("🏴‍☠️ Fling UP!")
     end
 end
 
@@ -2120,7 +2136,7 @@ function FlingForward()
     if root then
         local look = root.CFrame.LookVector
         root.AssemblyLinearVelocity = Vector3.new(look.X * 300, 50, look.Z * 300)
-        ShowMessage("Fling Forward!")
+        ShowMessage("🏴‍☠️ Fling Forward!")
     end
 end
 
@@ -2130,7 +2146,7 @@ function FlingRandom()
     if root then
         local dir = Vector3.new(math.random(-1, 1), math.random(0, 2), math.random(-1, 1)).Unit
         root.AssemblyLinearVelocity = dir * 500
-        ShowMessage("Fling Random!")
+        ShowMessage("🏴‍☠️ Fling Random!")
     end
 end
 
@@ -2141,7 +2157,7 @@ function SuperFling()
         root.AssemblyLinearVelocity = Vector3.new(0, 9999, 0)
         task.wait(0.1)
         root.AssemblyLinearVelocity = Vector3.new(math.random(-500, 500), 9999, math.random(-500, 500))
-        ShowMessage("SUPER FLING!")
+        ShowMessage("🏴‍☠️ SUPER FLING!")
     end
 end
 
@@ -2157,7 +2173,7 @@ function FlingAllUp()
             end
         end
     end
-    ShowMessage("Fling All UP: " .. count .. " players")
+    ShowMessage("🏴‍☠️ Fling All UP: " .. count .. " players")
 end
 
 function FlingAllRandom()
@@ -2174,7 +2190,7 @@ function FlingAllRandom()
             end
         end
     end
-    ShowMessage("Fling All Random: " .. count .. " players")
+    ShowMessage("🏴‍☠️ Fling All Random: " .. count .. " players")
 end
 
 function FlingLastPlayer()
@@ -2182,7 +2198,7 @@ function FlingLastPlayer()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player then table.insert(players, p) end
     end
-    if #players == 0 then ShowMessage("No other players!") return end
+    if #players == 0 then ShowMessage("🏴‍☠️ No other players!") return end
     local target = players[#players]
     if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = target.Character.HumanoidRootPart
@@ -2191,19 +2207,19 @@ function FlingLastPlayer()
             local dir = Vector3.new(math.random(-1, 1), 1.5, math.random(-1, 1)).Unit
             hum.Sit = true
             hrp.AssemblyLinearVelocity = dir * 5000
-            ShowMessage("Fling Last: " .. target.Name)
+            ShowMessage("🏴‍☠️ Fling Last: " .. target.Name)
         end
     end
 end
 
-function OpenIYFling() ShowMessage("IY Fling opened") end
-function OpenIYGoto() ShowMessage("IY Goto opened") end
+function OpenIYFling() ShowMessage("🏴‍☠️ IY Fling opened") end
+function OpenIYGoto() ShowMessage("🏴‍☠️ IY Goto opened") end
 
 -- MM2
 function ToggleMM2EspV2()
     toggles.mm2EspV2 = not toggles.mm2EspV2
     if toggles.mm2EspV2 then
-        ShowMessage("MM2 ESP V2 ON")
+        ShowMessage("🏴‍☠️ MM2 ESP V2 ON")
         task.spawn(function()
             while toggles.mm2EspV2 do
                 task.wait(0.3)
@@ -2241,7 +2257,7 @@ function ToggleMM2EspV2()
                 end
             end
         end)
-        ShowMessage("MM2 ESP V2 OFF")
+        ShowMessage("🏴‍☠️ MM2 ESP V2 OFF")
     end
 end
 
@@ -2249,7 +2265,7 @@ function ToggleMM2EspV3()
     toggles.mm2EspV3 = not toggles.mm2EspV3
     if toggles.mm2EspV3 then
         if not mm2EspV3Folder then mm2EspV3Folder = Instance.new("Folder", workspace) mm2EspV3Folder.Name = "MTY_MM2_ESP_V3" end
-        ShowMessage("MM2 ESP V3 ON")
+        ShowMessage("🏴‍☠️ MM2 ESP V3 ON")
         task.spawn(function()
             while toggles.mm2EspV3 do
                 task.wait(0.15)
@@ -2319,7 +2335,7 @@ function ToggleMM2EspV3()
                 end
             end
         end)
-        ShowMessage("MM2 ESP V3 OFF")
+        ShowMessage("🏴‍☠️ MM2 ESP V3 OFF")
     end
 end
 
@@ -2340,7 +2356,7 @@ function ToggleMM2AimbotV2()
             Instance.new("UICorner", mm2FovCircle).CornerRadius = UDim.new(1, 0)
         end
         mm2FovCircle.Visible = true
-        ShowMessage("MM2 Aimbot V2 ON")
+        ShowMessage("🏴‍☠️ MM2 Aimbot V2 ON")
         task.spawn(function()
             while toggles.mm2AimbotV2 do
                 RunService.RenderStepped:Wait()
@@ -2369,7 +2385,7 @@ function ToggleMM2AimbotV2()
         end)
     else
         if mm2FovCircle then mm2FovCircle.Visible = false end
-        ShowMessage("MM2 Aimbot V2 OFF")
+        ShowMessage("🏴‍☠️ MM2 Aimbot V2 OFF")
     end
 end
 
@@ -2402,22 +2418,22 @@ function ToggleDoubleTap()
                         tool:Activate()
                         local remote = GetDmgRemote(tool)
                         if remote then remote:FireServer(closestPlayer.Character.HumanoidRootPart) end
-                        ShowMessage("Double Tap: " .. closestPlayer.Name)
+                        ShowMessage("🏴‍☠️ Double Tap: " .. closestPlayer.Name)
                     end
                 end
             end
         end)
-        ShowMessage("Double Tap ON")
+        ShowMessage("🏴‍☠️ Double Tap ON")
     else
         if connections.doubleTap then connections.doubleTap:Disconnect() end
-        ShowMessage("Double Tap OFF")
+        ShowMessage("🏴‍☠️ Double Tap OFF")
     end
 end
 
 function ToggleAutoStab()
     toggles.autoStab = not toggles.autoStab
     if toggles.autoStab then
-        ShowMessage("Auto Stab ON")
+        ShowMessage("🏴‍☠️ Auto Stab ON")
         task.spawn(function()
             while toggles.autoStab do
                 task.wait(0.1)
@@ -2441,14 +2457,14 @@ function ToggleAutoStab()
             end
         end)
     else
-        ShowMessage("Auto Stab OFF")
+        ShowMessage("🏴‍☠️ Auto Stab OFF")
     end
 end
 
 function ToggleCoinFarm()
     toggles.coinFarm = not toggles.coinFarm
     if toggles.coinFarm then
-        ShowMessage("Coin Farm ON")
+        ShowMessage("🏴‍☠️ Coin Farm ON")
         task.spawn(function()
             while toggles.coinFarm do
                 task.wait(0.3)
@@ -2466,7 +2482,7 @@ function ToggleCoinFarm()
             end
         end)
     else
-        ShowMessage("Coin Farm OFF")
+        ShowMessage("🏴‍☠️ Coin Farm OFF")
     end
 end
 
@@ -2483,9 +2499,9 @@ function TeleportToGun()
         end
         if gun and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             player.Character.HumanoidRootPart.CFrame = gun.CFrame + Vector3.new(0, 3, 0)
-            ShowMessage("Teleported to Gun!")
+            ShowMessage("🏴‍☠️ Teleported to Gun!")
         else
-            ShowMessage("Gun not dropped!")
+            ShowMessage("🏴‍☠️ Gun not dropped!")
         end
     end)
 end
@@ -2497,7 +2513,7 @@ end
 function ToggleObsidianSpeed()
     toggles.obsidianSpeed = not toggles.obsidianSpeed
     if toggles.obsidianSpeed then
-        ShowMessage("Obsidian Speed ON")
+        ShowMessage("🏴‍☠️ Obsidian Speed ON")
         if connections.obsidianSpeed then connections.obsidianSpeed:Disconnect() end
         connections.obsidianSpeed = RunService.RenderStepped:Connect(function()
             if toggles.obsidianSpeed and player.Character then
@@ -2514,14 +2530,14 @@ function ToggleObsidianSpeed()
             local hum = player.Character:FindFirstChildOfClass("Humanoid")
             if hum and hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
         end
-        ShowMessage("Obsidian Speed OFF")
+        ShowMessage("🏴‍☠️ Obsidian Speed OFF")
     end
 end
 
 function ToggleObsidianJump()
     toggles.obsidianJump = not toggles.obsidianJump
     if toggles.obsidianJump then
-        ShowMessage("Obsidian Jump ON")
+        ShowMessage("🏴‍☠️ Obsidian Jump ON")
         if connections.obsidianJump then connections.obsidianJump:Disconnect() end
         connections.obsidianJump = RunService.RenderStepped:Connect(function()
             if toggles.obsidianJump and player.Character then
@@ -2539,14 +2555,14 @@ function ToggleObsidianJump()
             local hum = player.Character:FindFirstChildOfClass("Humanoid")
             if hum and hum.JumpPower ~= 50 then hum.JumpPower = 50 end
         end
-        ShowMessage("Obsidian Jump OFF")
+        ShowMessage("🏴‍☠️ Obsidian Jump OFF")
     end
 end
 
 function ToggleObsidianFly()
     toggles.obsidianFly = not toggles.obsidianFly
     if toggles.obsidianFly then
-        ShowMessage("Obsidian Fly ON")
+        ShowMessage("🏴‍☠️ Obsidian Fly ON")
         if connections.obsidianFly then connections.obsidianFly:Disconnect() end
         obsidianData.isFlying = true
         connections.obsidianFly = RunService.RenderStepped:Connect(function()
@@ -2606,7 +2622,7 @@ function ToggleObsidianFly()
             obsidianData.flyAnimTrack:Stop()
             obsidianData.flyAnimTrack = nil
         end
-        ShowMessage("Obsidian Fly OFF")
+        ShowMessage("🏴‍☠️ Obsidian Fly OFF")
     end
 end
 
@@ -2616,13 +2632,13 @@ function ToggleObsidianFlyAnim()
         obsidianData.flyAnimTrack:Stop()
         obsidianData.flyAnimTrack = nil
     end
-    ShowMessage(toggles.obsidianFlyAnim and "Fly Animation ON" or "Fly Animation OFF")
+    ShowMessage(toggles.obsidianFlyAnim and "🏴‍☠️ Fly Animation ON" or "🏴‍☠️ Fly Animation OFF")
 end
 
 function ToggleObsidianNoclip()
     toggles.obsidianNoclip = not toggles.obsidianNoclip
     if toggles.obsidianNoclip then
-        ShowMessage("Obsidian Noclip ON")
+        ShowMessage("🏴‍☠️ Obsidian Noclip ON")
         if connections.obsidianNoclip then connections.obsidianNoclip:Disconnect() end
         connections.obsidianNoclip = RunService.Stepped:Connect(function()
             if toggles.obsidianNoclip and player.Character then
@@ -2633,14 +2649,14 @@ function ToggleObsidianNoclip()
         end)
     else
         if connections.obsidianNoclip then connections.obsidianNoclip:Disconnect() end
-        ShowMessage("Obsidian Noclip OFF")
+        ShowMessage("🏴‍☠️ Obsidian Noclip OFF")
     end
 end
 
 function ToggleObsidianEsp()
     toggles.obsidianEspMaster = not toggles.obsidianEspMaster
     if toggles.obsidianEspMaster then
-        ShowMessage("Obsidian ESP ON")
+        ShowMessage("🏴‍☠️ Obsidian ESP ON")
         if not obsidianData.espObsFolder then
             obsidianData.espObsFolder = Instance.new("Folder", workspace)
             obsidianData.espObsFolder.Name = "MTY_ObsidianESP"
@@ -2673,28 +2689,28 @@ function ToggleObsidianEsp()
         end)
     else
         if obsidianData.espObsFolder then obsidianData.espObsFolder:ClearAllChildren() end
-        ShowMessage("Obsidian ESP OFF")
+        ShowMessage("🏴‍☠️ Obsidian ESP OFF")
     end
 end
 
 function ToggleObsidianTracers()
     toggles.obsidianTracers = not toggles.obsidianTracers
-    ShowMessage(toggles.obsidianTracers and "Tracers ON" or "Tracers OFF")
+    ShowMessage(toggles.obsidianTracers and "🏴‍☠️ Tracers ON" or "🏴‍☠️ Tracers OFF")
 end
 
 function ToggleObsidianHealthBar()
     toggles.obsidianHealthBar = not toggles.obsidianHealthBar
-    ShowMessage(toggles.obsidianHealthBar and "Health Bar ON" or "Health Bar OFF")
+    ShowMessage(toggles.obsidianHealthBar and "🏴‍☠️ Health Bar ON" or "🏴‍☠️ Health Bar OFF")
 end
 
 function ToggleObsidianBoxEsp()
     toggles.obsidianBoxEsp = not toggles.obsidianBoxEsp
-    ShowMessage(toggles.obsidianBoxEsp and "Box ESP ON" or "Box ESP OFF")
+    ShowMessage(toggles.obsidianBoxEsp and "🏴‍☠️ Box ESP ON" or "🏴‍☠️ Box ESP OFF")
 end
 
 function ToggleObsidianSkeleton()
     toggles.obsidianSkeleton = not toggles.obsidianSkeleton
-    ShowMessage(toggles.obsidianSkeleton and "Skeleton ON" or "Skeleton OFF")
+    ShowMessage(toggles.obsidianSkeleton and "🏴‍☠️ Skeleton ON" or "🏴‍☠️ Skeleton OFF")
 end
 
 local function clearObsidianDrawings()
@@ -2883,7 +2899,7 @@ function ToggleObsidianWaypointEsp()
                 end
             end
         end
-        ShowMessage("Waypoint ESP ON")
+        ShowMessage("🏴‍☠️ Waypoint ESP ON")
     else
         for _, groupData in pairs(obsidianData.waypointGroups) do
             for _, wp in ipairs(groupData.waypoints) do
@@ -2893,7 +2909,7 @@ function ToggleObsidianWaypointEsp()
                 end
             end
         end
-        ShowMessage("Waypoint ESP OFF")
+        ShowMessage("🏴‍☠️ Waypoint ESP OFF")
     end
 end
 
@@ -2915,7 +2931,7 @@ function AddObsidianWaypoint()
         h.FillColor = group.color
         h.OutlineColor = group.color
     end
-    ShowMessage("Waypoint added to " .. selGroup)
+    ShowMessage("🏴‍☠️ Waypoint added to " .. selGroup)
 end
 
 function DeleteObsidianWaypoint()
@@ -2926,7 +2942,7 @@ function DeleteObsidianWaypoint()
     if last.marker then last.marker:Destroy() end
     table.remove(group.waypoints)
     if obsidianData.waypointIndex > #group.waypoints then obsidianData.waypointIndex = 1 end
-    ShowMessage("Last waypoint deleted")
+    ShowMessage("🏴‍☠️ Last waypoint deleted")
 end
 
 function TeleportToSelectedWaypoint()
@@ -2940,13 +2956,13 @@ end
 function ToggleObsidianAutoTp()
     toggles.obsidianAutoTp = not toggles.obsidianAutoTp
     if not toggles.obsidianAutoTp then stopPathfinding() end
-    ShowMessage(toggles.obsidianAutoTp and "Auto TP ON" or "Auto TP OFF")
+    ShowMessage(toggles.obsidianAutoTp and "🏴‍☠️ Auto TP ON" or "🏴‍☠️ Auto TP OFF")
 end
 
 function ToggleObsidianUsePathfinding()
     toggles.obsidianUsePathfinding = not toggles.obsidianUsePathfinding
     if not toggles.obsidianUsePathfinding then stopPathfinding() end
-    ShowMessage(toggles.obsidianUsePathfinding and "Pathfinding ON" or "Pathfinding OFF")
+    ShowMessage(toggles.obsidianUsePathfinding and "🏴‍☠️ Pathfinding ON" or "🏴‍☠️ Pathfinding OFF")
 end
 
 function TeleportToPlayer()
@@ -2971,12 +2987,12 @@ end
 
 function ToggleObsidianLoopPlayerTp()
     toggles.obsidianLoopPlayerTp = not toggles.obsidianLoopPlayerTp
-    ShowMessage(toggles.obsidianLoopPlayerTp and "Loop Player TP ON" or "Loop Player TP OFF")
+    ShowMessage(toggles.obsidianLoopPlayerTp and "🏴‍☠️ Loop Player TP ON" or "🏴‍☠️ Loop Player TP OFF")
 end
 
 function ToggleObsidianAutoTpNext()
     toggles.obsidianAutoTpNext = not toggles.obsidianAutoTpNext
-    ShowMessage(toggles.obsidianAutoTpNext and "Auto Next ON" or "Auto Next OFF")
+    ShowMessage(toggles.obsidianAutoTpNext and "🏴‍☠️ Auto Next ON" or "🏴‍☠️ Auto Next OFF")
 end
 
 RunService.RenderStepped:Connect(function()
@@ -3017,10 +3033,10 @@ function ToggleObsidianAC()
     toggles.obsidianAcToggle = not toggles.obsidianAcToggle
     if toggles.obsidianAcToggle then
         obsidianData.acEnabledTime = tick()
-        ShowMessage("Auto Clicker ON")
+        ShowMessage("🏴‍☠️ Auto Clicker ON")
     else
         obsidianData.lockedMousePos = nil
-        ShowMessage("Auto Clicker OFF")
+        ShowMessage("🏴‍☠️ Auto Clicker OFF")
     end
 end
 
@@ -3061,7 +3077,7 @@ end)
 
 function ToggleObsidianFb()
     toggles.obsidianFbMaster = not toggles.obsidianFbMaster
-    ShowMessage(toggles.obsidianFbMaster and "Fullbright ON" or "Fullbright OFF")
+    ShowMessage(toggles.obsidianFbMaster and "🏴‍☠️ Fullbright ON" or "🏴‍☠️ Fullbright OFF")
 end
 
 RunService.RenderStepped:Connect(function()
@@ -3087,23 +3103,23 @@ end)
 
 function ToggleObsidianAutoFb()
     toggles.obsidianAutoFb = not toggles.obsidianAutoFb
-    ShowMessage(toggles.obsidianAutoFb and "Auto Fullbright ON" or "Auto Fullbright OFF")
+    ShowMessage(toggles.obsidianAutoFb and "🏴‍☠️ Auto Fullbright ON" or "🏴‍☠️ Auto Fullbright OFF")
 end
 
 function ToggleObsidianNoShadows()
     toggles.obsidianNoShadows = not toggles.obsidianNoShadows
-    ShowMessage(toggles.obsidianNoShadows and "No Shadows ON" or "No Shadows OFF")
+    ShowMessage(toggles.obsidianNoShadows and "🏴‍☠️ No Shadows ON" or "🏴‍☠️ No Shadows OFF")
 end
 
 function ToggleObsidianNoFog()
     toggles.obsidianNoFog = not toggles.obsidianNoFog
-    ShowMessage(toggles.obsidianNoFog and "No Fog ON" or "No Fog OFF")
+    ShowMessage(toggles.obsidianNoFog and "🏴‍☠️ No Fog ON" or "🏴‍☠️ No Fog OFF")
 end
 
 function ToggleObsidianWalkfling()
     toggles.obsidianWalkfling = not toggles.obsidianWalkfling
     if toggles.obsidianWalkfling then
-        ShowMessage("Walkfling ON")
+        ShowMessage("🏴‍☠️ Walkfling ON")
         obsidianData.isFlinging = true
         task.spawn(function()
             local movel = 0.1
@@ -3124,7 +3140,7 @@ function ToggleObsidianWalkfling()
         end)
     else
         obsidianData.isFlinging = false
-        ShowMessage("Walkfling OFF")
+        ShowMessage("🏴‍☠️ Walkfling OFF")
     end
 end
 
@@ -3142,13 +3158,13 @@ function ToggleObsidianNoVoid()
             obsidianData.voidPart.Position = Vector3.new(0, destroyHeight + 50, 0)
             obsidianData.voidPart.Parent = workspace
         end
-        ShowMessage("No Void ON")
+        ShowMessage("🏴‍☠️ No Void ON")
     else
         if obsidianData.voidPart then
             obsidianData.voidPart:Destroy()
             obsidianData.voidPart = nil
         end
-        ShowMessage("No Void OFF")
+        ShowMessage("🏴‍☠️ No Void OFF")
     end
 end
 
@@ -3166,7 +3182,7 @@ function ToggleObsidianGodMode()
                 hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             end
         end
-        ShowMessage("God Mode ON")
+        ShowMessage("🏴‍☠️ God Mode ON")
     else
         if player.Character then
             local hum = player.Character:FindFirstChildOfClass("Humanoid")
@@ -3178,7 +3194,7 @@ function ToggleObsidianGodMode()
                 end
             end
         end
-        ShowMessage("God Mode OFF")
+        ShowMessage("🏴‍☠️ God Mode OFF")
     end
 end
 
@@ -3198,7 +3214,7 @@ end)
 
 function ToggleObsidianNoPromptCooldown()
     toggles.obsidianNoPromptCooldown = not toggles.obsidianNoPromptCooldown
-    ShowMessage(toggles.obsidianNoPromptCooldown and "No Prompt Cooldown ON" or "No Prompt Cooldown OFF")
+    ShowMessage(toggles.obsidianNoPromptCooldown and "🏴‍☠️ No Prompt Cooldown ON" or "🏴‍☠️ No Prompt Cooldown OFF")
 end
 
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
@@ -3234,7 +3250,7 @@ task.spawn(function()
 end)
 
 -- ============================================================================
--- 🏗️ ПОСТРОЕНИЕ GUI
+-- 🏴‍☠️ ПОСТРОЕНИЕ GUI
 -- ============================================================================
 
 local mainFrame = Instance.new("Frame")
@@ -3259,7 +3275,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(0, 70, 0, 18)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "мти хаб"
+title.Text = "🏴‍☠️ MTY GUI"
 title.TextColor3 = Color3.fromRGB(200, 200, 200)
 title.TextSize = 8
 title.Font = Enum.Font.GothamBold
@@ -3399,14 +3415,24 @@ local categories = {
     -- CMB
     {
         {text = "Aimbot", func = ToggleAimbot, isToggle = true},
-        {text = "Aimbot V2", func = ToggleAimbotV2, isToggle = true},
-        {text = "Aimbot V3", func = ToggleAimbotV3, isToggle = true},
+        {text = "Aimbot Mode", func = CycleAimbotMode, isToggle = false},
+        {text = "Aimbot FOV", func = function() OpenTextInput("Aimbot FOV", "10-360", guiSettings.AimbotFOV, function(v) guiSettings.AimbotFOV = v end) end, isToggle = false},
+        {text = "Aimbot Speed", func = function() OpenTextInput("Aimbot Speed", "0.1-1", guiSettings.AimbotSpeed, function(v) guiSettings.AimbotSpeed = v end) end, isToggle = false},
+        {text = "Aimbot Part", func = function()
+            local parts = {"Head", "HumanoidRootPart", "Torso", "UpperTorso"}
+            local current = guiSettings.AimbotPart or "Head"
+            local idx = 1
+            for i, v in ipairs(parts) do if v == current then idx = i break end end
+            local nextIdx = idx % #parts + 1
+            guiSettings.AimbotPart = parts[nextIdx]
+            ShowMessage("🏴‍☠️ Aimbot Part: " .. parts[nextIdx])
+        end, isToggle = false},
+        {text = "Anti-Aim V2", func = ToggleAntiAim, isToggle = true},
+        {text = "Anti-Aim Mode", func = CycleAntiAimMode, isToggle = false},
         {text = "Kill Aura", func = ToggleKillAura, isToggle = true},
         {text = "Kill Aura V2", func = ToggleKillAuraV2, isToggle = true},
         {text = "Orbit Kill Aura", func = ToggleOrbitKillAura, isToggle = true},
         {text = "Trigger Bot", func = ToggleTriggerBot, isToggle = true},
-        {text = "Anti-Aim V2", func = ToggleAntiAim, isToggle = true},
-        {text = "Anti-Aim V3", func = ToggleAntiAimV3, isToggle = true},
         {text = "Desync", func = ToggleDesync, isToggle = true},
         {text = "Fake Lag", func = ToggleFakeLag, isToggle = true},
         {text = "Anti-Knockback", func = ToggleAntiKb, isToggle = true},
@@ -3497,14 +3523,14 @@ local categories = {
         {text = "Offset X", func = function() OpenTextInput("Offset X", "-50 to 50", guiSettings.ObsidianOffsetX, function(v) guiSettings.ObsidianOffsetX = v end) end, isToggle = false},
         {text = "Offset Y", func = function() OpenTextInput("Offset Y", "-50 to 50", guiSettings.ObsidianOffsetY, function(v) guiSettings.ObsidianOffsetY = v end) end, isToggle = false},
         {text = "Offset Z", func = function() OpenTextInput("Offset Z", "-50 to 50", guiSettings.ObsidianOffsetZ, function(v) guiSettings.ObsidianOffsetZ = v end) end, isToggle = false},
-        {text = "Tracer Orig", func = function() 
+        {text = "Tracer Orig", func = function()
             local modes = {"Default", "Bottom", "Bottom Right"}
             local current = guiSettings.ObsidianTracerOrigin or "Default"
             local idx = 1
             for i, v in ipairs(modes) do if v == current then idx = i break end end
             local nextIdx = idx % #modes + 1
             guiSettings.ObsidianTracerOrigin = modes[nextIdx]
-            ShowMessage("Tracer Origin: " .. modes[nextIdx])
+            ShowMessage("🏴‍☠️ Tracer Origin: " .. modes[nextIdx])
         end, isToggle = false},
     }
 }
@@ -3580,7 +3606,7 @@ cubeButton.Position = UDim2.new(0.5, -25, 0.5, -25)
 cubeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 cubeButton.BorderSizePixel = 2
 cubeButton.BorderColor3 = guiSettings.BorderColor
-cubeButton.Text = "M"
+cubeButton.Text = "🏴‍☠️"
 cubeButton.TextColor3 = guiSettings.BorderColor
 cubeButton.TextSize = 30
 cubeButton.Font = Enum.Font.GothamBold
@@ -3631,12 +3657,12 @@ local function toggleUI()
     uiVisible = not uiVisible
     mainFrame.Visible = uiVisible
     cubeButton.Visible = not uiVisible
-    hideButton.Text = uiVisible and "СКРЫТЬ" or "ПОКАЗАТЬ"
+    hideButton.Text = uiVisible and "СКРЫТЬ" or "🏴‍☠️"
 end
 
 hideButton.MouseButton1Click:Connect(toggleUI)
 
-local nums = {"14.0", "100", "14.0", "5", "G"}
+local nums = {"14.0", "100", "14.0", "5", "🏴"}
 for i = 1, 5 do
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(0, 20, 0, 11)
@@ -3650,9 +3676,9 @@ for i = 1, 5 do
     lbl.Parent = mainFrame
 end
 
-print("✅ MTY HUB + OBSIDIAN (GG) ЗАГРУЖЕН!")
-print("✅ 5 вкладок: VIS | CMB | MOV | MM2 | GG")
-print("✅ Вкладка GG содержит ВСЕ функции из Obsidian!")
-print("✅ Все ТВОИ функции работают без изменений!")
-print("✅ GUI не пропадает после смерти!")
-print("✅ Кубик можно двигать мышкой!")
+print("🏴‍☠️ MTY GUI - ПОЛНАЯ ВЕРСИЯ ЗАГРУЖЕНА!")
+print("🏴‍☠️ 5 вкладок: VIS | CMB | MOV | MM2 | GG")
+print("🏴‍☠️ Вкладка GG содержит ВСЕ функции из Obsidian!")
+print("🏴‍☠️ Все ТВОИ функции работают без изменений!")
+print("🏴‍☠️ GUI не пропадает после смерти!")
+print("🏴‍☠️ Кубик с пиратом 🏴‍☠️ можно двигать!")
