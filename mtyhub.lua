@@ -1,5 +1,1874 @@
+-- ============================================================================
+-- 🎮 MTY HUB CLONE + OBSIDIAN (ОБЪЕДИНЕНИЕ)
+-- ============================================================================
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
+local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Teams = game:GetService("Teams")
+local PathfindingService = game:GetService("PathfindingService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- ============================================================================
+-- 📦 GUI (НЕ ПРОПАДАЕТ ПОСЛЕ СМЕРТИ)
+-- ============================================================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MtyHubClone"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- ============================================================================
+-- 📦 ПЕРЕМЕННЫЕ
+-- ============================================================================
+
+local cubeDragging = false
+local cubeDragStart = nil
+local cubeStartPos = nil
+local uiVisible = true
+
+local guiSettings = {
+    BorderColor = Color3.fromRGB(150, 0, 255),
+    TextColor = Color3.fromRGB(240, 240, 245),
+    OnColor = Color3.fromRGB(150, 0, 255),
+    OffColor = Color3.fromRGB(30, 30, 35),
+    ESPColor = Color3.fromRGB(130, 80, 255),
+    HitboxColor = Color3.fromRGB(255, 0, 100),
+    JumpCircleColor = Color3.fromRGB(130, 80, 255),
+    TrailColor = Color3.fromRGB(0, 255, 255),
+    HatColor = Color3.fromRGB(130, 80, 255),
+    ParticleColor = Color3.fromRGB(130, 80, 255),
+    OrbitColor = Color3.fromRGB(255, 0, 100),
+    CrosshairColor = Color3.fromRGB(0, 255, 100),
+    StretchValue = 0.7,
+    AimbotFOV = 130,
+    AimbotSpeed = 0.25,
+    AimbotStrength = 0.85,
+    KillAuraRange = 18,
+    AimbotWallbang = true,
+    ToolReachValue = 4,
+    HatRainbow = false,
+    TrailLength = 40,
+    JumpCircleFadeTime = 0.8,
+    AimbotPart = "Head",
+    AntiAimMode = "Spin",
+    FakeLagAmount = 6,
+    OrbitRadius = 8,
+    OrbitSpeed = 3,
+    HitboxSize = 2,
+    FlySpeed = 50,
+    WorldColor = Color3.fromRGB(255, 0, 255),
+    FogColor = Color3.fromRGB(150, 100, 200),
+    FogStart = 0,
+    FogEnd = 100,
+    -- OBSIDIAN НАСТРОЙКИ
+    ObsidianSpeedValue = 16,
+    ObsidianJumpValue = 50,
+    ObsidianFlySpeed = 50,
+    ObsidianCPS = 10,
+    ObsidianACKey = "E",
+    ObsidianACMode = "Left Click",
+    ObsidianAutoTpDelay = 2,
+    ObsidianOffsetX = 0,
+    ObsidianOffsetY = 0,
+    ObsidianOffsetZ = 0,
+    ObsidianTpRange = 1000,
+    ObsidianHipHeight = 0,
+    ObsidianGroupColor = Color3.fromRGB(0, 170, 255),
+    ObsidianTracerOrigin = "Default",
+}
+
+-- ============================================================================
+-- 🎮 ТОГГЛЫ (ТВОИ ОРИГИНАЛЬНЫЕ + OBSIDIAN)
+-- ============================================================================
+
+local toggles = {
+    -- ТВОИ ОРИГИНАЛЬНЫЕ ТОГГЛЫ
+    esp = false,
+    espV2 = false,
+    jumpCircle = false,
+    trail = false,
+    trailV2 = false,
+    chinaHat = false,
+    worldColor = false,
+    stretch = false,
+    stretchV2 = false,
+    hitGlow = false,
+    fullbright = false,
+    particlesV1 = false,
+    particlesV2 = false,
+    classicSword = false,
+    worldColors = false,
+    fog = false,
+    nightVision = false,
+    thermalVision = false,
+    rainbowWorld = false,
+    crosshair = false,
+    hitboxes = false,
+    hitboxExpander = false,
+    aimbot = false,
+    aimbotV2 = false,
+    aimbotV3 = false,
+    killAura = false,
+    killAuraV2 = false,
+    orbitKillAura = false,
+    triggerBot = false,
+    antiAim = false,
+    antiAimV3 = false,
+    desync = false,
+    fakeLag = false,
+    antiKb = false,
+    speed = false,
+    infiniteJump = false,
+    airWalk = false,
+    flyV1 = false,
+    flyV2 = false,
+    teleportTool = false,
+    autoSprint = false,
+    noClip = false,
+    spider = false,
+    swim = false,
+    dash = false,
+    invisibility = false,
+    helicopter = false,
+    r6Animations = false,
+    bunnyHop = false,
+    speedGlitch = false,
+    wallHop = false,
+    walkFling = false,
+    autoFling = false,
+    mm2EspV2 = false,
+    mm2EspV3 = false,
+    mm2AimbotV2 = false,
+    doubleTap = false,
+    autoStab = false,
+    coinFarm = false,
+    -- OBSIDIAN ТОГГЛЫ
+    obsidianSpeed = false,
+    obsidianJump = false,
+    obsidianFly = false,
+    obsidianFlyAnim = false,
+    obsidianNoclip = false,
+    obsidianEspMaster = false,
+    obsidianTracers = false,
+    obsidianHealthBar = false,
+    obsidianBoxEsp = false,
+    obsidianSkeleton = false,
+    obsidianWaypointEsp = false,
+    obsidianUseGroupTp = false,
+    obsidianAutoTp = false,
+    obsidianUsePathfinding = false,
+    obsidianLoopPlayerTp = false,
+    obsidianAutoTpNext = false,
+    obsidianAcToggle = false,
+    obsidianFbMaster = false,
+    obsidianAutoFb = false,
+    obsidianNoShadows = false,
+    obsidianNoFog = false,
+    obsidianWalkfling = false,
+    obsidianNoVoid = false,
+    obsidianGodMode = false,
+    obsidianNoPromptCooldown = false,
+}
+
+local speedValue = 16
+local flySpeed = 50
+local flingPower = 999999
+local targetPlayer = nil
+local trailParts = {}
+local espFolder, espV2Folder, HitboxFolder = nil, nil, nil
+local fovGui, fovRing, fovStroke = nil, nil, nil
+local mm2FovCircle, mm2FovStroke = nil, nil
+local orbitButton = nil
+local dashButton = nil
+local wallHopButton = nil
+local currentHat = nil
+local hatConnection = nil
+local currentSword = nil
+local orbitAngle = 0
+local crosshairGui = nil
+local originalAmbient = Lighting.Ambient
+local originalOutdoor = Lighting.OutdoorAmbient
+local lastTapTime = 0
+local tapCount = 0
+local lastHitInstance = nil
+local lastFlickTime = 0
+local mm2EspV3Folder = nil
+local antiAimV3Mode = "Backwards"
+
+-- OBSIDIAN ПЕРЕМЕННЫЕ
+local obsidianData = {
+    waypointGroups = { ["Default"] = { color = Color3.fromRGB(0, 170, 255), waypoints = {} } },
+    waypointIndex = 1,
+    pathfindingActive = false,
+    currentPathThread = nil,
+    isFlinging = false,
+    voidPart = nil,
+    godModeFirstRun = true,
+    defaultHipHeight = 0,
+    flyAnimTrack = nil,
+    isFlying = false,
+    lockedMousePos = nil,
+    acEnabledTime = 0,
+    actualAutoClicks = 0,
+    teamSettings = {},
+    playerDrawingData = {},
+    selectedGroup = "Default",
+    currentAllTarget = nil,
+    espObsFolder = nil,
+    selectedPlayer = "All",
+}
+
+-- КОННЕКТЫ
+local connections = {}
+
+-- ============================================================================
+-- 🔧 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ТВОИ)
+-- ============================================================================
+
+local function roundCorner(obj, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = obj
+end
+
+local function ShowMessage(text)
+    pcall(function()
+        local msg = Instance.new("TextLabel", gui)
+        msg.Size = UDim2.new(0.45, 0, 0.07, 0)
+        msg.Position = UDim2.new(0.275, 0, 0.88, 0)
+        msg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+        msg.Text = text
+        msg.TextColor3 = guiSettings.TextColor
+        msg.TextScaled = true
+        msg.Font = Enum.Font.GothamBold
+        Instance.new("UICorner", msg).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", msg).Color = guiSettings.BorderColor
+        task.spawn(function()
+            task.wait(1.5)
+            pcall(function() msg:Destroy() end)
+        end)
+    end)
+end
+
+local function OpenTextInput(title, placeholder, default, callback)
+    pcall(function()
+        local s = Instance.new("ScreenGui", game.CoreGui)
+        s.ResetOnSpawn = false
+        local f = Instance.new("Frame", s)
+        f.Size = UDim2.new(0, 230, 0, 130)
+        f.Position = UDim2.new(0.5, -115, 0.35, 0)
+        f.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+        Instance.new("UIStroke", f).Color = guiSettings.BorderColor
+        
+        local tl = Instance.new("TextLabel", f)
+        tl.Size = UDim2.new(1, 0, 0, 30)
+        tl.Text = title
+        tl.TextColor3 = guiSettings.TextColor
+        tl.Font = Enum.Font.GothamBold
+        tl.BackgroundTransparency = 1
+        
+        local tb = Instance.new("TextBox", f)
+        tb.Size = UDim2.new(0.8, 0, 0, 28)
+        tb.Position = UDim2.new(0.1, 0, 0.35, 0)
+        tb.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        tb.Text = tostring(default)
+        tb.TextColor3 = guiSettings.TextColor
+        Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 6)
+        
+        local btn = Instance.new("TextButton", f)
+        btn.Size = UDim2.new(0.4, 0, 0, 26)
+        btn.Position = UDim2.new(0.3, 0, 0.7, 0)
+        btn.BackgroundColor3 = guiSettings.OnColor
+        btn.Text = "Apply"
+        btn.TextColor3 = guiSettings.TextColor
+        btn.Font = Enum.Font.GothamBold
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        
+        btn.MouseButton1Click:Connect(function()
+            local n = tonumber(tb.Text)
+            if n then 
+                callback(n) 
+                pcall(function() s:Destroy() end)
+            else 
+                tb.Text = "Error" 
+            end
+        end)
+        
+        local c = Instance.new("TextButton", f)
+        c.Size = UDim2.new(0, 22, 0, 22)
+        c.Position = UDim2.new(1, -27, 0, 5)
+        c.Text = "X"
+        c.TextColor3 = guiSettings.TextColor
+        c.BackgroundColor3 = Color3.fromRGB(40,40,45)
+        Instance.new("UICorner", c).CornerRadius = UDim.new(0,4)
+        c.MouseButton1Click:Connect(function() pcall(function() s:Destroy() end) end)
+    end)
+end
+
+local function OpenColorPicker(title, callback)
+    pcall(function()
+        local s = Instance.new("ScreenGui", game.CoreGui)
+        s.ResetOnSpawn = false
+        local f = Instance.new("Frame", s)
+        f.Size = UDim2.new(0, 190, 0, 260)
+        f.Position = UDim2.new(0.5, -95, 0.3, 0)
+        f.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+        Instance.new("UIStroke", f).Color = guiSettings.BorderColor
+        
+        local scr = Instance.new("ScrollingFrame", f)
+        scr.Size = UDim2.new(0.9, 0, 0.8, 0)
+        scr.Position = UDim2.new(0.05, 0, 0.1, 0)
+        scr.BackgroundTransparency = 1
+        scr.ScrollBarThickness = 3
+        
+        local colors = {
+            {"Purple", Color3.fromRGB(130, 80, 255)}, 
+            {"Red", Color3.fromRGB(255, 0, 70)}, 
+            {"Green", Color3.fromRGB(0, 255, 100)}, 
+            {"Blue", Color3.fromRGB(0, 150, 255)}, 
+            {"Cyan", Color3.fromRGB(0, 255, 255)}, 
+            {"White", Color3.fromRGB(255,255,255)}, 
+            {"Yellow", Color3.fromRGB(255,220,0)},
+            {"Orange", Color3.fromRGB(255, 165, 0)},
+            {"Pink", Color3.fromRGB(255, 105, 180)},
+            {"Black", Color3.fromRGB(0, 0, 0)}
+        }
+        
+        local y = 0
+        for _, data in ipairs(colors) do
+            local btn = Instance.new("TextButton", scr)
+            btn.Size = UDim2.new(0.9, 0, 0, 30)
+            btn.Position = UDim2.new(0.05, 0, 0, y)
+            btn.BackgroundColor3 = data[2]
+            btn.Text = data[1]
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+            btn.Font = Enum.Font.GothamBold
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+            btn.MouseButton1Click:Connect(function()
+                callback(data[2])
+                pcall(function() s:Destroy() end)
+            end)
+            y = y + 34
+        end
+        scr.CanvasSize = UDim2.new(0, 0, 0, y)
+        
+        local c = Instance.new("TextButton", f)
+        c.Size = UDim2.new(0, 22, 0, 22)
+        c.Position = UDim2.new(1, -27, 0, 5)
+        c.Text = "X"
+        c.TextColor3 = guiSettings.TextColor
+        c.BackgroundColor3 = Color3.fromRGB(40,40,45)
+        Instance.new("UICorner", c).CornerRadius = UDim.new(0,4)
+        c.MouseButton1Click:Connect(function() pcall(function() s:Destroy() end) end)
+    end)
+end
+
+function OpenFogColorPicker()
+    OpenColorPicker("Select Fog Color", function(color)
+        guiSettings.FogColor = color
+        Lighting.FogColor = color
+        ShowMessage("Fog color changed!")
+    end)
+end
+
+-- ============================================================================
+-- 🔧 OBSIDIAN ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-- ============================================================================
+
+local function getRoot(char)
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function createMarker(pos, color)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Ball
+    p.Size = Vector3.new(2, 2, 2)
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Color = color
+    p.Position = pos + Vector3.new(0, 2, 0)
+    p.Parent = workspace
+    return p
+end
+
+local function getRobustKeyCode(keyString)
+    if type(keyString) ~= "string" or keyString == "" then return nil end
+    local searchStr = keyString:gsub("%s+", ""):lower()
+    for _, key in pairs(Enum.KeyCode:GetEnumItems()) do
+        if key.Name:lower() == searchStr then return key end
+    end
+    return nil
+end
+
+local function isPlayerValid(plr)
+    if not plr or plr == player or not plr.Character then return false end
+    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+    local root = getRoot(plr.Character)
+    if not hum or hum.Health <= 0 or not root then return false end
+    return true
+end
+
+local function getNextValidPlayer(ignorePlr)
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr ~= ignorePlr and isPlayerValid(plr) then
+            return plr
+        end
+    end
+    return nil
+end
+
+local function getActiveWaypoints()
+    if toggles.obsidianUseGroupTp then
+        local selGroup = obsidianData.selectedGroup or "Default"
+        return obsidianData.waypointGroups[selGroup] and obsidianData.waypointGroups[selGroup].waypoints or {}
+    else
+        local allWps = {}
+        for _, groupData in pairs(obsidianData.waypointGroups) do
+            for _, wp in ipairs(groupData.waypoints) do
+                table.insert(allWps, wp)
+            end
+        end
+        return allWps
+    end
+end
+
+local function stopPathfinding()
+    obsidianData.pathfindingActive = false
+    if obsidianData.currentPathThread then
+        task.cancel(obsidianData.currentPathThread)
+        obsidianData.currentPathThread = nil
+    end
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = getRoot(char)
+    if hum and root then hum:MoveTo(root.Position) end
+end
+
+local function walkToPosition(targetPos)
+    stopPathfinding()
+    obsidianData.pathfindingActive = true
+    obsidianData.currentPathThread = task.spawn(function()
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local root = getRoot(char)
+        if not hum or not root then obsidianData.pathfindingActive = false return end
+        
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        rayParams.FilterDescendantsInstances = {char, workspace.CurrentCamera}
+
+        while obsidianData.pathfindingActive do
+            local distToTarget = (root.Position * Vector3.new(1,0,1) - targetPos * Vector3.new(1,0,1)).Magnitude
+            if distToTarget < 2 then break end
+            
+            local path = PathfindingService:CreatePath({
+                AgentRadius = 2,
+                AgentHeight = 5,
+                AgentCanJump = true,
+                AgentWalkableClimb = 3
+            })
+            local success = pcall(function() path:ComputeAsync(root.Position, targetPos) end)
+            local waypointsToFollow = {}
+            if success and path.Status == Enum.PathStatus.Success then
+                waypointsToFollow = path:GetWaypoints()
+            else
+                waypointsToFollow = {
+                    {Position = root.Position, Action = Enum.PathWaypointAction.Walk},
+                    {Position = targetPos, Action = Enum.PathWaypointAction.Walk}
+                }
+            end
+
+            local isStuck = false
+            for i = 2, #waypointsToFollow do
+                if not obsidianData.pathfindingActive then break end
+                local wp = waypointsToFollow[i]
+                hum:MoveTo(wp.Position)
+                if wp.Action == Enum.PathWaypointAction.Jump then hum.Jump = true end
+
+                local startTime = tick()
+                while obsidianData.pathfindingActive do
+                    task.wait(0.05)
+                    if (root.Position * Vector3.new(1,0,1) - wp.Position * Vector3.new(1,0,1)).Magnitude < 2 then break end
+                    local fwd = hum.MoveDirection
+                    if fwd.Magnitude > 0 then
+                        local lookAhead = root.Position + (fwd * 4.5)
+                        local rayDown = workspace:Raycast(lookAhead, Vector3.new(0, -15, 0), rayParams)
+                        if not rayDown then hum.Jump = true end
+                        if workspace:Raycast(root.Position, fwd * 3, rayParams) then hum.Jump = true end
+                    end
+                    if tick() - startTime > 2.5 then isStuck = true break end
+                end
+                if isStuck then break end
+            end
+            if isStuck and obsidianData.pathfindingActive then
+                hum.Jump = true
+                task.wait(0.5)
+            end
+        end
+        obsidianData.pathfindingActive = false
+    end)
+end
+
+local function moveToTarget(targetPos)
+    if toggles.obsidianUsePathfinding then
+        walkToPosition(targetPos)
+    else
+        stopPathfinding()
+        local root = getRoot(player.Character)
+        if root then root.CFrame = CFrame.new(targetPos) end
+    end
+end
+
+-- ============================================================================
+-- 🎯 ЯДРО ФУНКЦИЙ (ТВОИ ОРИГИНАЛЬНЫЕ)
+-- ============================================================================
+
+local function IsVisible(part)
+    if guiSettings.AimbotWallbang then return true end
+    local success, result = pcall(function()
+        local parts = Camera:GetPartsObscuringTarget({part.Position}, {player.Character, part.Parent})
+        return #parts == 0
+    end)
+    return success and result or false
+end
+
+local function FindBestTarget()
+    local target, near = nil, guiSettings.AimbotFOV
+    local mid = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    pcall(function()
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                local hit = p.Character:FindFirstChild(guiSettings.AimbotPart) or p.Character:FindFirstChild("Head")
+                if hit and IsVisible(hit) then
+                    local screen, visible = Camera:WorldToViewportPoint(hit.Position)
+                    if visible then
+                        local dist = (Vector2.new(screen.X, screen.Y) - mid).Magnitude
+                        if dist < near then
+                            near = dist
+                            target = p
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    return target
+end
+
+local function GetDmgRemote(tool)
+    if not tool then return nil end
+    for _, v in pairs(tool:GetDescendants()) do 
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then 
+            local n = v.Name:lower() 
+            if n:find("hit") or n:find("attack") or n:find("damage") or n:find("slash") or n:find("click") or n:find("fire") then 
+                return v 
+            end 
+        end 
+    end 
+    return nil
+end
+
+local function AttackPlayer(tChar, tool)
+    if not tChar or not tChar:FindFirstChild("HumanoidRootPart") or not tool then return end
+    pcall(function()
+        tool:Activate() 
+        local r = GetDmgRemote(tool)
+        if r and r:IsA("RemoteEvent") then 
+            r:FireServer(tChar.HumanoidRootPart) 
+            r:FireServer(tChar.Humanoid) 
+        elseif r and r:IsA("RemoteFunction") then 
+            r:InvokeServer(tChar.HumanoidRootPart) 
+        end
+        if toggles.hitGlow then 
+            task.spawn(function() 
+                local h = Instance.new("Highlight", tChar) 
+                h.FillColor = guiSettings.HitboxColor 
+                h.FillTransparency = 0.2 
+                task.wait(0.2) 
+                h:Destroy() 
+            end) 
+        end
+    end)
+end
+
+function ApplyToolReach()
+    if not player.Character then return end 
+    local tool = player.Character:FindFirstChildOfClass("Tool")
+    if tool and tool:FindFirstChild("Handle") then 
+        tool.Handle.Size = Vector3.new(guiSettings.ToolReachValue, guiSettings.ToolReachValue, guiSettings.ToolReachValue) 
+        tool.Handle.CanCollide = false 
+    end
+end
+
+local function getMM2Role(p)
+    local char = p.Character
+    local backpack = p:FindFirstChild("Backpack")
+    if not char then return "Innocent" end
+    
+    local isMurder = false
+    local isSheriff = false
+    
+    if char:FindFirstChildOfClass("Tool") then
+        for _, tool in pairs(char:GetChildren()) do
+            if tool:IsA("Tool") then
+                local name = string.lower(tool.Name)
+                if name:find("knife") or name:find("blade") or name:find("scythe") or name:find("dagger") or name:find("sword") then
+                    isMurder = true
+                elseif name:find("gun") or name:find("revolver") or name:find("blaster") or name:find("pistol") or name:find("rifle") then
+                    isSheriff = true
+                end
+            end
+        end
+    end
+    
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                local name = string.lower(tool.Name)
+                if name:find("knife") or name:find("blade") or name:find("scythe") or name:find("dagger") or name:find("sword") then
+                    isMurder = true
+                elseif name:find("gun") or name:find("revolver") or name:find("blaster") or name:find("pistol") or name:find("rifle") then
+                    isSheriff = true
+                end
+            end
+        end
+    end
+    
+    if char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then isMurder = true end
+    if char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) then isSheriff = true end
+    
+    if isMurder then return "Murderer" end
+    if isSheriff then return "Sheriff" end
+    return "Innocent"
+end
+
+-- ============================================================================
+-- 📋 ВСЕ ТВОИ ФУНКЦИИ MTY (БЕЗ ИЗМЕНЕНИЙ)
+-- ============================================================================
+
+-- [ВСТАВЬ СЮДА ВЕСЬ ТВОЙ ОРИГИНАЛЬНЫЙ КОД - от ToggleESP до TeleportToGun]
+-- Я не буду его трогать, он полностью твой
+
+-- ============================================================================
+-- 📋 OBSIDIAN ФУНКЦИИ (ДЛЯ ВКЛАДКИ GG)
+-- ============================================================================
+
+function ToggleObsidianSpeed()
+    toggles.obsidianSpeed = not toggles.obsidianSpeed
+    if toggles.obsidianSpeed then
+        ShowMessage("Obsidian Speed ON")
+        if connections.obsidianSpeed then connections.obsidianSpeed:Disconnect() end
+        connections.obsidianSpeed = RunService.RenderStepped:Connect(function()
+            if toggles.obsidianSpeed and player.Character then
+                local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    local speed = tonumber(guiSettings.ObsidianSpeedValue) or 16
+                    if hum.WalkSpeed ~= speed then hum.WalkSpeed = speed end
+                end
+            end
+        end)
+    else
+        if connections.obsidianSpeed then connections.obsidianSpeed:Disconnect() end
+        if player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
+        end
+        ShowMessage("Obsidian Speed OFF")
+    end
+end
+
+function ToggleObsidianJump()
+    toggles.obsidianJump = not toggles.obsidianJump
+    if toggles.obsidianJump then
+        ShowMessage("Obsidian Jump ON")
+        if connections.obsidianJump then connections.obsidianJump:Disconnect() end
+        connections.obsidianJump = RunService.RenderStepped:Connect(function()
+            if toggles.obsidianJump and player.Character then
+                local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    local jumpPower = tonumber(guiSettings.ObsidianJumpValue) or 50
+                    hum.UseJumpPower = true
+                    if hum.JumpPower ~= jumpPower then hum.JumpPower = jumpPower end
+                end
+            end
+        end)
+    else
+        if connections.obsidianJump then connections.obsidianJump:Disconnect() end
+        if player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.JumpPower ~= 50 then hum.JumpPower = 50 end
+        end
+        ShowMessage("Obsidian Jump OFF")
+    end
+end
+
+function ToggleObsidianFly()
+    toggles.obsidianFly = not toggles.obsidianFly
+    if toggles.obsidianFly then
+        ShowMessage("Obsidian Fly ON")
+        if connections.obsidianFly then connections.obsidianFly:Disconnect() end
+        obsidianData.isFlying = true
+        connections.obsidianFly = RunService.RenderStepped:Connect(function()
+            pcall(function()
+                if not toggles.obsidianFly or not player.Character then
+                    obsidianData.isFlying = false
+                    return
+                end
+                local char = player.Character
+                local root = getRoot(char)
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local cam = workspace.CurrentCamera
+                if not root or not hum then return end
+                
+                local speed = tonumber(guiSettings.ObsidianFlySpeed) or 50
+                local moveModule = require(player.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+                local move = moveModule:GetMoveVector()
+                local dir = cam.CFrame.RightVector * move.X - cam.CFrame.LookVector * move.Z
+                if dir.Magnitude > 0 then dir = dir.Unit * speed end
+                
+                if not root:FindFirstChild("ObsidianFlyBV") then
+                    local bv = Instance.new("BodyVelocity", root)
+                    bv.Name = "ObsidianFlyBV"
+                    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                    local bg = Instance.new("BodyGyro", root)
+                    bg.Name = "ObsidianFlyBG"
+                    bg.P = 9e4
+                    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                end
+                root.ObsidianFlyBV.Velocity = dir
+                root.ObsidianFlyBG.CFrame = cam.CFrame
+                hum.PlatformStand = true
+                
+                if toggles.obsidianFlyAnim and hum then
+                    local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+                    if not obsidianData.flyAnimTrack then
+                        local fallAnim = char:WaitForChild("Animate"):WaitForChild("fall"):WaitForChild("FallAnim")
+                        obsidianData.flyAnimTrack = animator:LoadAnimation(fallAnim)
+                        obsidianData.flyAnimTrack.Priority = Enum.AnimationPriority.Action
+                    end
+                    if not obsidianData.flyAnimTrack.IsPlaying then
+                        obsidianData.flyAnimTrack:Play()
+                    end
+                end
+            end)
+        end)
+    else
+        if connections.obsidianFly then connections.obsidianFly:Disconnect() end
+        obsidianData.isFlying = false
+        if player.Character then
+            local root = getRoot(player.Character)
+            if root then
+                if root:FindFirstChild("ObsidianFlyBV") then root.ObsidianFlyBV:Destroy() end
+                if root:FindFirstChild("ObsidianFlyBG") then root.ObsidianFlyBG:Destroy() end
+            end
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.PlatformStand = false end
+        end
+        if obsidianData.flyAnimTrack then
+            obsidianData.flyAnimTrack:Stop()
+            obsidianData.flyAnimTrack = nil
+        end
+        ShowMessage("Obsidian Fly OFF")
+    end
+end
+
+function ToggleObsidianFlyAnim()
+    toggles.obsidianFlyAnim = not toggles.obsidianFlyAnim
+    if not toggles.obsidianFlyAnim and obsidianData.flyAnimTrack then
+        obsidianData.flyAnimTrack:Stop()
+        obsidianData.flyAnimTrack = nil
+    end
+    ShowMessage(toggles.obsidianFlyAnim and "Fly Animation ON" or "Fly Animation OFF")
+end
+
+function ToggleObsidianNoclip()
+    toggles.obsidianNoclip = not toggles.obsidianNoclip
+    if toggles.obsidianNoclip then
+        ShowMessage("Obsidian Noclip ON")
+        if connections.obsidianNoclip then connections.obsidianNoclip:Disconnect() end
+        connections.obsidianNoclip = RunService.Stepped:Connect(function()
+            if toggles.obsidianNoclip and player.Character then
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if connections.obsidianNoclip then connections.obsidianNoclip:Disconnect() end
+        ShowMessage("Obsidian Noclip OFF")
+    end
+end
+
+function ToggleObsidianEsp()
+    toggles.obsidianEspMaster = not toggles.obsidianEspMaster
+    if toggles.obsidianEspMaster then
+        ShowMessage("Obsidian ESP ON")
+        if not obsidianData.espObsFolder then
+            obsidianData.espObsFolder = Instance.new("Folder", workspace)
+            obsidianData.espObsFolder.Name = "MTY_ObsidianESP"
+        end
+        obsidianData.teamSettings["ALL"] = { enabled = true, color = Color3.fromRGB(255, 0, 0) }
+        for _, t in pairs(Teams:GetTeams()) do
+            obsidianData.teamSettings[t.Name] = { enabled = true, color = Color3.fromRGB(255, 0, 0) }
+        end
+        task.spawn(function()
+            while toggles.obsidianEspMaster do
+                task.wait(0.2)
+                pcall(function()
+                    if obsidianData.espObsFolder then obsidianData.espObsFolder:ClearAllChildren() end
+                    for _, p in pairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character then
+                            local team = p.Team and p.Team.Name or "ALL"
+                            local color = obsidianData.teamSettings[team] and obsidianData.teamSettings[team].color or Color3.fromRGB(255,0,0)
+                            if obsidianData.teamSettings[team] and obsidianData.teamSettings[team].enabled then
+                                local h = Instance.new("Highlight", obsidianData.espObsFolder)
+                                h.Adornee = p.Character
+                                h.FillColor = color
+                                h.OutlineColor = color
+                                h.FillTransparency = 0.5
+                                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+    else
+        if obsidianData.espObsFolder then obsidianData.espObsFolder:ClearAllChildren() end
+        ShowMessage("Obsidian ESP OFF")
+    end
+end
+
+function ToggleObsidianTracers()
+    toggles.obsidianTracers = not toggles.obsidianTracers
+    ShowMessage(toggles.obsidianTracers and "Tracers ON" or "Tracers OFF")
+end
+
+function ToggleObsidianHealthBar()
+    toggles.obsidianHealthBar = not toggles.obsidianHealthBar
+    ShowMessage(toggles.obsidianHealthBar and "Health Bar ON" or "Health Bar OFF")
+end
+
+function ToggleObsidianBoxEsp()
+    toggles.obsidianBoxEsp = not toggles.obsidianBoxEsp
+    ShowMessage(toggles.obsidianBoxEsp and "Box ESP ON" or "Box ESP OFF")
+end
+
+function ToggleObsidianSkeleton()
+    toggles.obsidianSkeleton = not toggles.obsidianSkeleton
+    ShowMessage(toggles.obsidianSkeleton and "Skeleton ON" or "Skeleton OFF")
+end
+
+-- Рендер для OBSIDIAN визуалов
+local function clearObsidianDrawings()
+    for plr, data in pairs(obsidianData.playerDrawingData) do
+        if data.tracer then data.tracer:Remove() end
+        if data.box then data.box:Remove() end
+        if data.healthOutline then data.healthOutline:Remove() end
+        if data.healthBar then data.healthBar:Remove() end
+        if data.skeleton then
+            for _, line in ipairs(data.skeleton) do line:Remove() end
+        end
+    end
+    obsidianData.playerDrawingData = {}
+end
+
+local function createObsidianDrawings(plr)
+    if obsidianData.playerDrawingData[plr] then return obsidianData.playerDrawingData[plr] end
+    local data = {
+        tracer = Drawing.new("Line"),
+        box = Drawing.new("Square"),
+        healthOutline = Drawing.new("Square"),
+        healthBar = Drawing.new("Square"),
+        skeleton = {
+            Drawing.new("Line"), Drawing.new("Line"), 
+            Drawing.new("Line"), Drawing.new("Line"), Drawing.new("Line")
+        }
+    }
+    data.tracer.Thickness = 2
+    data.box.Thickness = 1
+    data.box.Filled = false
+    data.healthOutline.Filled = true
+    data.healthOutline.Thickness = 0
+    data.healthOutline.ZIndex = 1
+    data.healthBar.Filled = true
+    data.healthBar.Thickness = 0
+    data.healthBar.ZIndex = 2
+    for _, line in ipairs(data.skeleton) do line.Thickness = 1.5 end
+    obsidianData.playerDrawingData[plr] = data
+    return data
+end
+
+RunService.RenderStepped:Connect(function()
+    local camera = workspace.CurrentCamera
+    local tracerEsp = toggles.obsidianTracers
+    local boxEsp = toggles.obsidianBoxEsp
+    local healthEsp = toggles.obsidianHealthBar
+    local skeletonEsp = toggles.obsidianSkeleton
+    
+    if not (tracerEsp or boxEsp or healthEsp or skeletonEsp) then
+        for plr, data in pairs(obsidianData.playerDrawingData) do
+            if data.tracer then data.tracer.Visible = false end
+            if data.box then data.box.Visible = false end
+            if data.healthOutline then data.healthOutline.Visible = false end
+            if data.healthBar then data.healthBar.Visible = false end
+            if data.skeleton then
+                for _, l in ipairs(data.skeleton) do l.Visible = false end
+            end
+        end
+        return
+    end
+
+    local viewX, viewY = camera.ViewportSize.X, camera.ViewportSize.Y
+    local screenCenter = Vector2.new(viewX / 2, viewY / 2)
+    local originMode = guiSettings.ObsidianTracerOrigin or "Default"
+    local startX, startY
+    
+    if originMode == "Bottom" then
+        startX = viewX / 2; startY = viewY
+    elseif originMode == "Bottom Right" then
+        startX = viewX; startY = viewY
+    else
+        startX = viewX / 2; startY = viewY - 120
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local myRootPos, myCharOnScreen = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            if myCharOnScreen then startX = myRootPos.X; startY = myRootPos.Y end
+        end
+    end
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local char = plr.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local team = plr.Team and plr.Team.Name or "ALL"
+            local teamData = obsidianData.teamSettings[team]
+            
+            if root and hum and teamData and teamData.enabled then
+                local data = createObsidianDrawings(plr)
+                local enemyPos, onScreen = camera:WorldToViewportPoint(root.Position)
+                local color = teamData.color
+                
+                if onScreen then
+                    local topPos = camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3, 0))
+                    local bottomPos = camera:WorldToViewportPoint(root.Position + Vector3.new(0, -3.5, 0))
+                    local boxHeight = math.abs(topPos.Y - bottomPos.Y)
+                    local boxWidth = boxHeight * 0.6
+                    local boxX = enemyPos.X - (boxWidth / 2)
+                    local boxY = topPos.Y
+                    
+                    if boxEsp then
+                        data.box.Position = Vector2.new(boxX, boxY)
+                        data.box.Size = Vector2.new(boxWidth, boxHeight)
+                        data.box.Color = color
+                        data.box.Visible = true
+                    else data.box.Visible = false end
+                    
+                    if healthEsp then
+                        local maxHealth = (hum.MaxHealth > 0) and hum.MaxHealth or 100
+                        local healthPct = math.clamp(hum.Health / maxHealth, 0, 1)
+                        local barHeight = math.floor(boxHeight * healthPct)
+                        data.healthOutline.Position = Vector2.new(boxX - 6, boxY - 1)
+                        data.healthOutline.Size = Vector2.new(3, boxHeight + 2)
+                        data.healthOutline.Color = Color3.fromRGB(0, 0, 0)
+                        data.healthOutline.Visible = true
+                        data.healthBar.Position = Vector2.new(boxX - 5, boxY + (boxHeight - barHeight))
+                        data.healthBar.Size = Vector2.new(1, barHeight)
+                        data.healthBar.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), healthPct)
+                        data.healthBar.Visible = true
+                    else data.healthOutline.Visible = false; data.healthBar.Visible = false end
+
+                    if skeletonEsp then
+                        local joints = {
+                            Head = char:FindFirstChild("Head"),
+                            Torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"),
+                            LeftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm"),
+                            RightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm"),
+                            LeftLeg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg"),
+                            RightLeg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
+                        }
+                        local connectionsList = {
+                            {joints.Head, joints.Torso},
+                            {joints.Torso, joints.LeftArm},
+                            {joints.Torso, joints.RightArm},
+                            {joints.Torso, joints.LeftLeg},
+                            {joints.Torso, joints.RightLeg}
+                        }
+                        for idx, conn in ipairs(connectionsList) do
+                            local p1, p2 = conn[1], conn[2]
+                            local line = data.skeleton[idx]
+                            if p1 and p2 then
+                                local pos1, os1 = camera:WorldToViewportPoint(p1.Position)
+                                local pos2, os2 = camera:WorldToViewportPoint(p2.Position)
+                                if os1 or os2 then
+                                    line.From = Vector2.new(pos1.X, pos1.Y)
+                                    line.To = Vector2.new(pos2.X, pos2.Y)
+                                    line.Color = color
+                                    line.Visible = true
+                                else line.Visible = false end
+                            else line.Visible = false end
+                        end
+                    else for _, l in ipairs(data.skeleton) do l.Visible = false end end
+
+                    if tracerEsp then
+                        data.tracer.From = Vector2.new(startX, startY)
+                        data.tracer.To = Vector2.new(enemyPos.X, enemyPos.Y)
+                        data.tracer.Color = color
+                        data.tracer.Visible = true
+                    else data.tracer.Visible = false end
+                else
+                    if data.box then data.box.Visible = false end
+                    if data.healthOutline then data.healthOutline.Visible = false end
+                    if data.healthBar then data.healthBar.Visible = false end
+                    if data.skeleton then for _, l in ipairs(data.skeleton) do l.Visible = false end end
+                    if tracerEsp then
+                        local targetPos = Vector2.new(enemyPos.X, enemyPos.Y)
+                        if enemyPos.Z < 0 then targetPos = screenCenter + (screenCenter - targetPos) end
+                        local direction = (targetPos - screenCenter).Unit
+                        local tMaxX = direction.X > 0 and (viewX - screenCenter.X) / direction.X or (0 - screenCenter.X) / direction.X
+                        local tMaxY = direction.Y > 0 and (viewY - screenCenter.Y) / direction.Y or (0 - screenCenter.Y) / direction.Y
+                        local tMin = math.min(math.abs(tMaxX), math.abs(tMaxY))
+                        local edgePos = screenCenter + direction * tMin
+                        data.tracer.From = Vector2.new(startX, startY)
+                        data.tracer.To = Vector2.new(edgePos.X, edgePos.Y)
+                        data.tracer.Color = color
+                        data.tracer.Visible = true
+                    else data.tracer.Visible = false end
+                end
+            end
+        end
+    end
+end)
+
+function ToggleObsidianWaypointEsp()
+    toggles.obsidianWaypointEsp = not toggles.obsidianWaypointEsp
+    if toggles.obsidianWaypointEsp then
+        for groupName, groupData in pairs(obsidianData.waypointGroups) do
+            for _, wp in ipairs(groupData.waypoints) do
+                if wp.marker then
+                    local h = Instance.new("Highlight", wp.marker)
+                    h.Name = "WpHighlight"
+                    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    h.FillTransparency = 0.4
+                    h.OutlineTransparency = 0
+                    h.FillColor = groupData.color
+                    h.OutlineColor = groupData.color
+                end
+            end
+        end
+        ShowMessage("Waypoint ESP ON")
+    else
+        for _, groupData in pairs(obsidianData.waypointGroups) do
+            for _, wp in ipairs(groupData.waypoints) do
+                if wp.marker then
+                    local h = wp.marker:FindFirstChild("WpHighlight")
+                    if h then h:Destroy() end
+                end
+            end
+        end
+        ShowMessage("Waypoint ESP OFF")
+    end
+end
+
+function AddObsidianWaypoint()
+    local root = getRoot(player.Character)
+    if not root then return end
+    local selGroup = obsidianData.selectedGroup or "Default"
+    local group = obsidianData.waypointGroups[selGroup]
+    if not group then return end
+    local name = "Waypoint " .. (#group.waypoints + 1)
+    local marker = createMarker(root.Position, group.color)
+    table.insert(group.waypoints, {name = name, pos = root.Position, marker = marker})
+    if toggles.obsidianWaypointEsp then
+        local h = Instance.new("Highlight", marker)
+        h.Name = "WpHighlight"
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.FillTransparency = 0.4
+        h.OutlineTransparency = 0
+        h.FillColor = group.color
+        h.OutlineColor = group.color
+    end
+    ShowMessage("Waypoint added to " .. selGroup)
+end
+
+function DeleteObsidianWaypoint()
+    local selGroup = obsidianData.selectedGroup or "Default"
+    local group = obsidianData.waypointGroups[selGroup]
+    if not group or #group.waypoints == 0 then return end
+    local last = group.waypoints[#group.waypoints]
+    if last.marker then last.marker:Destroy() end
+    table.remove(group.waypoints)
+    if obsidianData.waypointIndex > #group.waypoints then obsidianData.waypointIndex = 1 end
+    ShowMessage("Last waypoint deleted")
+end
+
+function TeleportToSelectedWaypoint()
+    local selGroup = obsidianData.selectedGroup or "Default"
+    local group = obsidianData.waypointGroups[selGroup]
+    if not group or #group.waypoints == 0 then return end
+    local target = group.waypoints[1]
+    moveToTarget(target.pos)
+end
+
+function ToggleObsidianAutoTp()
+    toggles.obsidianAutoTp = not toggles.obsidianAutoTp
+    if not toggles.obsidianAutoTp then stopPathfinding() end
+    ShowMessage(toggles.obsidianAutoTp and "Auto TP ON" or "Auto TP OFF")
+end
+
+function ToggleObsidianUsePathfinding()
+    toggles.obsidianUsePathfinding = not toggles.obsidianUsePathfinding
+    if not toggles.obsidianUsePathfinding then stopPathfinding() end
+    ShowMessage(toggles.obsidianUsePathfinding and "Pathfinding ON" or "Pathfinding OFF")
+end
+
+function TeleportToPlayer()
+    local targetName = obsidianData.selectedPlayer or "All"
+    local targetPlr = nil
+    if targetName == "All" then
+        targetPlr = getNextValidPlayer()
+    else
+        targetPlr = Players:FindFirstChild(targetName)
+    end
+    if targetPlr and isPlayerValid(targetPlr) then
+        local targetRoot = getRoot(targetPlr.Character)
+        local myRoot = getRoot(player.Character)
+        if myRoot and targetRoot then
+            local oX = guiSettings.ObsidianOffsetX or 0
+            local oY = guiSettings.ObsidianOffsetY or 0
+            local oZ = guiSettings.ObsidianOffsetZ or 0
+            myRoot.CFrame = targetRoot.CFrame * CFrame.new(oX, oY, oZ)
+        end
+    end
+end
+
+function ToggleObsidianLoopPlayerTp()
+    toggles.obsidianLoopPlayerTp = not toggles.obsidianLoopPlayerTp
+    ShowMessage(toggles.obsidianLoopPlayerTp and "Loop Player TP ON" or "Loop Player TP OFF")
+end
+
+function ToggleObsidianAutoTpNext()
+    toggles.obsidianAutoTpNext = not toggles.obsidianAutoTpNext
+    ShowMessage(toggles.obsidianAutoTpNext and "Auto Next ON" or "Auto Next OFF")
+end
+
+RunService.RenderStepped:Connect(function()
+    if toggles.obsidianLoopPlayerTp then
+        local targetName = obsidianData.selectedPlayer or "All"
+        local targetPlr = nil
+        if targetName == "All" then
+            if not isPlayerValid(obsidianData.currentAllTarget) then
+                obsidianData.currentAllTarget = getNextValidPlayer()
+            end
+            targetPlr = obsidianData.currentAllTarget
+        else
+            targetPlr = Players:FindFirstChild(targetName)
+            if toggles.obsidianAutoTpNext and not isPlayerValid(targetPlr) then
+                local nextPlr = getNextValidPlayer(targetPlr)
+                if nextPlr then
+                    obsidianData.selectedPlayer = nextPlr.Name
+                    targetPlr = nextPlr
+                end
+            end
+        end
+        if targetPlr and isPlayerValid(targetPlr) then
+            local targetRoot = getRoot(targetPlr.Character)
+            local myRoot = getRoot(player.Character)
+            if myRoot and targetRoot then
+                myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                myRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                local oX = guiSettings.ObsidianOffsetX or 0
+                local oY = guiSettings.ObsidianOffsetY or 0
+                local oZ = guiSettings.ObsidianOffsetZ or 0
+                myRoot.CFrame = targetRoot.CFrame * CFrame.new(oX, oY, oZ)
+            end
+        end
+    end
+end)
+
+function ToggleObsidianAC()
+    toggles.obsidianAcToggle = not toggles.obsidianAcToggle
+    if toggles.obsidianAcToggle then
+        obsidianData.acEnabledTime = tick()
+        ShowMessage("Auto Clicker ON")
+    else
+        obsidianData.lockedMousePos = nil
+        ShowMessage("Auto Clicker OFF")
+    end
+end
+
+task.spawn(function()
+    while true do
+        local targetCps = tonumber(guiSettings.ObsidianCPS) or 10
+        if targetCps <= 60 then task.wait(1 / targetCps) else task.wait() end
+        if toggles.obsidianAcToggle then
+            if tick() - obsidianData.acEnabledTime >= 1 then
+                if not obsidianData.lockedMousePos then
+                    obsidianData.lockedMousePos = UserInputService:GetMouseLocation()
+                end
+                local mode = guiSettings.ObsidianACMode or "Left Click"
+                local clicksThisFrame = targetCps <= 60 and 1 or math.floor(targetCps / 60)
+                for i = 1, clicksThisFrame do
+                    if mode == "Left Click" then
+                        VirtualInputManager:SendMouseButtonEvent(obsidianData.lockedMousePos.X, obsidianData.lockedMousePos.Y, 0, true, game, 0)
+                        VirtualInputManager:SendMouseButtonEvent(obsidianData.lockedMousePos.X, obsidianData.lockedMousePos.Y, 0, false, game, 0)
+                    elseif mode == "Right Click" then
+                        VirtualInputManager:SendMouseButtonEvent(obsidianData.lockedMousePos.X, obsidianData.lockedMousePos.Y, 1, true, game, 0)
+                        VirtualInputManager:SendMouseButtonEvent(obsidianData.lockedMousePos.X, obsidianData.lockedMousePos.Y, 1, false, game, 0)
+                    elseif mode == "Keyboard Key" then
+                        local keyCode = getRobustKeyCode(guiSettings.ObsidianACKey or "E")
+                        if keyCode then
+                            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+                            if targetCps <= 60 then task.wait(0.01) end
+                            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+                        end
+                    end
+                    obsidianData.actualAutoClicks = obsidianData.actualAutoClicks + 1
+                end
+            end
+        else
+            obsidianData.lockedMousePos = nil
+        end
+    end
+end)
+
+function ToggleObsidianFb()
+    toggles.obsidianFbMaster = not toggles.obsidianFbMaster
+    ShowMessage(toggles.obsidianFbMaster and "Fullbright ON" or "Fullbright OFF")
+end
+
+RunService.RenderStepped:Connect(function()
+    if toggles.obsidianFbMaster then
+        Lighting.Brightness = 3
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        Lighting.ClockTime = 14
+    elseif toggles.obsidianAutoFb then
+        if Lighting.ClockTime <= 6 or Lighting.ClockTime >= 18 then
+            Lighting.Brightness = 3
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        end
+    end
+    if toggles.obsidianNoShadows then
+        Lighting.GlobalShadows = false
+    end
+    if toggles.obsidianNoFog then
+        Lighting.FogEnd = 100000
+    end
+end)
+
+function ToggleObsidianAutoFb()
+    toggles.obsidianAutoFb = not toggles.obsidianAutoFb
+    ShowMessage(toggles.obsidianAutoFb and "Auto Fullbright ON" or "Auto Fullbright OFF")
+end
+
+function ToggleObsidianNoShadows()
+    toggles.obsidianNoShadows = not toggles.obsidianNoShadows
+    ShowMessage(toggles.obsidianNoShadows and "No Shadows ON" or "No Shadows OFF")
+end
+
+function ToggleObsidianNoFog()
+    toggles.obsidianNoFog = not toggles.obsidianNoFog
+    ShowMessage(toggles.obsidianNoFog and "No Fog ON" or "No Fog OFF")
+end
+
+function ToggleObsidianWalkfling()
+    toggles.obsidianWalkfling = not toggles.obsidianWalkfling
+    if toggles.obsidianWalkfling then
+        ShowMessage("Walkfling ON")
+        obsidianData.isFlinging = true
+        task.spawn(function()
+            local movel = 0.1
+            while obsidianData.isFlinging and toggles.obsidianWalkfling do
+                RunService.Heartbeat:Wait()
+                local c = player.Character
+                local hrp = c and c:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local vel = hrp.Velocity
+                    hrp.Velocity = Vector3.new(0, 10000, 0) * 100
+                    RunService.RenderStepped:Wait()
+                    hrp.Velocity = vel
+                    RunService.Stepped:Wait()
+                    hrp.Velocity = vel + Vector3.new(0, movel, 0)
+                    movel = -movel
+                end
+            end
+        end)
+    else
+        obsidianData.isFlinging = false
+        ShowMessage("Walkfling OFF")
+    end
+end
+
+function ToggleObsidianNoVoid()
+    toggles.obsidianNoVoid = not toggles.obsidianNoVoid
+    if toggles.obsidianNoVoid then
+        if not obsidianData.voidPart then
+            obsidianData.voidPart = Instance.new("Part")
+            obsidianData.voidPart.Name = "MTY_NoVoid"
+            obsidianData.voidPart.Anchored = true
+            obsidianData.voidPart.CanCollide = true
+            obsidianData.voidPart.Transparency = 1
+            obsidianData.voidPart.Size = Vector3.new(100000, 5, 100000)
+            local destroyHeight = workspace.FallenPartsDestroyHeight
+            obsidianData.voidPart.Position = Vector3.new(0, destroyHeight + 50, 0)
+            obsidianData.voidPart.Parent = workspace
+        end
+        ShowMessage("No Void ON")
+    else
+        if obsidianData.voidPart then
+            obsidianData.voidPart:Destroy()
+            obsidianData.voidPart = nil
+        end
+        ShowMessage("No Void OFF")
+    end
+end
+
+function ToggleObsidianGodMode()
+    toggles.obsidianGodMode = not toggles.obsidianGodMode
+    if toggles.obsidianGodMode then
+        if obsidianData.godModeFirstRun then
+            guiSettings.ObsidianHipHeight = 2
+            obsidianData.godModeFirstRun = false
+        end
+        if player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            end
+        end
+        ShowMessage("God Mode ON")
+    else
+        if player.Character then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+                if obsidianData.defaultHipHeight > 0 then
+                    hum.HipHeight = obsidianData.defaultHipHeight
+                end
+            end
+        end
+        ShowMessage("God Mode OFF")
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if toggles.obsidianGodMode then
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            if guiSettings.ObsidianHipHeight then
+                hum.HipHeight = guiSettings.ObsidianHipHeight
+            end
+        end
+    end
+end)
+
+function ToggleObsidianNoPromptCooldown()
+    toggles.obsidianNoPromptCooldown = not toggles.obsidianNoPromptCooldown
+    ShowMessage(toggles.obsidianNoPromptCooldown and "No Prompt Cooldown ON" or "No Prompt Cooldown OFF")
+end
+
+ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
+    if toggles.obsidianNoPromptCooldown then
+        prompt.HoldDuration = 0
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(tonumber(guiSettings.ObsidianAutoTpDelay) or 2)
+        if toggles.obsidianAutoTp then
+            local activeWps = getActiveWaypoints()
+            if #activeWps > 0 then
+                if toggles.obsidianUsePathfinding then
+                    if not obsidianData.pathfindingActive then
+                        if obsidianData.waypointIndex > #activeWps then obsidianData.waypointIndex = 1 end
+                        local target = activeWps[obsidianData.waypointIndex]
+                        moveToTarget(target.pos)
+                        obsidianData.waypointIndex = obsidianData.waypointIndex + 1
+                        if obsidianData.waypointIndex > #activeWps then obsidianData.waypointIndex = 1 end
+                    end
+                else
+                    if obsidianData.waypointIndex > #activeWps then obsidianData.waypointIndex = 1 end
+                    local target = activeWps[obsidianData.waypointIndex]
+                    moveToTarget(target.pos)
+                    obsidianData.waypointIndex = obsidianData.waypointIndex + 1
+                    if obsidianData.waypointIndex > #activeWps then obsidianData.waypointIndex = 1 end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================================================
+-- 🏗️ ПОСТРОЕНИЕ GUI (ТВОЙ ОРИГИНАЛЬНЫЙ + 5-я ВКЛАДКА GG)
+-- ============================================================================
+
+-- [ВСТАВЬ СЮДА ВЕСЬ ТВОЙ ОРИГИНАЛЬНЫЙ КОД ПОСТРОЕНИЯ GUI]
+-- Он начинается с "local function roundCorner" и до конца
+-- НО с изменением: добавить 5-ю вкладку "GG"
+
+-- Я даю тебе ОСНОВНУЮ ЧАСТЬ, а ты просто вставь свои кнопки в 4 вкладки
+
+-- ОСНОВНАЯ РАМКА
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 233, 0, 167)
+mainFrame.Position = UDim2.new(0.5, -117, 0.5, -84)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BorderSizePixel = 1
+mainFrame.BorderColor3 = guiSettings.BorderColor
+mainFrame.Parent = gui
+roundCorner(mainFrame, 8)
+
+-- РАМКА ДЛЯ НАЗВАНИЯ
+local titleFrame = Instance.new("Frame")
+titleFrame.Size = UDim2.new(0, 70, 0, 18)
+titleFrame.Position = UDim2.new(0, 5, 0, 4)
+titleFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+titleFrame.BorderSizePixel = 1
+titleFrame.BorderColor3 = guiSettings.BorderColor
+titleFrame.Parent = mainFrame
+roundCorner(titleFrame, 4)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0, 70, 0, 18)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "мти хаб"
+title.TextColor3 = Color3.fromRGB(200, 200, 200)
+title.TextSize = 8
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.Parent = titleFrame
+
+-- ВКЛАДКИ (ТЕПЕРЬ 5! VIS, CMB, MOV, MM2, GG)
+local tabs = {}
+local tabNames = {"VIS", "CMB", "MOV", "MM2", "GG"}
+for i = 1, 5 do
+    local tab = Instance.new("TextButton")
+    tab.Size = UDim2.new(0, 34, 0, 18)
+    tab.Position = UDim2.new(0, 5, 0, 28 + (i-1) * 22)
+    tab.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    tab.BorderSizePixel = 1
+    tab.BorderColor3 = guiSettings.BorderColor
+    tab.Text = tabNames[i]
+    tab.TextColor3 = Color3.fromRGB(180, 180, 180)
+    tab.TextSize = 5
+    tab.Font = Enum.Font.Gotham
+    tab.AutoButtonColor = false
+    tab.Parent = mainFrame
+    roundCorner(tab, 4)
+    tabs[i] = tab
+end
+
+-- SCROLLINGFRAME
+local function createScrollingFrame(parent, posX, posY, width, height)
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(0, width, 0, height)
+    scrollFrame.Position = UDim2.new(0, posX, 0, posY)
+    scrollFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+    scrollFrame.BorderSizePixel = 1
+    scrollFrame.BorderColor3 = guiSettings.BorderColor
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.ScrollBarThickness = 3
+    scrollFrame.ScrollBarImageColor3 = guiSettings.BorderColor
+    scrollFrame.ScrollBarImageTransparency = 0.2
+    scrollFrame.Parent = parent
+    roundCorner(scrollFrame, 4)
+    return scrollFrame
+end
+
+local scrolls = {}
+for i = 1, 5 do
+    local sc = createScrollingFrame(mainFrame, 50, 28, 173, 118)
+    if i > 1 then sc.Visible = false end
+    scrolls[i] = sc
+end
+
+-- ===== ФУНКЦИЯ СОЗДАНИЯ КНОПКИ С ПЕРЕКЛЮЧАТЕЛЕМ =====
+local function createToggleButton(parent, text, toggleFunc, x, y)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 73, 0, 27)
+    btn.Position = UDim2.new(0, x or 5, 0, y or 5)
+    btn.BackgroundColor3 = guiSettings.OffColor
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = guiSettings.BorderColor
+    btn.Text = text .. " OFF"
+    btn.TextColor3 = guiSettings.TextColor
+    btn.TextSize = 6
+    btn.Font = Enum.Font.GothamBold
+    btn.AutoButtonColor = false
+    btn.Parent = parent
+    roundCorner(btn, 4)
+    
+    btn.MouseButton1Click:Connect(function()
+        toggleFunc()
+        if toggles[text:gsub(" ", ""):lower()] then
+            btn.BackgroundColor3 = guiSettings.OnColor
+            btn.Text = text .. " ON"
+        else
+            btn.BackgroundColor3 = guiSettings.OffColor
+            btn.Text = text .. " OFF"
+        end
+    end)
+    
+    return btn
+end
+
+-- ===== ДОБАВЛЯЕМ КНОПКИ =====
+local function addButtons(scrollFrame, buttons, startX, startY)
+    local yOffset = startY or 5
+    local btnWidth = 73
+    local btnHeight = 27
+    local spacingX = 8
+    local spacingY = 6
+    local cols = 2
+    local xOffset = startX or 5
+    
+    for i, data in ipairs(buttons) do
+        local col = (i-1) % cols
+        local row = math.floor((i-1) / cols)
+        local x = xOffset + col * (btnWidth + spacingX)
+        local y = yOffset + row * (btnHeight + spacingY)
+        
+        if data.isToggle then
+            createToggleButton(scrollFrame, data.text, data.func, x, y)
+        else
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, btnWidth, 0, btnHeight)
+            btn.Position = UDim2.new(0, x, 0, y)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+            btn.BorderSizePixel = 1
+            btn.BorderColor3 = guiSettings.BorderColor
+            btn.Text = data.text
+            btn.TextColor3 = guiSettings.TextColor
+            btn.TextSize = 6
+            btn.Font = Enum.Font.GothamBold
+            btn.AutoButtonColor = false
+            roundCorner(btn, 4)
+            btn.MouseButton1Click:Connect(data.func)
+            btn.Parent = scrollFrame
+        end
+    end
+    
+    local totalRows = math.ceil(#buttons / cols)
+    local totalHeight = yOffset + totalRows * (btnHeight + spacingY) + 5
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+end
+
+-- ===== КАТЕГОРИИ (ТВОИ 4 + GG) =====
+local categories = {
+    -- VISUAL (ТВОИ КНОПКИ - вставь свои)
+    {
+        {text = "ESP", func = ToggleESP, isToggle = true},
+        {text = "ESP V2", func = ToggleESPV2, isToggle = true},
+        {text = "Jump Circle", func = ToggleJumpCircle, isToggle = true},
+        {text = "Trail", func = ToggleTrail, isToggle = true},
+        {text = "Trail V2", func = ToggleTrailV2, isToggle = true},
+        {text = "China Hat", func = ToggleChineseHat, isToggle = true},
+        {text = "World Color", func = ToggleWorldColor, isToggle = true},
+        {text = "Stretch", func = ToggleStretch, isToggle = true},
+        {text = "Stretch V2", func = ToggleStretchV2, isToggle = true},
+        {text = "HitGlow", func = ToggleHitGlow, isToggle = true},
+        {text = "Fullbright", func = ToggleFullbright, isToggle = true},
+        {text = "Particles V1", func = ToggleParticlesV1, isToggle = true},
+        {text = "Particles V2", func = ToggleParticlesV2, isToggle = true},
+        {text = "Classic Sword", func = ToggleClassicSword, isToggle = true},
+        {text = "World Colors", func = ToggleWorldColors, isToggle = true},
+        {text = "Fog", func = ToggleFog, isToggle = true},
+        {text = "Night Vision", func = ToggleNightVision, isToggle = true},
+        {text = "Thermal Vision", func = ToggleThermalVision, isToggle = true},
+        {text = "Rainbow World", func = ToggleRainbowWorld, isToggle = true},
+        {text = "Crosshair", func = ToggleCrosshair, isToggle = true},
+        {text = "Hitboxes", func = ToggleHitboxes, isToggle = true},
+        {text = "Hitbox Expander", func = ToggleHitboxExpander, isToggle = true},
+    },
+    -- COMBAT (ТВОИ КНОПКИ - вставь свои)
+    {
+        {text = "Aimbot", func = ToggleAimbot, isToggle = true},
+        {text = "Aimbot V2", func = ToggleAimbotV2, isToggle = true},
+        {text = "Aimbot V3", func = ToggleAimbotV3, isToggle = true},
+        {text = "Kill Aura", func = ToggleKillAura, isToggle = true},
+        {text = "Kill Aura V2", func = ToggleKillAuraV2, isToggle = true},
+        {text = "Orbit Kill Aura", func = ToggleOrbitKillAura, isToggle = true},
+        {text = "Trigger Bot", func = ToggleTriggerBot, isToggle = true},
+        {text = "Anti-Aim V2", func = ToggleAntiAim, isToggle = true},
+        {text = "Anti-Aim V3", func = ToggleAntiAimV3, isToggle = true},
+        {text = "Desync", func = ToggleDesync, isToggle = true},
+        {text = "Fake Lag", func = ToggleFakeLag, isToggle = true},
+        {text = "Anti-Knockback", func = ToggleAntiKb, isToggle = true},
+    },
+    -- MOVEMENT (ТВОИ КНОПКИ - вставь свои)
+    {
+        {text = "Speed", func = ToggleSpeed, isToggle = true},
+        {text = "Set Speed", func = function() OpenTextInput("Speed", "16-200", speedValue, function(v) speedValue = v if player.Character and player.Character:FindFirstChild("Humanoid") then player.Character.Humanoid.WalkSpeed = v end end) end, isToggle = false},
+        {text = "Gravity", func = function() OpenTextInput("Gravity", "Workspace", workspace.Gravity, function(v) workspace.Gravity = v end) end, isToggle = false},
+        {text = "Fly Speed", func = function() OpenTextInput("Fly Speed", "10-200", flySpeed, function(v) flySpeed = v end) end, isToggle = false},
+        {text = "Infinite Jump", func = ToggleInfiniteJump, isToggle = true},
+        {text = "Air Walk", func = ToggleAirWalk, isToggle = true},
+        {text = "Fly V1", func = ToggleFlyV1, isToggle = true},
+        {text = "Fly V2", func = ToggleFlyV2, isToggle = true},
+        {text = "Teleport Tool", func = ToggleTeleportTool, isToggle = true},
+        {text = "Auto Sprint", func = ToggleAutoSprint, isToggle = true},
+        {text = "NoClip", func = ToggleNoClip, isToggle = true},
+        {text = "Spider Mode", func = ToggleSpider, isToggle = true},
+        {text = "Swim In Air", func = ToggleSwim, isToggle = true},
+        {text = "Dash", func = ToggleDash, isToggle = true},
+        {text = "Invisibility", func = ToggleInvisibility, isToggle = true},
+        {text = "Helicopter", func = ToggleHelicopter, isToggle = true},
+        {text = "R6 Animations", func = ToggleR6Animations, isToggle = true},
+        {text = "BunnyHop", func = ToggleBunnyHop, isToggle = true},
+        {text = "Speed Glitch", func = ToggleSpeedGlitch, isToggle = true},
+        {text = "Wall Hop", func = function() if not wallHopButton then CreateWallHopButton() end ToggleWallHop() if wallHopButton then wallHopButton.BackgroundColor3 = toggles.wallHop and guiSettings.OnColor or guiSettings.OffColor end end, isToggle = true},
+        {text = "Walk Fling", func = ToggleWalkFling, isToggle = true},
+        {text = "Auto Fling", func = ToggleAutoFling, isToggle = true},
+        {text = "Fling By Name", func = function() OpenTextInput("Fling By Name", "Enter name", "", FlingByName) end, isToggle = false},
+        {text = "Fling All", func = FlingAll, isToggle = false},
+        {text = "Fling Up", func = FlingUp, isToggle = false},
+        {text = "Fling Forward", func = FlingForward, isToggle = false},
+        {text = "Fling Random", func = FlingRandom, isToggle = false},
+        {text = "Super Fling", func = SuperFling, isToggle = false},
+        {text = "IY Fling", func = OpenIYFling, isToggle = false},
+        {text = "IY Goto", func = OpenIYGoto, isToggle = false},
+        {text = "Fling All Up", func = FlingAllUp, isToggle = false},
+        {text = "Fling All Random", func = FlingAllRandom, isToggle = false},
+        {text = "Fling Last", func = FlingLastPlayer, isToggle = false},
+    },
+    -- MM2 (ТВОИ КНОПКИ - вставь свои)
+    {
+        {text = "MM2 ESP V2", func = ToggleMM2EspV2, isToggle = true},
+        {text = "MM2 ESP V3", func = ToggleMM2EspV3, isToggle = true},
+        {text = "MM2 Aimbot V2", func = ToggleMM2AimbotV2, isToggle = true},
+        {text = "Double Tap", func = ToggleDoubleTap, isToggle = true},
+        {text = "Auto Stab", func = ToggleAutoStab, isToggle = true},
+        {text = "Coin Farm", func = ToggleCoinFarm, isToggle = true},
+        {text = "Teleport Gun", func = TeleportToGun, isToggle = false},
+    },
+    -- GG (OBSIDIAN - ВСЕ ФУНКЦИИ)
+    {
+        {text = "Speed", func = ToggleObsidianSpeed, isToggle = true},
+        {text = "Jump", func = ToggleObsidianJump, isToggle = true},
+        {text = "Fly", func = ToggleObsidianFly, isToggle = true},
+        {text = "Fly Anim", func = ToggleObsidianFlyAnim, isToggle = true},
+        {text = "Noclip", func = ToggleObsidianNoclip, isToggle = true},
+        {text = "ESP", func = ToggleObsidianEsp, isToggle = true},
+        {text = "Tracers", func = ToggleObsidianTracers, isToggle = true},
+        {text = "Health Bar", func = ToggleObsidianHealthBar, isToggle = true},
+        {text = "Box ESP", func = ToggleObsidianBoxEsp, isToggle = true},
+        {text = "Skeleton", func = ToggleObsidianSkeleton, isToggle = true},
+        {text = "Waypoint ESP", func = ToggleObsidianWaypointEsp, isToggle = true},
+        {text = "Add Waypoint", func = AddObsidianWaypoint, isToggle = false},
+        {text = "Delete Last", func = DeleteObsidianWaypoint, isToggle = false},
+        {text = "TP to Sel", func = TeleportToSelectedWaypoint, isToggle = false},
+        {text = "Auto TP", func = ToggleObsidianAutoTp, isToggle = true},
+        {text = "Pathfinding", func = ToggleObsidianUsePathfinding, isToggle = true},
+        {text = "TP to Player", func = TeleportToPlayer, isToggle = false},
+        {text = "Loop TP", func = ToggleObsidianLoopPlayerTp, isToggle = true},
+        {text = "Auto Next", func = ToggleObsidianAutoTpNext, isToggle = true},
+        {text = "Auto Clicker", func = ToggleObsidianAC, isToggle = true},
+        {text = "Fullbright", func = ToggleObsidianFb, isToggle = true},
+        {text = "Auto FB", func = ToggleObsidianAutoFb, isToggle = true},
+        {text = "No Shadows", func = ToggleObsidianNoShadows, isToggle = true},
+        {text = "No Fog", func = ToggleObsidianNoFog, isToggle = true},
+        {text = "Walkfling", func = ToggleObsidianWalkfling, isToggle = true},
+        {text = "No Void", func = ToggleObsidianNoVoid, isToggle = true},
+        {text = "God Mode", func = ToggleObsidianGodMode, isToggle = true},
+        {text = "No Prompt CD", func = ToggleObsidianNoPromptCooldown, isToggle = true},
+        {text = "Speed Val", func = function() OpenTextInput("Speed Value", "16-500", guiSettings.ObsidianSpeedValue, function(v) guiSettings.ObsidianSpeedValue = v end) end, isToggle = false},
+        {text = "Jump Val", func = function() OpenTextInput("Jump Value", "50-500", guiSettings.ObsidianJumpValue, function(v) guiSettings.ObsidianJumpValue = v end) end, isToggle = false},
+        {text = "Fly Val", func = function() OpenTextInput("Fly Value", "10-300", guiSettings.ObsidianFlySpeed, function(v) guiSettings.ObsidianFlySpeed = v end) end, isToggle = false},
+        {text = "CPS", func = function() OpenTextInput("CPS", "1-1000", guiSettings.ObsidianCPS, function(v) guiSettings.ObsidianCPS = v end) end, isToggle = false},
+        {text = "AC Key", func = function() OpenTextInput("AC Key", "E, Space...", guiSettings.ObsidianACKey, function(v) guiSettings.ObsidianACKey = v end) end, isToggle = false},
+        {text = "TP Delay", func = function() OpenTextInput("TP Delay", "1-10", guiSettings.ObsidianAutoTpDelay, function(v) guiSettings.ObsidianAutoTpDelay = v end) end, isToggle = false},
+        {text = "Hip Height", func = function() OpenTextInput("Hip Height", "0-50", guiSettings.ObsidianHipHeight, function(v) guiSettings.ObsidianHipHeight = v end) end, isToggle = false},
+        {text = "Offset X", func = function() OpenTextInput("Offset X", "-50 to 50", guiSettings.ObsidianOffsetX, function(v) guiSettings.ObsidianOffsetX = v end) end, isToggle = false},
+        {text = "Offset Y", func = function() OpenTextInput("Offset Y", "-50 to 50", guiSettings.ObsidianOffsetY, function(v) guiSettings.ObsidianOffsetY = v end) end, isToggle = false},
+        {text = "Offset Z", func = function() OpenTextInput("Offset Z", "-50 to 50", guiSettings.ObsidianOffsetZ, function(v) guiSettings.ObsidianOffsetZ = v end) end, isToggle = false},
+        {text = "Tracer Orig", func = function() 
+            local modes = {"Default", "Bottom", "Bottom Right"}
+            local current = guiSettings.ObsidianTracerOrigin or "Default"
+            local idx = 1
+            for i, v in ipairs(modes) do if v == current then idx = i break end end
+            local nextIdx = idx % #modes + 1
+            guiSettings.ObsidianTracerOrigin = modes[nextIdx]
+            ShowMessage("Tracer Origin: " .. modes[nextIdx])
+        end, isToggle = false},
+    }
+}
+
+for i, cat in ipairs(categories) do
+    addButtons(scrolls[i], cat, 5, 5)
+end
+
+-- ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
+for i, tab in ipairs(tabs) do
+    tab.MouseButton1Click:Connect(function()
+        for j = 1, 5 do
+            scrolls[j].Visible = (j == i)
+        end
+    end)
+end
+
+-- ===== НИЖНЯЯ ЧАСТЬ =====
+local playerName = player.Name
+
+local nameFrame = Instance.new("Frame")
+nameFrame.Size = UDim2.new(0, 70, 0, 15)
+nameFrame.Position = UDim2.new(0, 5, 0, 147)
+nameFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+nameFrame.BorderSizePixel = 1
+nameFrame.BorderColor3 = guiSettings.BorderColor
+nameFrame.Parent = mainFrame
+roundCorner(nameFrame, 3)
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(0, 70, 0, 15)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = playerName
+nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+nameLabel.TextSize = 7
+nameLabel.Font = Enum.Font.GothamBold
+nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+nameLabel.Parent = nameFrame
+
+local skinFrame = Instance.new("Frame")
+skinFrame.Size = UDim2.new(0, 15, 0, 15)
+skinFrame.Position = UDim2.new(0, 80, 0, 147)
+skinFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+skinFrame.BorderSizePixel = 1
+skinFrame.BorderColor3 = guiSettings.BorderColor
+skinFrame.Parent = mainFrame
+roundCorner(skinFrame, 3)
+
+local avatarImage = Instance.new("ImageLabel")
+avatarImage.Size = UDim2.new(0, 15, 0, 15)
+avatarImage.Position = UDim2.new(0, 0, 0, 0)
+avatarImage.BackgroundTransparency = 1
+avatarImage.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size60x60)
+avatarImage.Parent = skinFrame
+roundCorner(avatarImage, 3)
+
+-- ===== КНОПКА СКРЫТЬ =====
+local hideButton = Instance.new("TextButton")
+hideButton.Size = UDim2.new(0, 50, 0, 15)
+hideButton.Position = UDim2.new(1, -55, 0, 147)
+hideButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+hideButton.BorderSizePixel = 1
+hideButton.BorderColor3 = guiSettings.BorderColor
+hideButton.Text = "СКРЫТЬ"
+hideButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+hideButton.TextSize = 5
+hideButton.Font = Enum.Font.GothamBold
+hideButton.AutoButtonColor = false
+hideButton.Parent = mainFrame
+roundCorner(hideButton, 3)
+
+-- ===== КУБИК =====
+local cubeButton = Instance.new("TextButton")
+cubeButton.Size = UDim2.new(0, 50, 0, 50)
+cubeButton.Position = UDim2.new(0.5, -25, 0.5, -25)
+cubeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+cubeButton.BorderSizePixel = 2
+cubeButton.BorderColor3 = guiSettings.BorderColor
+cubeButton.Text = "M"
+cubeButton.TextColor3 = guiSettings.BorderColor
+cubeButton.TextSize = 30
+cubeButton.Font = Enum.Font.GothamBold
+cubeButton.AutoButtonColor = false
+cubeButton.Visible = false
+cubeButton.ZIndex = 10
+cubeButton.Parent = gui
+roundCorner(cubeButton, 10)
+
+cubeButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        cubeDragging = true
+        cubeDragStart = input.Position
+        cubeStartPos = cubeButton.Position
+    end
+end)
+
+cubeButton.InputChanged:Connect(function(input)
+    if cubeDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - cubeDragStart
+        local screenSize = gui.AbsoluteSize
+        local newX = cubeStartPos.X.Scale + (delta.X / screenSize.X)
+        local newY = cubeStartPos.Y.Scale + (delta.Y / screenSize.Y)
+        local maxX = 1 - (cubeButton.Size.X.Scale + 0.05)
+        local maxY = 1 - (cubeButton.Size.Y.Scale + 0.05)
+        newX = math.clamp(newX, 0.02, maxX)
+        newY = math.clamp(newY, 0.02, maxY)
+        cubeButton.Position = UDim2.new(newX, 0, newY, 0)
+    end
+end)
+
+cubeButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        cubeDragging = false
+    end
+end)
+
+cubeButton.MouseButton1Click:Connect(function()
+    if not uiVisible then
+        uiVisible = true
+        mainFrame.Visible = true
+        cubeButton.Visible = false
+        hideButton.Text = "СКРЫТЬ"
+    end
+end)
+
+local function toggleUI()
+    uiVisible = not uiVisible
+    mainFrame.Visible = uiVisible
+    cubeButton.Visible = not uiVisible
+    hideButton.Text = uiVisible and "СКРЫТЬ" or "ПОКАЗАТЬ"
+end
+
+hideButton.MouseButton1Click:Connect(toggleUI)
+
+-- ЦИФРЫ
+local nums = {"14.0", "100", "14.0", "5", "G"}
+for i = 1, 5 do
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 20, 0, 11)
+    lbl.Position = UDim2.new(1, -(5 + (i-1) * 22), 0, 149)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = nums[i]
+    lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+    lbl.TextSize = 6
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Right
+    lbl.Parent = mainFrame
+end
+
+print("✅ MTY HUB + OBSIDIAN (GG) ЗАГРУЖЕН!")
+print("✅ 5 вкладок: VIS | CMB | MOV | MM2 | GG")
+print("✅ Вкладка GG содержит ВСЕ функции из Obsidian!")
+print("✅ Все ТВОИ функции работают без изменений!")
+print("✅ GUI не пропадает после смерти!")
+print("✅ Кубик можно двигать мышкой!")
 --[[
-	TAS RECORDER v17 — PATH EDITOR + SMART TRAJECTORY
+	TAS RECORDER v16
 	Установка: LocalScript или executor
 ]]
 
@@ -37,31 +1906,6 @@ local GROUND_HEIGHT_OFFSET = 0.1
 local GROUND_STEP = 0.8
 local AIR_STEPS = 60
 local AIR_STEP_TIME = 0.05
-
--- ===================== PATH EDITOR =====================
-local PATH_ENABLED = false
-local PATH_WALKING = false
-local pathWaypoints = {}
-local pathParts = {}
-local pathPointParts = {}
-local pathWalkThread = nil
-local PATH_COLOR = Color3.fromRGB(0, 255, 150)
-local PATH_POINT_COLOR = Color3.fromRGB(255, 220, 0)
-local PATH_THICKNESS = 0.25
-local PATH_POINT_SIZE = 0.8
-local WALK_SPEED = 18
-local WALK_REACH = 2.5
-local PATH_JUMP_CHECK_DIST = 3
-local PATH_FILE = "path_data.json"
-
--- Freecam
-local freecamActive = false
-local freecamConn = nil
-local freecamMouseConn = nil
-local freecamPos = Vector3.new(0, 0, 0)
-local freecamRot = CFrame.new()
-local freecamSpeed = 1.0
-local freecamOldCamType = nil
 
 -- ===================== ЧЁРНАЯ ТЕМА =====================
 
@@ -237,7 +2081,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(0.6, 0, 1, 0)
 TitleLabel.Position = UDim2.new(0.02, 0, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "TAS Recorder v17"
+TitleLabel.Text = "TAS Recorder v16"
 TitleLabel.TextColor3 = C_TEXT
 TitleLabel.Font = Enum.Font.Code
 TitleLabel.TextSize = 14
@@ -443,14 +2287,6 @@ local StepBackBtn = makeRowBtn(stepRow, "<< STEP", 0.5, C_ELEM)
 local StepForwardBtn = makeRowBtn(stepRow, "STEP >>", 0.5, C_ELEM)
 
 local ClearBtn = makeBtn(LeftScroll, "CLEAR", 22, C_ELEM)
-
-makeLabel(LeftScroll, "PATH EDITOR", C_TEXT, 16, 12)
-local PathBtn = makeBtn(LeftScroll, "OPEN EDITOR", 24, C_ELEM)
-local PathSaveBtn = makeBtn(LeftScroll, "SAVE PATH", 22, C_ELEM)
-local PathLoadBtn = makeBtn(LeftScroll, "LOAD PATH", 22, C_ELEM)
-local PathClearBtn = makeBtn(LeftScroll, "CLEAR PATH", 22, C_ELEM)
-local PathWalkBtn = makeBtn(LeftScroll, "WALK PATH", 22, C_ELEM)
-makeLabel(LeftScroll, "E=point | RMB=look", C_TEXT_D, 14, 9)
 
 makeLabel(LeftScroll, "FILES (" .. FOLDER .. ")", C_TEXT, 14, 10)
 local SaveNameBox = makeTextBox(LeftScroll, "имя...")
@@ -1142,333 +2978,6 @@ ClearBtn.MouseButton1Click:Connect(function()
 	updateFrameCounter()
 end)
 
--- ===================== PATH EDITOR FUNCTIONS =====================
-
-local function clearPathVisual()
-	for _, p in ipairs(pathParts) do if p and p.Parent then p:Destroy() end end
-	for _, p in ipairs(pathPointParts) do if p and p.Parent then p:Destroy() end end
-	pathParts = {}
-	pathPointParts = {}
-end
-
-local function drawPathPoint(pos)
-	local p = Instance.new("Part")
-	p.Shape = Enum.PartType.Ball
-	p.Size = Vector3.new(PATH_POINT_SIZE, PATH_POINT_SIZE, PATH_POINT_SIZE)
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.Material = Enum.Material.Neon
-	p.Color = PATH_POINT_COLOR
-	p.Position = pos
-	p.Parent = workspace
-	table.insert(pathPointParts, p)
-end
-
-local function drawPathSegment(from, to)
-	local delta = to - from
-	local len = delta.Magnitude
-	if len < 0.01 then return end
-	local part = Instance.new("Part")
-	part.Size = Vector3.new(PATH_THICKNESS, PATH_THICKNESS, len)
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Material = Enum.Material.Neon
-	part.Color = PATH_COLOR
-	part.Transparency = 0.2
-	part.CFrame = CFrame.new(from + delta * 0.5, to)
-	part.Parent = workspace
-	table.insert(pathParts, part)
-end
-
-local function redrawPath()
-	clearPathVisual()
-	if #pathWaypoints == 0 then return end
-	for _, wp in ipairs(pathWaypoints) do
-		drawPathPoint(wp)
-	end
-	for i = 1, #pathWaypoints - 1 do
-		drawPathSegment(pathWaypoints[i], pathWaypoints[i + 1])
-	end
-end
-
-local function startFreecam()
-	if freecamActive then return end
-	local cam = workspace.CurrentCamera
-	if not cam then return end
-	freecamActive = true
-	freecamPos = cam.CFrame.Position
-	freecamRot = cam.CFrame
-	freecamOldCamType = cam.CameraType
-	cam.CameraType = Enum.CameraType.Scriptable
-
-	local char = LocalPlayer.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if hum then
-		hum.WalkSpeed = 0
-		hum.JumpPower = 0
-	end
-	if hrp then hrp.Anchored = true end
-
-	freecamConn = RunService.RenderStepped:Connect(function(dt)
-		if not freecamActive then return end
-		local c = workspace.CurrentCamera
-		if not c then return end
-
-		local speed = freecamSpeed * 50 * dt
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then speed = speed * 3 end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then speed = speed * 0.3 end
-
-		local move = Vector3.zero
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + freecamRot.LookVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - freecamRot.LookVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - freecamRot.RightVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + freecamRot.RightVector end
-		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) then move = move - Vector3.new(0, 1, 0) end
-
-		if move.Magnitude > 0 then
-			freecamPos = freecamPos + move.Unit * speed
-		end
-
-		c.CFrame = CFrame.new(freecamPos) * (freecamRot - freecamRot.Position)
-	end)
-
-	freecamMouseConn = UserInputService.InputChanged:Connect(function(input)
-		if not freecamActive then return end
-		if input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-			local dx = input.Delta.X
-			local dy = input.Delta.Y
-			freecamRot = freecamRot * CFrame.Angles(math.rad(-dy * 0.3), math.rad(-dx * 0.3), 0)
-		end
-	end)
-end
-
-local function stopFreecam()
-	if not freecamActive then return end
-	freecamActive = false
-	if freecamConn then freecamConn:Disconnect() freecamConn = nil end
-	if freecamMouseConn then freecamMouseConn:Disconnect() freecamMouseConn = nil end
-	local cam = workspace.CurrentCamera
-	if cam and freecamOldCamType then cam.CameraType = freecamOldCamType end
-
-	local char = LocalPlayer.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if hum then
-		hum.WalkSpeed = DEFAULT_WALKSPEED
-		hum.JumpPower = DEFAULT_JUMPPOWER
-	end
-	if hrp then hrp.Anchored = false end
-end
-
-local function addPathPoint()
-	local pos
-	if freecamActive then
-		local mouse = LocalPlayer:GetMouse()
-		if mouse and mouse.Hit then
-			pos = mouse.Hit.Position
-		else
-			local cam = workspace.CurrentCamera
-			pos = cam.CFrame.Position + cam.CFrame.LookVector * 20
-		end
-	else
-		local char = LocalPlayer.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart")
-		if hrp then pos = hrp.Position end
-	end
-	if not pos then return end
-
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local ignore = {}
-	if LocalPlayer.Character then table.insert(ignore, LocalPlayer.Character) end
-	for _, p in ipairs(pathPointParts) do table.insert(ignore, p) end
-	for _, p in ipairs(pathParts) do table.insert(ignore, p) end
-	params.FilterDescendantsInstances = ignore
-
-	local down = workspace:Raycast(pos + Vector3.new(0, 10, 0), Vector3.new(0, -40, 0), params)
-	if down then
-		pos = down.Position + Vector3.new(0, 2, 0)
-	end
-	table.insert(pathWaypoints, pos)
-	redrawPath()
-end
-
-local function stopPathWalk()
-	PATH_WALKING = false
-	if pathWalkThread then
-		pcall(task.cancel, pathWalkThread)
-		pathWalkThread = nil
-	end
-	local char = LocalPlayer.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if hum and hrp then hum:MoveTo(hrp.Position) end
-end
-
-local function walkPath()
-	if PATH_WALKING then stopPathWalk() return end
-	if #pathWaypoints < 1 then return end
-	PATH_WALKING = true
-
-	pathWalkThread = task.spawn(function()
-		local char = LocalPlayer.Character
-		if not char then PATH_WALKING = false return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if not hum or not hrp then PATH_WALKING = false return end
-
-		local oldSpeed = hum.WalkSpeed
-		hum.WalkSpeed = WALK_SPEED
-
-		for i, point in ipairs(pathWaypoints) do
-			if not PATH_WALKING then break end
-			hum:MoveTo(point)
-
-			local timeout = tick() + 10
-			local stuckTime = tick()
-			local lastPos = hrp.Position
-
-			while PATH_WALKING do
-				task.wait(0.05)
-				local root = char:FindFirstChild("HumanoidRootPart")
-				if not root then break end
-				local horizDist = (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(point.X, 0, point.Z)).Magnitude
-				if horizDist < WALK_REACH then break end
-				if tick() > timeout then break end
-
-				local params = RaycastParams.new()
-				params.FilterType = Enum.RaycastFilterType.Exclude
-				params.FilterDescendantsInstances = {char}
-				local fwd = hum.MoveDirection
-				if fwd.Magnitude > 0.1 then
-					local r = workspace:Raycast(root.Position, fwd.Unit * PATH_JUMP_CHECK_DIST, params)
-					if r then hum.Jump = true end
-				end
-
-				local moved = (root.Position - lastPos).Magnitude
-				if moved < 0.05 then
-					if tick() - stuckTime > 0.5 then
-						hum.Jump = true
-						stuckTime = tick()
-					end
-				else
-					lastPos = root.Position
-					stuckTime = tick()
-				end
-			end
-		end
-
-		if char then
-			local h = char:FindFirstChildOfClass("Humanoid")
-			if h then
-				local r = char:FindFirstChild("HumanoidRootPart")
-				if r then h:MoveTo(r.Position) end
-				h.WalkSpeed = oldSpeed
-			end
-		end
-		PATH_WALKING = false
-	end)
-end
-
-local function savePathFile()
-	if typeof(writefile) ~= "function" then
-		warn("[Path] Нет file API")
-		return
-	end
-	local data = { waypoints = {} }
-	for _, wp in ipairs(pathWaypoints) do
-		table.insert(data.waypoints, {wp.X, wp.Y, wp.Z})
-	end
-	local ok = pcall(writefile, PATH_FILE, HttpService:JSONEncode(data))
-	if ok then print("[Path] Сохранено в " .. PATH_FILE) end
-end
-
-local function loadPathFile()
-	if typeof(readfile) ~= "function" then
-		warn("[Path] Нет file API")
-		return
-	end
-	if typeof(isfile) == "function" and not isfile(PATH_FILE) then
-		warn("[Path] Файл не найден")
-		return
-	end
-	local ok, raw = pcall(readfile, PATH_FILE)
-	if not ok or not raw then return end
-	local ok2, data = pcall(HttpService.JSONDecode, HttpService, raw)
-	if not ok2 or not data then return end
-	pathWaypoints = {}
-	for _, item in ipairs(data.waypoints or {}) do
-		table.insert(pathWaypoints, Vector3.new(item[1], item[2], item[3]))
-	end
-	redrawPath()
-	print("[Path] Загружено " .. #pathWaypoints .. " точек")
-end
-
--- ===================== PATH EDITOR BUTTONS =====================
-
-PathBtn.MouseButton1Click:Connect(function()
-	PATH_ENABLED = not PATH_ENABLED
-	if PATH_ENABLED then
-		PathBtn.Text = "CLOSE EDITOR"
-		PathBtn.BackgroundColor3 = C_ELEM_H
-		startFreecam()
-		redrawPath()
-	else
-		PathBtn.Text = "OPEN EDITOR"
-		PathBtn.BackgroundColor3 = C_ELEM
-		stopFreecam()
-	end
-end)
-
-PathSaveBtn.MouseButton1Click:Connect(function()
-	savePathFile()
-	PathSaveBtn.Text = "SAVED!"
-	task.delay(1.2, function() PathSaveBtn.Text = "SAVE PATH" end)
-end)
-
-PathLoadBtn.MouseButton1Click:Connect(function()
-	loadPathFile()
-	PathLoadBtn.Text = "LOADED!"
-	task.delay(1.2, function() PathLoadBtn.Text = "LOAD PATH" end)
-end)
-
-PathClearBtn.MouseButton1Click:Connect(function()
-	pathWaypoints = {}
-	clearPathVisual()
-end)
-
-PathWalkBtn.MouseButton1Click:Connect(function()
-	if not PATH_WALKING then
-		if freecamActive then
-			stopFreecam()
-			PATH_ENABLED = false
-			PathBtn.Text = "OPEN EDITOR"
-			PathBtn.BackgroundColor3 = C_ELEM
-		end
-	end
-	walkPath()
-	if PATH_WALKING then
-		PathWalkBtn.Text = "STOP WALK"
-		PathWalkBtn.BackgroundColor3 = C_ELEM_H
-	else
-		PathWalkBtn.Text = "WALK PATH"
-		PathWalkBtn.BackgroundColor3 = C_ELEM
-	end
-end)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
-	if input.KeyCode == Enum.KeyCode.E and PATH_ENABLED then
-		addPathPoint()
-	end
-end)
-
 -- ===================== SMART TRAJECTORY =====================
 
 local function clearTrajectory()
@@ -1815,4 +3324,4 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 updateFrameCounter()
-print("[TAS Recorder v17] loaded — с Path Editor.")
+print("[TAS Recorder v16] loaded.")
