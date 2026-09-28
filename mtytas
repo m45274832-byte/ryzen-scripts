@@ -1,4 +1,4 @@
---[[ TAS RECORDER v21-FIX ]]
+--[[ TAS RECORDER v18 — FULL ]]
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -37,14 +37,6 @@ local flingThread = nil
 local flicking = false
 local flickThread = nil
 
--- ===== VISUALS =====
-local showTrail = false
-local trailParts = {}
-local TRAIL_MAX = 60
-local TRAIL_COLOR = Color3.fromRGB(0, 220, 255)
-local showPlayerPath = false
-local playerPathParts = {}
-
 -- ===== FILE API =====
 local hasFileAPI = false
 pcall(function() hasFileAPI = (typeof(writefile)=="function") and (typeof(readfile)=="function") end)
@@ -73,10 +65,7 @@ local steppingForward=false
 local sessionWasSlowRecorded=true
 local lastTrajUpdate=0
 
-local function disableAutoJump(char)
-    local h=char:WaitForChild("Humanoid",5)
-    if h then h.AutoJumpEnabled=false end
-end
+local function disableAutoJump(char) local h=char:WaitForChild("Humanoid",5) if h then h.AutoJumpEnabled=false end end
 if LocalPlayer.Character then disableAutoJump(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(disableAutoJump)
 
@@ -93,23 +82,14 @@ local C_OFF=Color3.fromRGB(50,50,60)
 
 -- ===== DRAG =====
 local function makeTopOnlyDraggable(targetFrame, dragBar)
-    local dragging=false
-    local dragInput,dragStart,startPos
+    local dragging=false local dragInput,dragStart,startPos
     dragBar.InputBegan:Connect(function(input)
         if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-            dragging=true
-            dragStart=input.Position
-            startPos=targetFrame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState==Enum.UserInputState.End then dragging=false end
-            end)
+            dragging=true dragStart=input.Position startPos=targetFrame.Position
+            input.Changed:Connect(function() if input.UserInputState==Enum.UserInputState.End then dragging=false end end)
         end
     end)
-    dragBar.InputChanged:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then
-            dragInput=input
-        end
-    end)
+    dragBar.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end)
     UserInputService.InputChanged:Connect(function(input)
         if input==dragInput and dragging then
             local delta=input.Position-dragStart
@@ -120,328 +100,150 @@ end
 
 -- ===== GUI ROOT =====
 local ScreenGui=Instance.new("ScreenGui")
-ScreenGui.Name="TAS_Recorder_UI_v21"
+ScreenGui.Name="TAS_Recorder_UI_v18"
 ScreenGui.ResetOnSpawn=false
-pcall(function()
-    if typeof(gethui)=="function" then ScreenGui.Parent=gethui()
-    else ScreenGui.Parent=game:GetService("CoreGui") end
-end)
-if not ScreenGui.Parent then
-    pcall(function() ScreenGui.Parent=LocalPlayer:WaitForChild("PlayerGui") end)
-end
+pcall(function() if typeof(gethui)=="function" then ScreenGui.Parent=gethui() else ScreenGui.Parent=game:GetService("CoreGui") end end)
+if not ScreenGui.Parent then pcall(function() ScreenGui.Parent=LocalPlayer:WaitForChild("PlayerGui") end) end
 
 -- ===== HELPERS =====
 local function makeBtn(p,t,h,c)
     local b=Instance.new("TextButton")
-    b.Size=UDim2.new(1,0,0,h or 24)
-    b.Text=t
-    b.BackgroundColor3=c or C_ELEM
-    b.TextColor3=C_TEXT
-    b.Font=Enum.Font.Code
-    b.TextSize=11
-    b.BorderSizePixel=0
-    b.Parent=p
+    b.Size=UDim2.new(1,0,0,h or 24) b.Text=t b.BackgroundColor3=c or C_ELEM
+    b.TextColor3=C_TEXT b.Font=Enum.Font.Code b.TextSize=11 b.BorderSizePixel=0 b.Parent=p
     pcall(function() Instance.new("UICorner",b).CornerRadius=UDim.new(0,5) end)
     return b
 end
 local function makeLabel(p,t,c,h,ts)
     local l=Instance.new("TextLabel")
-    l.Size=UDim2.new(1,0,0,h or 16)
-    l.Text=t
-    l.TextColor3=c or C_TEXT
-    l.BackgroundTransparency=1
-    l.Font=Enum.Font.Code
-    l.TextSize=ts or 11
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.Parent=p
+    l.Size=UDim2.new(1,0,0,h or 16) l.Text=t l.TextColor3=c or C_TEXT
+    l.BackgroundTransparency=1 l.Font=Enum.Font.Code l.TextSize=ts or 11
+    l.TextXAlignment=Enum.TextXAlignment.Left l.Parent=p
     return l
 end
 local function makeRow(p,h)
-    local r=Instance.new("Frame")
-    r.Size=UDim2.new(1,0,0,h or 24)
-    r.BackgroundTransparency=1
-    r.Parent=p
-    local l=Instance.new("UIListLayout")
-    l.FillDirection=Enum.FillDirection.Horizontal
-    l.Padding=UDim.new(0,4)
-    l.Parent=r
+    local r=Instance.new("Frame") r.Size=UDim2.new(1,0,0,h or 24)
+    r.BackgroundTransparency=1 r.Parent=p
+    local l=Instance.new("UIListLayout") l.FillDirection=Enum.FillDirection.Horizontal l.Padding=UDim.new(0,4) l.Parent=r
     return r
 end
 local function makeRowBtn(p,t,w,c)
     local b=Instance.new("TextButton")
-    b.Size=UDim2.new(w,-2,1,0)
-    b.Text=t
-    b.BackgroundColor3=c or C_ELEM
-    b.TextColor3=C_TEXT
-    b.Font=Enum.Font.Code
-    b.TextSize=11
-    b.BorderSizePixel=0
-    b.Parent=p
+    b.Size=UDim2.new(w,-2,1,0) b.Text=t b.BackgroundColor3=c or C_ELEM
+    b.TextColor3=C_TEXT b.Font=Enum.Font.Code b.TextSize=11 b.BorderSizePixel=0 b.Parent=p
     pcall(function() Instance.new("UICorner",b).CornerRadius=UDim.new(0,5) end)
     return b
 end
 local function makeTextBox(p,ph,d)
     local b=Instance.new("TextBox")
-    b.Size=UDim2.new(1,0,0,24)
-    b.Text=d or ""
-    b.PlaceholderText=ph or ""
-    b.BackgroundColor3=C_ELEM
-    b.TextColor3=C_TEXT
-    b.PlaceholderColor3=C_TEXT_D
-    b.Font=Enum.Font.Code
-    b.TextSize=11
-    b.BorderSizePixel=0
-    b.ClearTextOnFocus=false
-    b.Parent=p
+    b.Size=UDim2.new(1,0,0,24) b.Text=d or "" b.PlaceholderText=ph or ""
+    b.BackgroundColor3=C_ELEM b.TextColor3=C_TEXT b.PlaceholderColor3=C_TEXT_D
+    b.Font=Enum.Font.Code b.TextSize=11 b.BorderSizePixel=0 b.ClearTextOnFocus=false b.Parent=p
     pcall(function() Instance.new("UICorner",b).CornerRadius=UDim.new(0,5) end)
     return b
 end
 local function makeToggle(parent,text,init,cb)
-    local c=Instance.new("Frame")
-    c.Size=UDim2.new(1,0,0,26)
-    c.BackgroundColor3=C_ELEM
-    c.BorderSizePixel=0
-    c.Parent=parent
+    local c=Instance.new("Frame") c.Size=UDim2.new(1,0,0,26) c.BackgroundColor3=C_ELEM c.BorderSizePixel=0 c.Parent=parent
     pcall(function() Instance.new("UICorner",c).CornerRadius=UDim.new(0,5) end)
-    local l=Instance.new("TextLabel")
-    l.Size=UDim2.new(0.6,0,1,0)
-    l.Position=UDim2.new(0,8,0,0)
-    l.BackgroundTransparency=1
-    l.Text=text
-    l.TextColor3=C_TEXT
-    l.Font=Enum.Font.Code
-    l.TextSize=11
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.Parent=c
-    local t=Instance.new("Frame")
-    t.Size=UDim2.new(0,36,0,18)
-    t.Position=UDim2.new(1,-44,0.5,-9)
-    t.BackgroundColor3=init and C_ON or C_OFF
-    t.BorderSizePixel=0
-    t.Parent=c
+    local l=Instance.new("TextLabel") l.Size=UDim2.new(0.6,0,1,0) l.Position=UDim2.new(0,8,0,0)
+    l.BackgroundTransparency=1 l.Text=text l.TextColor3=C_TEXT l.Font=Enum.Font.Code l.TextSize=11
+    l.TextXAlignment=Enum.TextXAlignment.Left l.Parent=c
+    local t=Instance.new("Frame") t.Size=UDim2.new(0,36,0,18) t.Position=UDim2.new(1,-44,0.5,-9)
+    t.BackgroundColor3=init and C_ON or C_OFF t.BorderSizePixel=0 t.Parent=c
     pcall(function() Instance.new("UICorner",t).CornerRadius=UDim.new(1,0) end)
-    local k=Instance.new("Frame")
-    k.Size=UDim2.new(0,14,0,14)
+    local k=Instance.new("Frame") k.Size=UDim2.new(0,14,0,14)
     k.Position=init and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7)
-    k.BackgroundColor3=C_TEXT
-    k.BorderSizePixel=0
-    k.Parent=t
+    k.BackgroundColor3=C_TEXT k.BorderSizePixel=0 k.Parent=t
     pcall(function() Instance.new("UICorner",k).CornerRadius=UDim.new(1,0) end)
     local v=init
     local function upd()
-        if v then
-            t.BackgroundColor3=C_ON
-            k.Position=UDim2.new(1,-16,0.5,-7)
-        else
-            t.BackgroundColor3=C_OFF
-            k.Position=UDim2.new(0,2,0.5,-7)
-        end
+        if v then t.BackgroundColor3=C_ON k.Position=UDim2.new(1,-16,0.5,-7)
+        else t.BackgroundColor3=C_OFF k.Position=UDim2.new(0,2,0.5,-7) end
     end
-    local cb2=Instance.new("TextButton")
-    cb2.Size=UDim2.new(1,0,1,0)
-    cb2.BackgroundTransparency=1
-    cb2.Text=""
-    cb2.Parent=c
-    cb2.MouseButton1Click:Connect(function()
-        v=not v
-        upd()
-        if cb then cb(v) end
-    end)
+    local cb2=Instance.new("TextButton") cb2.Size=UDim2.new(1,0,1,0) cb2.BackgroundTransparency=1 cb2.Text="" cb2.Parent=c
+    cb2.MouseButton1Click:Connect(function() v=not v upd() if cb then cb(v) end end)
     return {get=function() return v end,set=function(n) v=n upd() end}
 end
 
 -- ===== COUNTDOWN =====
 local CountdownFrame=Instance.new("Frame")
-CountdownFrame.Size=UDim2.new(0,140,0,140)
-CountdownFrame.Position=UDim2.new(0.5,-70,0.5,-70)
-CountdownFrame.BackgroundColor3=C_BG
-CountdownFrame.BackgroundTransparency=0.2
-CountdownFrame.BorderSizePixel=0
-CountdownFrame.Visible=false
-CountdownFrame.ZIndex=50
+CountdownFrame.Size=UDim2.new(0,140,0,140) CountdownFrame.Position=UDim2.new(0.5,-70,0.5,-70)
+CountdownFrame.BackgroundColor3=C_BG CountdownFrame.BackgroundTransparency=0.2
+CountdownFrame.BorderSizePixel=0 CountdownFrame.Visible=false CountdownFrame.ZIndex=50
 CountdownFrame.Parent=ScreenGui
 pcall(function() Instance.new("UICorner",CountdownFrame).CornerRadius=UDim.new(0,12) end)
 local CountdownText=Instance.new("TextLabel")
-CountdownText.Size=UDim2.new(1,0,1,0)
-CountdownText.BackgroundTransparency=1
-CountdownText.TextColor3=C_TEXT
-CountdownText.Font=Enum.Font.Code
-CountdownText.TextSize=72
-CountdownText.ZIndex=51
-CountdownText.Parent=CountdownFrame
+CountdownText.Size=UDim2.new(1,0,1,0) CountdownText.BackgroundTransparency=1
+CountdownText.TextColor3=C_TEXT CountdownText.Font=Enum.Font.Code CountdownText.TextSize=72
+CountdownText.ZIndex=51 CountdownText.Parent=CountdownFrame
 local function runCountdown(cb)
-    local ch=LocalPlayer.Character
-    local h=ch and ch:FindFirstChild("HumanoidRootPart")
+    local ch=LocalPlayer.Character local h=ch and ch:FindFirstChild("HumanoidRootPart")
     if h then h.Anchored=true end
     CountdownFrame.Visible=true
-    for i=3,1,-1 do
-        CountdownText.Text=tostring(i)
-        task.wait(0.5)
-    end
+    for i=3,1,-1 do CountdownText.Text=tostring(i) task.wait(0.5) end
     CountdownText.Text="GO!"
     if h then h.Anchored=false end
-    task.wait(0.25)
-    CountdownFrame.Visible=false
-    cb()
+    task.wait(0.25) CountdownFrame.Visible=false cb()
 end
 
 -- ===== MAIN FRAME =====
 local MainFrame=Instance.new("Frame")
-MainFrame.Size=UDim2.new(0.95,0,0.9,0)
-MainFrame.Position=UDim2.new(0.025,0,0.05,0)
-MainFrame.BackgroundColor3=C_BG
-MainFrame.BorderSizePixel=0
-MainFrame.Active=true
-MainFrame.Parent=ScreenGui
+MainFrame.Size=UDim2.new(0.95,0,0.9,0) MainFrame.Position=UDim2.new(0.025,0,0.05,0)
+MainFrame.BackgroundColor3=C_BG MainFrame.BorderSizePixel=0 MainFrame.Active=true MainFrame.Parent=ScreenGui
 pcall(function() Instance.new("UICorner",MainFrame).CornerRadius=UDim.new(0,12) end)
-local TopBar=Instance.new("Frame")
-TopBar.Size=UDim2.new(1,0,0,30)
-TopBar.BackgroundTransparency=1
-TopBar.Active=true
-TopBar.Parent=MainFrame
-local TitleLabel=Instance.new("TextLabel")
-TitleLabel.Size=UDim2.new(0.6,0,1,0)
-TitleLabel.Position=UDim2.new(0.02,0,0,0)
-TitleLabel.BackgroundTransparency=1
-TitleLabel.Text="TAS Recorder v21"
-TitleLabel.TextColor3=C_TEXT
-TitleLabel.Font=Enum.Font.Code
-TitleLabel.TextSize=14
-TitleLabel.TextXAlignment=Enum.TextXAlignment.Left
-TitleLabel.Parent=TopBar
+local TopBar=Instance.new("Frame") TopBar.Size=UDim2.new(1,0,0,30) TopBar.BackgroundTransparency=1 TopBar.Active=true TopBar.Parent=MainFrame
+local TitleLabel=Instance.new("TextLabel") TitleLabel.Size=UDim2.new(0.6,0,1,0) TitleLabel.Position=UDim2.new(0.02,0,0,0)
+TitleLabel.BackgroundTransparency=1 TitleLabel.Text="TAS Recorder v18" TitleLabel.TextColor3=C_TEXT
+TitleLabel.Font=Enum.Font.Code TitleLabel.TextSize=14 TitleLabel.TextXAlignment=Enum.TextXAlignment.Left TitleLabel.Parent=TopBar
 makeTopOnlyDraggable(MainFrame,TopBar)
 local ToggleGuiBtn=Instance.new("TextButton")
-ToggleGuiBtn.Size=UDim2.new(0,60,0,20)
-ToggleGuiBtn.Position=UDim2.new(1,-66,0,5)
-ToggleGuiBtn.Text="HIDE"
-ToggleGuiBtn.BackgroundColor3=C_ELEM
-ToggleGuiBtn.TextColor3=C_TEXT
-ToggleGuiBtn.Font=Enum.Font.Code
-ToggleGuiBtn.TextSize=11
-ToggleGuiBtn.BorderSizePixel=0
-ToggleGuiBtn.Parent=TopBar
+ToggleGuiBtn.Size=UDim2.new(0,60,0,20) ToggleGuiBtn.Position=UDim2.new(1,-66,0,5)
+ToggleGuiBtn.Text="HIDE" ToggleGuiBtn.BackgroundColor3=C_ELEM ToggleGuiBtn.TextColor3=C_TEXT
+ToggleGuiBtn.Font=Enum.Font.Code ToggleGuiBtn.TextSize=11 ToggleGuiBtn.BorderSizePixel=0 ToggleGuiBtn.Parent=TopBar
 pcall(function() Instance.new("UICorner",ToggleGuiBtn).CornerRadius=UDim.new(0,6) end)
 
 local ContentContainer=Instance.new("Frame")
-ContentContainer.Size=UDim2.new(1,-16,1,-44)
-ContentContainer.Position=UDim2.new(0,8,0,36)
-ContentContainer.BackgroundTransparency=1
-ContentContainer.Parent=MainFrame
-local LeftCol=Instance.new("Frame")
-LeftCol.Size=UDim2.new(0.32,-4,1,0)
-LeftCol.BackgroundTransparency=1
-LeftCol.Parent=ContentContainer
-local MidCol=Instance.new("Frame")
-MidCol.Size=UDim2.new(0.34,-4,1,0)
-MidCol.Position=UDim2.new(0.32,4,0,0)
-MidCol.BackgroundTransparency=1
-MidCol.Parent=ContentContainer
-local RightCol=Instance.new("Frame")
-RightCol.Size=UDim2.new(0.34,-4,1,0)
-RightCol.Position=UDim2.new(0.66,4,0,0)
-RightCol.BackgroundTransparency=1
-RightCol.Parent=ContentContainer
+ContentContainer.Size=UDim2.new(1,-16,1,-44) ContentContainer.Position=UDim2.new(0,8,0,36)
+ContentContainer.BackgroundTransparency=1 ContentContainer.Parent=MainFrame
+local LeftCol=Instance.new("Frame") LeftCol.Size=UDim2.new(0.32,-4,1,0) LeftCol.BackgroundTransparency=1 LeftCol.Parent=ContentContainer
+local MidCol=Instance.new("Frame") MidCol.Size=UDim2.new(0.34,-4,1,0) MidCol.Position=UDim2.new(0.32,4,0,0) MidCol.BackgroundTransparency=1 MidCol.Parent=ContentContainer
+local RightCol=Instance.new("Frame") RightCol.Size=UDim2.new(0.34,-4,1,0) RightCol.Position=UDim2.new(0.66,4,0,0) RightCol.BackgroundTransparency=1 RightCol.Parent=ContentContainer
 local function makeScroll(parent)
-    local s=Instance.new("ScrollingFrame")
-    s.Size=UDim2.new(1,0,1,0)
-    s.BackgroundTransparency=1
-    s.BorderSizePixel=0
-    s.ScrollBarThickness=4
-    s.ScrollBarImageColor3=C_BORDER
-    s.CanvasSize=UDim2.new(0,0,0,0)
-    s.AutomaticCanvasSize=Enum.AutomaticSize.Y
-    s.Parent=parent
-    local l=Instance.new("UIListLayout")
-    l.Padding=UDim.new(0,5)
-    l.Parent=s
-    local p=Instance.new("UIPadding")
-    p.PaddingTop=UDim.new(0,2)
-    p.PaddingBottom=UDim.new(0,4)
-    p.PaddingLeft=UDim.new(0,2)
-    p.PaddingRight=UDim.new(0,4)
-    p.Parent=s
+    local s=Instance.new("ScrollingFrame") s.Size=UDim2.new(1,0,1,0) s.BackgroundTransparency=1
+    s.BorderSizePixel=0 s.ScrollBarThickness=4 s.ScrollBarImageColor3=C_BORDER
+    s.CanvasSize=UDim2.new(0,0,0,0) s.AutomaticCanvasSize=Enum.AutomaticSize.Y s.Parent=parent
+    local l=Instance.new("UIListLayout") l.Padding=UDim.new(0,5) l.Parent=s
+    local p=Instance.new("UIPadding") p.PaddingTop=UDim.new(0,2) p.PaddingBottom=UDim.new(0,4)
+    p.PaddingLeft=UDim.new(0,2) p.PaddingRight=UDim.new(0,4) p.Parent=s
     return s
 end
 local LeftScroll=makeScroll(LeftCol)
 local MidScroll=makeScroll(MidCol)
 local RightScroll=makeScroll(RightCol)
-
--- ===== EVENT LOG (перед main loop) =====
-local EventList=Instance.new("ScrollingFrame")
-EventList.Size=UDim2.new(1,0,0,70)
-EventList.BackgroundColor3=C_PANEL
-EventList.BorderSizePixel=1
-EventList.BorderColor3=C_BORDER
-EventList.ScrollBarThickness=3
-EventList.ScrollBarImageColor3=C_BORDER
-EventList.CanvasSize=UDim2.new(0,0,0,0)
-EventList.AutomaticCanvasSize=Enum.AutomaticSize.Y
-EventList.Parent=MidScroll
-pcall(function() Instance.new("UICorner",EventList).CornerRadius=UDim.new(0,5) end)
-local EventLayout=Instance.new("UIListLayout")
-EventLayout.Padding=UDim.new(0,2)
-EventLayout.Parent=EventList
-local EventPad=Instance.new("UIPadding")
-EventPad.PaddingTop=UDim.new(0,4)
-EventPad.PaddingLeft=UDim.new(0,6)
-EventPad.PaddingRight=UDim.new(0,4)
-EventPad.Parent=EventList
-
-local eventHistory={}
-local MAX_EVENTS=8
-
-local CollapsedIcon=Instance.new("TextLabel")
-CollapsedIcon.Size=UDim2.new(1,0,1,0)
-CollapsedIcon.BackgroundTransparency=1
-CollapsedIcon.Text="TAS"
-CollapsedIcon.TextColor3=C_TEXT
-CollapsedIcon.Font=Enum.Font.Code
-CollapsedIcon.TextSize=16
-CollapsedIcon.Visible=false
-CollapsedIcon.Parent=MainFrame
+local CollapsedIcon=Instance.new("TextLabel") CollapsedIcon.Size=UDim2.new(1,0,1,0)
+CollapsedIcon.BackgroundTransparency=1 CollapsedIcon.Text="TAS" CollapsedIcon.TextColor3=C_TEXT
+CollapsedIcon.Font=Enum.Font.Code CollapsedIcon.TextSize=16 CollapsedIcon.Visible=false CollapsedIcon.Parent=MainFrame
 local function setCollapsed(state)
     collapsed=state
-    ContentContainer.Visible=not state
-    TitleLabel.Visible=not state
-    ToggleGuiBtn.Visible=not state
-    CollapsedIcon.Visible=state
-    if state then
-        MainFrame.Size=UDim2.new(0,56,0,56)
-        MainFrame.Position=UDim2.new(0.02,0,0.10,0)
-        MainFrame.BackgroundColor3=C_ELEM
-    else
-        MainFrame.Size=UDim2.new(0.95,0,0.9,0)
-        MainFrame.Position=UDim2.new(0.025,0,0.05,0)
-        MainFrame.BackgroundColor3=C_BG
-    end
+    ContentContainer.Visible=not state TitleLabel.Visible=not state
+    ToggleGuiBtn.Visible=not state CollapsedIcon.Visible=state
+    if state then MainFrame.Size=UDim2.new(0,56,0,56) MainFrame.Position=UDim2.new(0.02,0,0.10,0) MainFrame.BackgroundColor3=C_ELEM
+    else MainFrame.Size=UDim2.new(0.95,0,0.9,0) MainFrame.Position=UDim2.new(0.025,0,0.05,0) MainFrame.BackgroundColor3=C_BG end
 end
-MainFrame.InputBegan:Connect(function(input)
-    if collapsed and (input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch) then
-        setCollapsed(false)
-    end
-end)
+MainFrame.InputBegan:Connect(function(input) if collapsed and (input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch) then setCollapsed(false) end end)
 ToggleGuiBtn.MouseButton1Click:Connect(function() setCollapsed(true) end)
 
 -- ===== LEFT: RECORDER =====
 makeLabel(LeftScroll,"RECORDER",C_TEXT,16,12)
 local FrameCounter=makeLabel(LeftScroll,"FRAME: 0/0",C_TEXT,18,12)
-local function updateFrameCounter()
-    FrameCounter.Text=string.format("FRAME: %d / %d",math.floor(currentFrame),#frames)
-end
+local function updateFrameCounter() FrameCounter.Text=string.format("FRAME: %d / %d",math.floor(currentFrame),#frames) end
 
 makeLabel(LeftScroll,"RECORD SPEED (0.1-1)",C_TEXT,14,10)
 local RecordSpeedBox=makeTextBox(LeftScroll,"0.3",tostring(SLOW_SCALE))
-RecordSpeedBox.FocusLost:Connect(function()
-    local v=tonumber(RecordSpeedBox.Text)
-    if v and v>0 and v<=1 then SLOW_SCALE=v else RecordSpeedBox.Text=tostring(SLOW_SCALE) end
-end)
+RecordSpeedBox.FocusLost:Connect(function() local v=tonumber(RecordSpeedBox.Text) if v and v>0 and v<=1 then SLOW_SCALE=v else RecordSpeedBox.Text=tostring(SLOW_SCALE) end end)
 
 makeLabel(LeftScroll,"PLAYBACK SPEED (0.5-3)",C_TEXT,14,10)
 local PlaybackSpeedBox=makeTextBox(LeftScroll,"1.5",tostring(PLAYBACK_SPEED))
-PlaybackSpeedBox.FocusLost:Connect(function()
-    local v=tonumber(PlaybackSpeedBox.Text)
-    if v and v>0 and v<=5 then PLAYBACK_SPEED=v else PlaybackSpeedBox.Text=tostring(PLAYBACK_SPEED) end
-end)
+PlaybackSpeedBox.FocusLost:Connect(function() local v=tonumber(PlaybackSpeedBox.Text) if v and v>0 and v<=5 then PLAYBACK_SPEED=v else PlaybackSpeedBox.Text=tostring(PLAYBACK_SPEED) end end)
 
 local recRow=makeRow(LeftScroll,28)
 local RecBtn=makeRowBtn(recRow,"RECORD",0.5,C_ELEM)
@@ -461,25 +263,16 @@ local SaveBtn=makeRowBtn(fileRow,"SAVE",0.5,C_ELEM)
 local RefreshBtn=makeRowBtn(fileRow,"REFRESH",0.5,C_ELEM)
 
 local FileList=Instance.new("Frame")
-FileList.Size=UDim2.new(1,0,0,130)
-FileList.BackgroundColor3=C_PANEL
-FileList.BorderSizePixel=1
-FileList.BorderColor3=C_BORDER
-FileList.Parent=LeftScroll
+FileList.Size=UDim2.new(1,0,0,130) FileList.BackgroundColor3=C_PANEL
+FileList.BorderSizePixel=1 FileList.BorderColor3=C_BORDER FileList.Parent=LeftScroll
 pcall(function() Instance.new("UICorner",FileList).CornerRadius=UDim.new(0,6) end)
 local FileListScroll=Instance.new("ScrollingFrame")
-FileListScroll.Size=UDim2.new(1,-6,1,-6)
-FileListScroll.Position=UDim2.new(0,3,0,3)
-FileListScroll.BackgroundTransparency=1
-FileListScroll.BorderSizePixel=0
-FileListScroll.ScrollBarThickness=3
-FileListScroll.ScrollBarImageColor3=C_BORDER
-FileListScroll.CanvasSize=UDim2.new(0,0,0,0)
-FileListScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+FileListScroll.Size=UDim2.new(1,-6,1,-6) FileListScroll.Position=UDim2.new(0,3,0,3)
+FileListScroll.BackgroundTransparency=1 FileListScroll.BorderSizePixel=0
+FileListScroll.ScrollBarThickness=3 FileListScroll.ScrollBarImageColor3=C_BORDER
+FileListScroll.CanvasSize=UDim2.new(0,0,0,0) FileListScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
 FileListScroll.Parent=FileList
-local FileListLayout=Instance.new("UIListLayout")
-FileListLayout.Padding=UDim.new(0,3)
-FileListLayout.Parent=FileListScroll
+local FileListLayout=Instance.new("UIListLayout") FileListLayout.Padding=UDim.new(0,3) FileListLayout.Parent=FileListScroll
 
 local function clearFileList()
     for _,ch in ipairs(FileListScroll:GetChildren()) do
@@ -490,14 +283,9 @@ local function refreshFileList()
     clearFileList()
     local files=safeList()
     if #files==0 then
-        local e=Instance.new("TextLabel")
-        e.Size=UDim2.new(1,0,0,18)
-        e.BackgroundTransparency=1
-        e.Text=hasFileAPI and "(empty)" or "(no file api)"
-        e.TextColor3=C_TEXT_D
-        e.Font=Enum.Font.Code
-        e.TextSize=10
-        e.Parent=FileListScroll
+        local e=Instance.new("TextLabel") e.Size=UDim2.new(1,0,0,18)
+        e.BackgroundTransparency=1 e.Text=hasFileAPI and "(empty)" or "(no file api)"
+        e.TextColor3=C_TEXT_D e.Font=Enum.Font.Code e.TextSize=10 e.Parent=FileListScroll
         return
     end
     for _,path in ipairs(files) do
@@ -505,43 +293,23 @@ local function refreshFileList()
         if fname:sub(-4)==".tas" then
             local display=fname:sub(1,-5)
             local entry=Instance.new("Frame")
-            entry.Size=UDim2.new(1,-4,0,24)
-            entry.BackgroundColor3=C_ELEM
-            entry.BorderSizePixel=0
-            entry.Parent=FileListScroll
+            entry.Size=UDim2.new(1,-4,0,24) entry.BackgroundColor3=C_ELEM
+            entry.BorderSizePixel=0 entry.Parent=FileListScroll
             pcall(function() Instance.new("UICorner",entry).CornerRadius=UDim.new(0,4) end)
             local nl=Instance.new("TextLabel")
-            nl.Size=UDim2.new(0.5,0,1,0)
-            nl.Position=UDim2.new(0,6,0,0)
-            nl.BackgroundTransparency=1
-            nl.Text=display
-            nl.TextColor3=C_TEXT
-            nl.Font=Enum.Font.Code
-            nl.TextSize=10
-            nl.TextXAlignment=Enum.TextXAlignment.Left
-            nl.TextTruncate=Enum.TextTruncate.AtEnd
-            nl.Parent=entry
+            nl.Size=UDim2.new(0.5,0,1,0) nl.Position=UDim2.new(0,6,0,0)
+            nl.BackgroundTransparency=1 nl.Text=display nl.TextColor3=C_TEXT
+            nl.Font=Enum.Font.Code nl.TextSize=10 nl.TextXAlignment=Enum.TextXAlignment.Left
+            nl.TextTruncate=Enum.TextTruncate.AtEnd nl.Parent=entry
             local lb=Instance.new("TextButton")
-            lb.Size=UDim2.new(0,42,1,-4)
-            lb.Position=UDim2.new(1,-92,0,2)
-            lb.Text="LOAD"
-            lb.BackgroundColor3=C_ELEM_H
-            lb.TextColor3=C_TEXT
-            lb.Font=Enum.Font.Code
-            lb.TextSize=10
-            lb.BorderSizePixel=0
-            lb.Parent=entry
+            lb.Size=UDim2.new(0,42,1,-4) lb.Position=UDim2.new(1,-92,0,2)
+            lb.Text="LOAD" lb.BackgroundColor3=C_ELEM_H lb.TextColor3=C_TEXT
+            lb.Font=Enum.Font.Code lb.TextSize=10 lb.BorderSizePixel=0 lb.Parent=entry
             pcall(function() Instance.new("UICorner",lb).CornerRadius=UDim.new(0,4) end)
             local db=Instance.new("TextButton")
-            db.Size=UDim2.new(0,42,1,-4)
-            db.Position=UDim2.new(1,-46,0,2)
-            db.Text="DEL"
-            db.BackgroundColor3=C_ELEM_H
-            db.TextColor3=C_TEXT
-            db.Font=Enum.Font.Code
-            db.TextSize=10
-            db.BorderSizePixel=0
-            db.Parent=entry
+            db.Size=UDim2.new(0,42,1,-4) db.Position=UDim2.new(1,-46,0,2)
+            db.Text="DEL" db.BackgroundColor3=C_ELEM_H db.TextColor3=C_TEXT
+            db.Font=Enum.Font.Code db.TextSize=10 db.BorderSizePixel=0 db.Parent=entry
             pcall(function() Instance.new("UICorner",db).CornerRadius=UDim.new(0,4) end)
             lb.MouseButton1Click:Connect(function()
                 if recording then return end
@@ -562,15 +330,12 @@ local function refreshFileList()
                         })
                     end)
                 end
-                currentFrame=1
-                updateFrameCounter()
-                SaveNameBox.Text=display
-                RecordSpeedBox.Text=tostring(SLOW_SCALE)
+                currentFrame=1 updateFrameCounter()
+                SaveNameBox.Text=display RecordSpeedBox.Text=tostring(SLOW_SCALE)
             end)
             db.MouseButton1Click:Connect(function()
                 if recording then return end
-                safeDelete(path)
-                refreshFileList()
+                safeDelete(path) refreshFileList()
             end)
         end
     end
@@ -578,11 +343,7 @@ end
 
 SaveBtn.MouseButton1Click:Connect(function()
     if recording or #frames==0 then return end
-    if not hasFileAPI then
-        SaveBtn.Text="NO API"
-        task.delay(1.2,function() SaveBtn.Text="SAVE" end)
-        return
-    end
+    if not hasFileAPI then SaveBtn.Text="NO API" task.delay(1.2,function() SaveBtn.Text="SAVE" end) return end
     local name=SaveNameBox.Text
     if name=="" then name="run_"..os.time() end
     name=name:gsub("[^%w_%-]","_")
@@ -596,12 +357,7 @@ SaveBtn.MouseButton1Click:Connect(function()
         })
     end
     local ok=safeWrite(path,HttpService:JSONEncode(export))
-    if ok then
-        SaveBtn.Text="SAVED"
-        refreshFileList()
-    else
-        SaveBtn.Text="FAIL"
-    end
+    if ok then SaveBtn.Text="SAVED" refreshFileList() else SaveBtn.Text="FAIL" end
     task.delay(1.2,function() SaveBtn.Text="SAVE" end)
 end)
 RefreshBtn.MouseButton1Click:Connect(function()
@@ -611,132 +367,26 @@ RefreshBtn.MouseButton1Click:Connect(function()
 end)
 refreshFileList()
 
--- ===== VISUALS BUTTONS =====
-makeLabel(LeftScroll,"VISUALS",C_TEXT,16,12)
-local TrailBtn=makeBtn(LeftScroll,"TRAIL: OFF",22,C_ELEM)
-TrailBtn.MouseButton1Click:Connect(function()
-    showTrail=not showTrail
-    TrailBtn.Text="TRAIL: "..(showTrail and "ON" or "OFF")
-    TrailBtn.BackgroundColor3=showTrail and C_ELEM_H or C_ELEM
-    if not showTrail then
-        for _,p in ipairs(trailParts) do if p and p.Parent then p:Destroy() end end
-        trailParts={}
-    end
-end)
-local PathBtn=makeBtn(LeftScroll,"PLAYER PATH: OFF",22,C_ELEM)
-PathBtn.MouseButton1Click:Connect(function()
-    showPlayerPath=not showPlayerPath
-    PathBtn.Text="PLAYER PATH: "..(showPlayerPath and "ON" or "OFF")
-    PathBtn.BackgroundColor3=showPlayerPath and C_ELEM_H or C_ELEM
-    if showPlayerPath then
-        for _,p in ipairs(playerPathParts) do if p and p.Parent then p:Destroy() end end
-        playerPathParts={}
-        if #frames==0 then return end
-        for i=1,#frames,5 do
-            local f=frames[i]
-            if f then
-                local pos=f.cframe.Position+Vector3.new(0,1.5,0)
-                local dot=Instance.new("Part")
-                dot.Shape=Enum.PartType.Ball
-                dot.Size=Vector3.new(0.5,0.5,0.5)
-                dot.Anchored=true
-                dot.CanCollide=false
-                dot.CanQuery=false
-                dot.Material=Enum.Material.Neon
-                dot.Color=Color3.fromRGB(255,180,0)
-                dot.Transparency=0.5
-                dot.CFrame=CFrame.new(pos)
-                dot.Parent=workspace
-                table.insert(playerPathParts,dot)
-                if i>5 then
-                    local prevF=frames[i-5]
-                    if prevF then
-                        local prevPos=prevF.cframe.Position+Vector3.new(0,1.5,0)
-                        local delta=pos-prevPos
-                        local len=delta.Magnitude
-                        if len>0.1 then
-                            local line=Instance.new("Part")
-                            line.Size=Vector3.new(0.2,0.2,len)
-                            line.Anchored=true
-                            line.CanCollide=false
-                            line.CanQuery=false
-                            line.Material=Enum.Material.Neon
-                            line.Color=Color3.fromRGB(255,180,0)
-                            line.Transparency=0.6
-                            line.CFrame=CFrame.new(prevPos+delta*0.5,pos)
-                            line.Parent=workspace
-                            table.insert(playerPathParts,line)
-                        end
-                    end
-                end
-            end
-        end
-    else
-        for _,p in ipairs(playerPathParts) do if p and p.Parent then p:Destroy() end end
-        playerPathParts={}
-    end
-end)
-
--- ===== TRAIL LOOP =====
-RunService.Heartbeat:Connect(function()
-    if not showTrail then
-        if #trailParts>0 then
-            for _,p in ipairs(trailParts) do if p and p.Parent then p:Destroy() end end
-            trailParts={}
-        end
-        return
-    end
-    local ch=LocalPlayer.Character
-    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local dot=Instance.new("Part")
-    dot.Shape=Enum.PartType.Ball
-    dot.Size=Vector3.new(0.6,0.6,0.6)
-    dot.Anchored=true
-    dot.CanCollide=false
-    dot.CanQuery=false
-    dot.CanTouch=false
-    dot.Material=Enum.Material.Neon
-    dot.Color=TRAIL_COLOR
-    dot.Transparency=0.3
-    dot.CFrame=CFrame.new(hrp.Position)
-    dot.Parent=workspace
-    table.insert(trailParts,dot)
-    if #trailParts>TRAIL_MAX then
-        local old=table.remove(trailParts,1)
-        if old then old:Destroy() end
-    end
-end)
-
 -- ===== MID: MACROS =====
 makeLabel(MidScroll,"MACROS",C_TEXT,16,12)
 local BoostBtn=makeBtn(MidScroll,"BOOST (SPEED + JUMP)",26,C_ELEM)
 local BoostLabel=makeLabel(MidScroll,"Walk +"..BOOST_WALK_ADD.." / Jump +"..BOOST_JUMP_ADD,C_TEXT_D,14,10)
-local boostActive=false
-local boostEndTime=0
+local boostActive=false local boostEndTime=0
 BoostBtn.MouseButton1Click:Connect(function()
     if boostActive then return end
-    local ch=LocalPlayer.Character
-    local h=ch and ch:FindFirstChildOfClass("Humanoid")
+    local ch=LocalPlayer.Character local h=ch and ch:FindFirstChildOfClass("Humanoid")
     if not h then return end
-    boostActive=true
-    boostEndTime=os.clock()+BOOST_DURATION
-    local bw=h.WalkSpeed
-    local bj=h.JumpPower
-    h.WalkSpeed=bw+BOOST_WALK_ADD
-    h.JumpPower=bj+BOOST_JUMP_ADD
+    boostActive=true boostEndTime=os.clock()+BOOST_DURATION
+    local bw=h.WalkSpeed local bj=h.JumpPower
+    h.WalkSpeed=bw+BOOST_WALK_ADD h.JumpPower=bj+BOOST_JUMP_ADD
     BoostBtn.Text="BOOST ACTIVE..."
     task.spawn(function()
         while os.clock()<boostEndTime do
             BoostLabel.Text=string.format("Boost: %.1fs",boostEndTime-os.clock())
             task.wait(0.05)
         end
-        if h.Parent then
-            h.WalkSpeed=bw
-            h.JumpPower=bj
-        end
-        boostActive=false
-        BoostBtn.Text="BOOST (SPEED + JUMP)"
+        if h.Parent then h.WalkSpeed=bw h.JumpPower=bj end
+        boostActive=false BoostBtn.Text="BOOST (SPEED + JUMP)"
         BoostLabel.Text="Walk +"..BOOST_WALK_ADD.." / Jump +"..BOOST_JUMP_ADD
     end)
 end)
@@ -753,51 +403,34 @@ makeToggle(MidScroll,"WALLHOP",WALLHOP_ENABLED,function(v) WALLHOP_ENABLED=v end
 makeLabel(MidScroll,"FLING SETTINGS",C_TEXT,16,12)
 makeLabel(MidScroll,"JUMP POWER (30-100)",C_TEXT,14,10)
 local JumpPowerBox=makeTextBox(MidScroll,"45",tostring(JUMP_POWER))
-JumpPowerBox.FocusLost:Connect(function()
-    local v=tonumber(JumpPowerBox.Text)
-    if v and v>=30 and v<=100 then JUMP_POWER=v else JumpPowerBox.Text=tostring(JUMP_POWER) end
-end)
+JumpPowerBox.FocusLost:Connect(function() local v=tonumber(JumpPowerBox.Text) if v and v>=30 and v<=100 then JUMP_POWER=v else JumpPowerBox.Text=tostring(JUMP_POWER) end end)
+
 makeLabel(MidScroll,"FLING SPEED (5-60)",C_TEXT,14,10)
 local FlingSpeedBox=makeTextBox(MidScroll,"25",tostring(FLING_SPEED))
-FlingSpeedBox.FocusLost:Connect(function()
-    local v=tonumber(FlingSpeedBox.Text)
-    if v and v>=5 and v<=60 then FLING_SPEED=v else FlingSpeedBox.Text=tostring(FLING_SPEED) end
-end)
+FlingSpeedBox.FocusLost:Connect(function() local v=tonumber(FlingSpeedBox.Text) if v and v>=5 and v<=60 then FLING_SPEED=v else FlingSpeedBox.Text=tostring(FLING_SPEED) end end)
+
 makeLabel(MidScroll,"FLING ANGLE (30-120)",C_TEXT,14,10)
 local FlingAngleBox=makeTextBox(MidScroll,"60",tostring(FLING_ANGLE))
-FlingAngleBox.FocusLost:Connect(function()
-    local v=tonumber(FlingAngleBox.Text)
-    if v and v>=30 and v<=120 then FLING_ANGLE=v else FlingAngleBox.Text=tostring(FLING_ANGLE) end
-end)
+FlingAngleBox.FocusLost:Connect(function() local v=tonumber(FlingAngleBox.Text) if v and v>=30 and v<=120 then FLING_ANGLE=v else FlingAngleBox.Text=tostring(FLING_ANGLE) end end)
+
+-- ===== RIGHT: PROFILE + LF/FLICK SETTINGS =====
+makeLabel(RightScroll,"PROFILE",C_TEXT,16,12)
+local ProfileSaveBtn=makeBtn(RightScroll,"SAVE PROFILE",24,C_ELEM)
+local ProfileLoadBtn=makeBtn(RightScroll,"LOAD PROFILE",24,C_ELEM)
+local ProfileInfo=makeLabel(RightScroll,"",C_TEXT_D,16,10)
 
 -- ===== DEBUG =====
 makeLabel(MidScroll,"DEBUG",C_TEXT,16,12)
-local DbgBox=Instance.new("Frame")
-DbgBox.Size=UDim2.new(1,0,0,200)
-DbgBox.BackgroundColor3=C_PANEL
-DbgBox.BorderSizePixel=1
-DbgBox.BorderColor3=C_BORDER
-DbgBox.Parent=MidScroll
+local DbgBox=Instance.new("Frame") DbgBox.Size=UDim2.new(1,0,0,200) DbgBox.BackgroundColor3=C_PANEL
+DbgBox.BorderSizePixel=1 DbgBox.BorderColor3=C_BORDER DbgBox.Parent=MidScroll
 pcall(function() Instance.new("UICorner",DbgBox).CornerRadius=UDim.new(0,6) end)
-local DbgLayout=Instance.new("UIListLayout")
-DbgLayout.Padding=UDim.new(0,2)
-DbgLayout.Parent=DbgBox
-local DbgPad=Instance.new("UIPadding")
-DbgPad.PaddingTop=UDim.new(0,8)
-DbgPad.PaddingBottom=UDim.new(0,8)
-DbgPad.PaddingLeft=UDim.new(0,8)
-DbgPad.PaddingRight=UDim.new(0,6)
-DbgPad.Parent=DbgBox
+local DbgLayout=Instance.new("UIListLayout") DbgLayout.Padding=UDim.new(0,2) DbgLayout.Parent=DbgBox
+local DbgPad=Instance.new("UIPadding") DbgPad.PaddingTop=UDim.new(0,8) DbgPad.PaddingBottom=UDim.new(0,8)
+DbgPad.PaddingLeft=UDim.new(0,8) DbgPad.PaddingRight=UDim.new(0,6) DbgPad.Parent=DbgBox
 local function makeDbg(name,color)
-    local l=Instance.new("TextLabel")
-    l.Size=UDim2.new(1,0,0,16)
-    l.BackgroundTransparency=1
-    l.Text=name..": -"
-    l.TextColor3=color or C_TEXT
-    l.Font=Enum.Font.Code
-    l.TextSize=11
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.Parent=DbgBox
+    local l=Instance.new("TextLabel") l.Size=UDim2.new(1,0,0,16) l.BackgroundTransparency=1
+    l.Text=name..": -" l.TextColor3=color or C_TEXT l.Font=Enum.Font.Code l.TextSize=11
+    l.TextXAlignment=Enum.TextXAlignment.Left l.Parent=DbgBox
     return l
 end
 local dbgFrameTime=makeDbg("Frame Time")
@@ -813,74 +446,50 @@ local function fmtVec(v) return string.format("%s,%s,%s",fmt(v.X),fmt(v.Y),fmt(v
 
 -- ===== BUG HELPER =====
 makeLabel(MidScroll,"BUG HELPER",C_TEXT,16,12)
-local BugBox=Instance.new("Frame")
-BugBox.Size=UDim2.new(1,0,0,110)
-BugBox.BackgroundColor3=C_PANEL
-BugBox.BorderSizePixel=1
-BugBox.BorderColor3=C_BORDER
-BugBox.Parent=MidScroll
+local BugBox=Instance.new("Frame") BugBox.Size=UDim2.new(1,0,0,110) BugBox.BackgroundColor3=C_PANEL
+BugBox.BorderSizePixel=1 BugBox.BorderColor3=C_BORDER BugBox.Parent=MidScroll
 pcall(function() Instance.new("UICorner",BugBox).CornerRadius=UDim.new(0,6) end)
-local BugLayout=Instance.new("UIListLayout")
-BugLayout.Padding=UDim.new(0,2)
-BugLayout.Parent=BugBox
-local BugPad=Instance.new("UIPadding")
-BugPad.PaddingTop=UDim.new(0,8)
-BugPad.PaddingBottom=UDim.new(0,8)
-BugPad.PaddingLeft=UDim.new(0,8)
-BugPad.PaddingRight=UDim.new(0,6)
-BugPad.Parent=BugBox
+local BugLayout=Instance.new("UIListLayout") BugLayout.Padding=UDim.new(0,2) BugLayout.Parent=BugBox
+local BugPad=Instance.new("UIPadding") BugPad.PaddingTop=UDim.new(0,8) BugPad.PaddingBottom=UDim.new(0,8)
+BugPad.PaddingLeft=UDim.new(0,8) BugPad.PaddingRight=UDim.new(0,6) BugPad.Parent=BugBox
 local bugState=makeDbg("State",Color3.fromRGB(120,220,255))
 local bugAirTime=makeDbg("Air Time")
 local bugFallSpeed=makeDbg("Fall Speed")
 local bugVelSpike=makeDbg("Vel Spike",Color3.fromRGB(255,200,120))
 local bugLastEvent=makeDbg("Last",Color3.fromRGB(255,120,120))
-
+local EventList=Instance.new("ScrollingFrame")
+EventList.Size=UDim2.new(1,0,0,70) EventList.BackgroundColor3=C_PANEL
+EventList.BorderSizePixel=1 EventList.BorderColor3=C_BORDER
+EventList.ScrollBarThickness=3 EventList.ScrollBarImageColor3=C_BORDER
+EventList.CanvasSize=UDim2.new(0,0,0,0) EventList.AutomaticCanvasSize=Enum.AutomaticSize.Y
+EventList.Parent=MidScroll
+pcall(function() Instance.new("UICorner",EventList).CornerRadius=UDim.new(0,5) end)
+local EventLayout=Instance.new("UIListLayout") EventLayout.Padding=UDim.new(0,2) EventLayout.Parent=EventList
+local EventPad=Instance.new("UIPadding") EventPad.PaddingTop=UDim.new(0,4)
+EventPad.PaddingLeft=UDim.new(0,6) EventPad.PaddingRight=UDim.new(0,4) EventPad.Parent=EventList
+local eventHistory={}
+local MAX_EVENTS=8
 local function pushEvent(text,color)
-    local l=Instance.new("TextLabel")
-    l.Size=UDim2.new(1,-4,0,14)
-    l.BackgroundTransparency=1
-    l.Text=os.date("%H:%M:%S").." "..text
-    l.TextColor3=color or C_TEXT
-    l.Font=Enum.Font.Code
-    l.TextSize=10
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.Parent=EventList
+    local l=Instance.new("TextLabel") l.Size=UDim2.new(1,-4,0,14) l.BackgroundTransparency=1
+    l.Text=os.date("%H:%M:%S").." "..text l.TextColor3=color or C_TEXT l.Font=Enum.Font.Code
+    l.TextSize=10 l.TextXAlignment=Enum.TextXAlignment.Left l.Parent=EventList
     table.insert(eventHistory,l)
-    if #eventHistory>MAX_EVENTS then
-        local o=table.remove(eventHistory,1)
-        if o then o:Destroy() end
-    end
+    if #eventHistory>MAX_EVENTS then local o=table.remove(eventHistory,1) if o then o:Destroy() end end
     bugLastEvent.Text="Last: "..text
 end
 
 -- ===== MOVEMENT HELPER =====
 makeLabel(RightScroll,"MOVEMENT HELPER",C_TEXT,16,12)
-local MoveBox=Instance.new("Frame")
-MoveBox.Size=UDim2.new(1,0,0,200)
-MoveBox.BackgroundColor3=C_PANEL
-MoveBox.BorderSizePixel=1
-MoveBox.BorderColor3=C_BORDER
-MoveBox.Parent=RightScroll
+local MoveBox=Instance.new("Frame") MoveBox.Size=UDim2.new(1,0,0,200) MoveBox.BackgroundColor3=C_PANEL
+MoveBox.BorderSizePixel=1 MoveBox.BorderColor3=C_BORDER MoveBox.Parent=RightScroll
 pcall(function() Instance.new("UICorner",MoveBox).CornerRadius=UDim.new(0,6) end)
-local MoveLayout=Instance.new("UIListLayout")
-MoveLayout.Padding=UDim.new(0,3)
-MoveLayout.Parent=MoveBox
-local MovePad=Instance.new("UIPadding")
-MovePad.PaddingTop=UDim.new(0,8)
-MovePad.PaddingBottom=UDim.new(0,8)
-MovePad.PaddingLeft=UDim.new(0,8)
-MovePad.PaddingRight=UDim.new(0,6)
-MovePad.Parent=MoveBox
+local MoveLayout=Instance.new("UIListLayout") MoveLayout.Padding=UDim.new(0,3) MoveLayout.Parent=MoveBox
+local MovePad=Instance.new("UIPadding") MovePad.PaddingTop=UDim.new(0,8) MovePad.PaddingBottom=UDim.new(0,8)
+MovePad.PaddingLeft=UDim.new(0,8) MovePad.PaddingRight=UDim.new(0,6) MovePad.Parent=MoveBox
 local function makeMoveLine(name,color)
-    local l=Instance.new("TextLabel")
-    l.Size=UDim2.new(1,0,0,15)
-    l.BackgroundTransparency=1
-    l.Text=name..": -"
-    l.TextColor3=color or C_TEXT
-    l.Font=Enum.Font.Code
-    l.TextSize=10
-    l.TextXAlignment=Enum.TextXAlignment.Left
-    l.Parent=MoveBox
+    local l=Instance.new("TextLabel") l.Size=UDim2.new(1,0,0,15) l.BackgroundTransparency=1
+    l.Text=name..": -" l.TextColor3=color or C_TEXT l.Font=Enum.Font.Code l.TextSize=10
+    l.TextXAlignment=Enum.TextXAlignment.Left l.Parent=MoveBox
     return l
 end
 local mvBhop=makeMoveLine("Bhop",Color3.fromRGB(120,255,160))
@@ -894,22 +503,12 @@ local mvJumpWin=makeMoveLine("Jump Window",Color3.fromRGB(255,255,100))
 
 -- ===== ROTATOR =====
 makeLabel(RightScroll,"ROTATOR",C_TEXT,16,12)
-local RotBox=Instance.new("Frame")
-RotBox.Size=UDim2.new(1,0,0,170)
-RotBox.BackgroundColor3=C_PANEL
-RotBox.BorderSizePixel=1
-RotBox.BorderColor3=C_BORDER
-RotBox.Parent=RightScroll
+local RotBox=Instance.new("Frame") RotBox.Size=UDim2.new(1,0,0,170) RotBox.BackgroundColor3=C_PANEL
+RotBox.BorderSizePixel=1 RotBox.BorderColor3=C_BORDER RotBox.Parent=RightScroll
 pcall(function() Instance.new("UICorner",RotBox).CornerRadius=UDim.new(0,6) end)
-local RotLayout=Instance.new("UIListLayout")
-RotLayout.Padding=UDim.new(0,4)
-RotLayout.Parent=RotBox
-local RotPad=Instance.new("UIPadding")
-RotPad.PaddingTop=UDim.new(0,8)
-RotPad.PaddingBottom=UDim.new(0,8)
-RotPad.PaddingLeft=UDim.new(0,8)
-RotPad.PaddingRight=UDim.new(0,6)
-RotPad.Parent=RotBox
+local RotLayout=Instance.new("UIListLayout") RotLayout.Padding=UDim.new(0,4) RotLayout.Parent=RotBox
+local RotPad=Instance.new("UIPadding") RotPad.PaddingTop=UDim.new(0,8) RotPad.PaddingBottom=UDim.new(0,8)
+RotPad.PaddingLeft=UDim.new(0,8) RotPad.PaddingRight=UDim.new(0,6) RotPad.Parent=RotBox
 local RotAngleBox=makeTextBox(RotBox,"угол°","90")
 local RotSpeedBox=makeTextBox(RotBox,"время (сек)","0.3")
 local rotRow1=makeRow(RotBox,22)
@@ -920,17 +519,14 @@ local rotRow2=makeRow(RotBox,22)
 local RotL=makeRowBtn(rotRow2,"LEFT",0.5,C_ELEM)
 local RotR=makeRowBtn(rotRow2,"RIGHT",0.5,C_ELEM)
 local function rotateCamera(degrees,duration)
-    local cam=workspace.CurrentCamera
-    if not cam then return end
-    local sc=cam.CFrame
-    local tc=sc*CFrame.Angles(0,math.rad(degrees),0)
+    local cam=workspace.CurrentCamera if not cam then return end
+    local sc=cam.CFrame local tc=sc*CFrame.Angles(0,math.rad(degrees),0)
     local t0=os.clock()
     task.spawn(function()
         while true do
             local a=(os.clock()-t0)/duration
             if a>=1 then cam.CFrame=tc break end
-            cam.CFrame=sc:Lerp(tc,a)
-            task.wait()
+            cam.CFrame=sc:Lerp(tc,a) task.wait()
         end
     end)
 end
@@ -940,14 +536,199 @@ Rot180.MouseButton1Click:Connect(function() rotateCamera(180,tonumber(RotSpeedBo
 RotL.MouseButton1Click:Connect(function() rotateCamera(-(tonumber(RotAngleBox.Text) or 90),tonumber(RotSpeedBox.Text) or 0.3) end)
 RotR.MouseButton1Click:Connect(function() rotateCamera(tonumber(RotAngleBox.Text) or 90,tonumber(RotSpeedBox.Text) or 0.3) end)
 
--- ===== PROFILE =====
-makeLabel(RightScroll,"PROFILE",C_TEXT,16,12)
-local ProfileSaveBtn=makeBtn(RightScroll,"SAVE PROFILE",24,C_ELEM)
-local ProfileLoadBtn=makeBtn(RightScroll,"LOAD PROFILE",24,C_ELEM)
-local ProfileInfo=makeLabel(RightScroll,"",C_TEXT_D,16,10)
+-- ===== ФИЗИКА =====
+local function applySlowmoPhysics(enable)
+    local ch=LocalPlayer.Character local h=ch and ch:FindFirstChildOfClass("Humanoid")
+    if enable then
+        workspace.Gravity=DEFAULT_GRAVITY*(SLOW_SCALE*SLOW_SCALE)/SLOW_JUMP_BOOST
+        if h then h.WalkSpeed=DEFAULT_WALKSPEED*SLOW_SCALE h.JumpPower=DEFAULT_JUMPPOWER*SLOW_SCALE*SLOW_JUMP_BOOST end
+    else
+        workspace.Gravity=DEFAULT_GRAVITY
+        if h then h.WalkSpeed=DEFAULT_WALKSPEED h.JumpPower=DEFAULT_JUMPPOWER end
+    end
+end
+local function setAnimSpeed(speed)
+    local ch=LocalPlayer.Character if not ch then return end
+    local h=ch:FindFirstChildOfClass("Humanoid") if not h then return end
+    local a=h:FindFirstChildOfClass("Animator")
+    if a then for _,t in ipairs(a:GetPlayingAnimationTracks()) do t:AdjustSpeed(speed) end end
+end
+
+-- ===== PLAYBACK =====
+local function applyFrame(idx)
+    if #frames==0 then return end
+    idx=math.clamp(idx,1,#frames) currentFrame=idx
+    local ch=LocalPlayer.Character
+    if ch and ch:FindFirstChild("HumanoidRootPart") then
+        local hrp=ch.HumanoidRootPart local h=ch:FindFirstChildOfClass("Humanoid")
+        local d=frames[idx]
+        hrp.CFrame=d.cframe hrp.AssemblyLinearVelocity=d.velocity hrp.AssemblyAngularVelocity=d.rotVelocity
+        if h then
+            h.WalkSpeed=DEFAULT_WALKSPEED
+            if math.abs(d.velocity.Y)>2 then h:ChangeState(Enum.HumanoidStateType.Freefall)
+            elseif Vector3.new(d.velocity.X,0,d.velocity.Z).Magnitude>0.5 then h:ChangeState(Enum.HumanoidStateType.Running)
+            else h:ChangeState(Enum.HumanoidStateType.Landed) end
+        end
+    end
+    updateFrameCounter()
+end
+local function forceUnpause()
+    isPaused=false PauseBtn.Text="PAUSE"
+    local ch=LocalPlayer.Character if ch and ch:FindFirstChild("HumanoidRootPart") then ch.HumanoidRootPart.Anchored=false end
+end
+local function forcePause()
+    if not isPaused then
+        isPaused=true PauseBtn.Text="UNPAUSE"
+        local ch=LocalPlayer.Character if ch and ch:FindFirstChild("HumanoidRootPart") then ch.HumanoidRootPart.Anchored=true end
+    end
+end
+local function truncateFutureFrames()
+    if currentFrame<#frames then for i=#frames,currentFrame+1,-1 do table.remove(frames,i) end end
+end
+local function startRecordingLoop()
+    if loopConnection then loopConnection:Disconnect() end
+    loopConnection=RunService.Heartbeat:Connect(function()
+        if not isPaused and recording then
+            local ch=LocalPlayer.Character
+            if ch and ch:FindFirstChild("HumanoidRootPart") then
+                local hrp=ch.HumanoidRootPart
+                table.insert(frames,{cframe=hrp.CFrame,velocity=hrp.AssemblyLinearVelocity,rotVelocity=hrp.AssemblyAngularVelocity})
+                currentFrame=#frames updateFrameCounter()
+            end
+        end
+    end)
+end
+local function startPlaybackLoop()
+    if recording or #frames==0 then return end
+    if loopConnection then loopConnection:Disconnect() end
+    playing=true currentFrame=1 PlaybackBtn.Text="STOP PLAY"
+    applySlowmoPhysics(false) forceUnpause()
+    local sc=sessionWasSlowRecorded and (1/SLOW_SCALE) or 1
+    loopConnection=RunService.Heartbeat:Connect(function(dt)
+        if not isPaused then
+            local step=(RECORD_FPS*dt*sc)/PLAYBACK_SPEED
+            local idx=math.floor(currentFrame)
+            if idx<=#frames then
+                applyFrame(idx) setAnimSpeed(1) currentFrame=currentFrame+step
+            else
+                playing=false setAnimSpeed(1) PlaybackBtn.Text="PLAYBACK"
+                if loopConnection then loopConnection:Disconnect() end
+            end
+        end
+    end)
+end
+-- ===== PLAYBACK BUTTONS =====
+PauseBtn.MouseButton1Click:Connect(function()
+    if recording then return end
+    isPaused=not isPaused
+    local ch=LocalPlayer.Character local h=ch and ch:FindFirstChild("HumanoidRootPart")
+    if isPaused then
+        PauseBtn.Text="UNPAUSE"
+        if h then h.Anchored=true end
+    else
+        PauseBtn.Text="PAUSE"
+        if h then h.Anchored=false end
+        if recording then
+            truncateFutureFrames()
+            applySlowmoPhysics(true)
+            startRecordingLoop()
+        end
+    end
+end)
+
+StepBackBtn.InputBegan:Connect(function(input)
+    if recording then return end
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        if playing or #frames==0 then return end
+        forcePause() steppingBack=true
+        task.spawn(function()
+            while steppingBack and currentFrame>1 do
+                applyFrame(currentFrame-1)
+                task.wait(0.05)
+            end
+        end)
+    end
+end)
+StepBackBtn.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        steppingBack=false
+    end
+end)
+
+StepForwardBtn.InputBegan:Connect(function(input)
+    if recording then return end
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        if playing or #frames==0 then return end
+        forcePause() steppingForward=true
+        task.spawn(function()
+            while steppingForward and currentFrame<#frames do
+                applyFrame(currentFrame+1)
+                task.wait(0.05)
+            end
+        end)
+    end
+end)
+StepForwardBtn.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        steppingForward=false
+    end
+end)
+
+RecBtn.MouseButton1Click:Connect(function()
+    if playing then return end
+    if not recording then
+        runCountdown(function()
+            recording=true sessionWasSlowRecorded=true
+            frames={} currentFrame=1 updateFrameCounter()
+            RecBtn.Text="STOP REC"
+            forceUnpause() applySlowmoPhysics(true)
+            startRecordingLoop()
+        end)
+    else
+        recording=false RecBtn.Text="RECORD" applySlowmoPhysics(false)
+        if loopConnection then loopConnection:Disconnect() end
+    end
+end)
+
+ResumeBtn.MouseButton1Click:Connect(function()
+    if playing then
+        playing=false
+        if loopConnection then loopConnection:Disconnect() end
+        setAnimSpeed(1) PlaybackBtn.Text="PLAYBACK"
+    end
+    if not recording then
+        recording=true sessionWasSlowRecorded=true
+        truncateFutureFrames()
+        ResumeBtn.Text="RESUMING..." forceUnpause()
+        applySlowmoPhysics(true) startRecordingLoop()
+    else
+        recording=false ResumeBtn.Text="RESUME" applySlowmoPhysics(false)
+        if loopConnection then loopConnection:Disconnect() end
+    end
+end)
+
+PlaybackBtn.MouseButton1Click:Connect(function()
+    if recording or #frames==0 then return end
+    if playing then
+        playing=false setAnimSpeed(1) PlaybackBtn.Text="PLAYBACK"
+        if loopConnection then loopConnection:Disconnect() end
+    else
+        startPlaybackLoop()
+    end
+end)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    if recording or playing then return end
+    frames={} currentFrame=1 updateFrameCounter()
+end)
+
+-- ===== PROFILE BUTTONS =====
 ProfileSaveBtn.MouseButton1Click:Connect(function()
     if not hasFileAPI then ProfileInfo.Text="Нет file API" return end
-    local data={jumpPower=JUMP_POWER,flingSpeed=FLING_SPEED,flingAngle=FLING_ANGLE,slowScale=SLOW_SCALE,playbackSpeed=PLAYBACK_SPEED}
+    local data={
+        jumpPower=JUMP_POWER, flingSpeed=FLING_SPEED, flingAngle=FLING_ANGLE,
+        slowScale=SLOW_SCALE, playbackSpeed=PLAYBACK_SPEED,
+    }
     local ok=safeWrite(PROFILE_FILE,HttpService:JSONEncode(data))
     ProfileInfo.Text=ok and "Сохранено!" or "Ошибка"
     task.delay(2,function() ProfileInfo.Text="" end)
@@ -967,413 +748,30 @@ ProfileLoadBtn.MouseButton1Click:Connect(function()
     task.delay(2,function() ProfileInfo.Text="" end)
 end)
 
--- ===== LADDER ANIMATION =====
-local R6_CLIMB_ID = "rbxassetid://180436148"
-local R15_CLIMB_ID = "rbxassetid://507765644"
-local climbTrack = nil
-local climbingState = false
-local function startClimbAnimation()
-    if climbingState then return end
-    local ch = LocalPlayer.Character
-    if not ch then return end
-    local h = ch:FindFirstChildOfClass("Humanoid")
-    if not h then return end
-    local animator = h:FindFirstChildOfClass("Animator")
-    if not animator then animator = Instance.new("Animator", h) end
-    local isR6 = (h.RigType == Enum.HumanoidRigType.R6)
-    local animId = isR6 and R6_CLIMB_ID or R15_CLIMB_ID
-    local anim = Instance.new("Animation")
-    anim.AnimationId = animId
-    local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
-    if not ok or not track then return end
-    climbTrack = track
-    pcall(function()
-        climbTrack.Priority = Enum.AnimationPriority.Action
-        climbTrack.Looped = true
-        climbTrack:Play()
-    end)
-    climbingState = true
-end
-local function stopClimbAnimation()
-    if not climbingState then return end
-    climbingState = false
-    if climbTrack then
-        pcall(function() climbTrack:Stop() end)
-        climbTrack = nil
-    end
-end
-RunService.Heartbeat:Connect(function()
-    local ch = LocalPlayer.Character
-    if not ch then if climbingState then stopClimbAnimation() end return end
-    local h = ch:FindFirstChildOfClass("Humanoid")
-    if not h then if climbingState then stopClimbAnimation() end return end
-    if h:GetState() == Enum.HumanoidStateType.Climbing then
-        startClimbAnimation()
-    else
-        if climbingState then stopClimbAnimation() end
-    end
-end)
-
--- ===== FLICK ANIM =====
-local flickAnimEnabled = false
-local flickAnimSpeed = 360
-local flickAnimThread = nil
-local function stopFlickAnim()
-    if flickAnimThread then pcall(task.cancel, flickAnimThread) flickAnimThread = nil end
-end
-local function startFlickAnim()
-    stopFlickAnim()
-    flickAnimThread = task.spawn(function()
-        while flickAnimEnabled do
-            task.wait()
-            local ch = LocalPlayer.Character
-            if not ch then break end
-            local hrp = ch:FindFirstChild("HumanoidRootPart")
-            if not hrp then break end
-            local rot = CFrame.Angles(0, math.rad(flickAnimSpeed) * (1/60), 0)
-            hrp.CFrame = hrp.CFrame * rot
-        end
-    end)
-end
-makeLabel(RightScroll, "FLICK ANIM", C_TEXT, 16, 12)
-local FlickAnimBtn = makeBtn(RightScroll, "FLICK ANIM: OFF", 26, C_ELEM)
-FlickAnimBtn.MouseButton1Click:Connect(function()
-    flickAnimEnabled = not flickAnimEnabled
-    if flickAnimEnabled then
-        FlickAnimBtn.Text = "FLICK ANIM: ON"
-        FlickAnimBtn.BackgroundColor3 = C_ELEM_H
-        startFlickAnim()
-    else
-        FlickAnimBtn.Text = "FLICK ANIM: OFF"
-        FlickAnimBtn.BackgroundColor3 = C_ELEM
-        stopFlickAnim()
-    end
-end)
-makeLabel(RightScroll, "SPIN SPEED (deg/sec)", C_TEXT, 14, 10)
-local SpinSpeedBox = makeTextBox(RightScroll, "360", tostring(flickAnimSpeed))
-SpinSpeedBox.FocusLost:Connect(function()
-    local v = tonumber(SpinSpeedBox.Text)
-    if v and v > 0 and v <= 2000 then flickAnimSpeed = v
-    else SpinSpeedBox.Text = tostring(flickAnimSpeed) end
-end)
-
--- ===== ФИЗИКА =====
-local function applySlowmoPhysics(enable)
-    local ch=LocalPlayer.Character
-    local h=ch and ch:FindFirstChildOfClass("Humanoid")
-    if enable then
-        workspace.Gravity=DEFAULT_GRAVITY*(SLOW_SCALE*SLOW_SCALE)/SLOW_JUMP_BOOST
-        if h then
-            h.WalkSpeed=DEFAULT_WALKSPEED*SLOW_SCALE
-            h.JumpPower=DEFAULT_JUMPPOWER*SLOW_SCALE*SLOW_JUMP_BOOST
-        end
-    else
-        workspace.Gravity=DEFAULT_GRAVITY
-        if h then
-            h.WalkSpeed=DEFAULT_WALKSPEED
-            h.JumpPower=DEFAULT_JUMPPOWER
-        end
-    end
-end
-local function setAnimSpeed(speed)
-    local ch=LocalPlayer.Character
-    if not ch then return end
-    local h=ch:FindFirstChildOfClass("Humanoid")
-    if not h then return end
-    local a=h:FindFirstChildOfClass("Animator")
-    if a then
-        for _,t in ipairs(a:GetPlayingAnimationTracks()) do
-            t:AdjustSpeed(speed)
-        end
-    end
-end
-
--- ===== PLAYBACK =====
-local function applyFrame(idx)
-    if #frames==0 then return end
-    idx=math.clamp(idx,1,#frames)
-    currentFrame=idx
-    local ch=LocalPlayer.Character
-    if ch and ch:FindFirstChild("HumanoidRootPart") then
-        local hrp=ch.HumanoidRootPart
-        local h=ch:FindFirstChildOfClass("Humanoid")
-        local d=frames[idx]
-        hrp.CFrame=d.cframe
-        hrp.AssemblyLinearVelocity=d.velocity
-        hrp.AssemblyAngularVelocity=d.rotVelocity
-        if h then
-            h.WalkSpeed=DEFAULT_WALKSPEED
-            if math.abs(d.velocity.Y)>2 then
-                h:ChangeState(Enum.HumanoidStateType.Freefall)
-            elseif Vector3.new(d.velocity.X,0,d.velocity.Z).Magnitude>0.5 then
-                h:ChangeState(Enum.HumanoidStateType.Running)
-            else
-                h:ChangeState(Enum.HumanoidStateType.Landed)
-            end
-        end
-    end
-    updateFrameCounter()
-end
-local function forceUnpause()
-    isPaused=false
-    PauseBtn.Text="PAUSE"
-    local ch=LocalPlayer.Character
-    if ch and ch:FindFirstChild("HumanoidRootPart") then
-        ch.HumanoidRootPart.Anchored=false
-    end
-end
-local function forcePause()
-    if not isPaused then
-        isPaused=true
-        PauseBtn.Text="UNPAUSE"
-        local ch=LocalPlayer.Character
-        if ch and ch:FindFirstChild("HumanoidRootPart") then
-            ch.HumanoidRootPart.Anchored=true
-        end
-    end
-end
-local function truncateFutureFrames()
-    if currentFrame<#frames then
-        for i=#frames,currentFrame+1,-1 do
-            table.remove(frames,i)
-        end
-    end
-end
-local function startRecordingLoop()
-    if loopConnection then loopConnection:Disconnect() end
-    loopConnection=RunService.Heartbeat:Connect(function()
-        if not isPaused and recording then
-            local ch=LocalPlayer.Character
-            if ch and ch:FindFirstChild("HumanoidRootPart") then
-                local hrp=ch.HumanoidRootPart
-                table.insert(frames,{
-                    cframe=hrp.CFrame,
-                    velocity=hrp.AssemblyLinearVelocity,
-                    rotVelocity=hrp.AssemblyAngularVelocity,
-                })
-                currentFrame=#frames
-                updateFrameCounter()
-            end
-        end
-    end)
-end
-local function startPlaybackLoop()
-    if recording or #frames==0 then return end
-    if loopConnection then loopConnection:Disconnect() end
-    playing=true
-    currentFrame=1
-    PlaybackBtn.Text="STOP PLAY"
-    applySlowmoPhysics(false)
-    forceUnpause()
-    local sc=sessionWasSlowRecorded and (1/SLOW_SCALE) or 1
-    loopConnection=RunService.Heartbeat:Connect(function(dt)
-        if not isPaused then
-            local step=(RECORD_FPS*dt*sc)/PLAYBACK_SPEED
-            local idx=math.floor(currentFrame)
-            if idx<=#frames then
-                applyFrame(idx)
-                setAnimSpeed(1)
-                currentFrame=currentFrame+step
-            else
-                playing=false
-                setAnimSpeed(1)
-                PlaybackBtn.Text="PLAYBACK"
-                if loopConnection then loopConnection:Disconnect() end
-            end
-        end
-    end)
-end
-
--- ===== BUTTON HANDLERS (один раз каждый) =====
-PauseBtn.MouseButton1Click:Connect(function()
-    if recording then return end
-    isPaused=not isPaused
-    local ch=LocalPlayer.Character
-    local h=ch and ch:FindFirstChild("HumanoidRootPart")
-    if isPaused then
-        PauseBtn.Text="UNPAUSE"
-        if h then h.Anchored=true end
-    else
-        PauseBtn.Text="PAUSE"
-        if h then h.Anchored=false end
-        if recording then
-            truncateFutureFrames()
-            applySlowmoPhysics(true)
-            startRecordingLoop()
-        end
-    end
-end)
-
-StepBackBtn.InputBegan:Connect(function(input)
-    if recording then return end
-    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-        if playing or #frames==0 then return end
-        forcePause()
-        steppingBack=true
-        task.spawn(function()
-            while steppingBack and currentFrame>1 do
-                applyFrame(currentFrame-1)
-                task.wait(0.05)
-            end
-        end)
-    end
-end)
-StepBackBtn.InputEnded:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-        steppingBack=false
-    end
-end)
-
-StepForwardBtn.InputBegan:Connect(function(input)
-    if recording then return end
-    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-        if playing or #frames==0 then return end
-        forcePause()
-        steppingForward=true
-        task.spawn(function()
-            while steppingForward and currentFrame<#frames do
-                applyFrame(currentFrame+1)
-                task.wait(0.05)
-            end
-        end)
-    end
-end)
-StepForwardBtn.InputEnded:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-        steppingForward=false
-    end
-end)
-
-RecBtn.MouseButton1Click:Connect(function()
-    if playing then return end
-    if not recording then
-        runCountdown(function()
-            recording=true
-            sessionWasSlowRecorded=true
-            frames={}
-            currentFrame=1
-            updateFrameCounter()
-            RecBtn.Text="STOP REC"
-            forceUnpause()
-            applySlowmoPhysics(true)
-            startRecordingLoop()
-        end)
-    else
-        recording=false
-        RecBtn.Text="RECORD"
-        applySlowmoPhysics(false)
-        if loopConnection then loopConnection:Disconnect() end
-    end
-end)
-
-ResumeBtn.MouseButton1Click:Connect(function()
-    if playing then
-        playing=false
-        if loopConnection then loopConnection:Disconnect() end
-        setAnimSpeed(1)
-        PlaybackBtn.Text="PLAYBACK"
-    end
-    if not recording then
-        recording=true
-        sessionWasSlowRecorded=true
-        truncateFutureFrames()
-        ResumeBtn.Text="RESUMING..."
-        forceUnpause()
-        applySlowmoPhysics(true)
-        startRecordingLoop()
-    else
-        recording=false
-        ResumeBtn.Text="RESUME"
-        applySlowmoPhysics(false)
-        if loopConnection then loopConnection:Disconnect() end
-    end
-end)
-
-PlaybackBtn.MouseButton1Click:Connect(function()
-    if recording or #frames==0 then return end
-    if playing then
-        playing=false
-        setAnimSpeed(1)
-        PlaybackBtn.Text="PLAYBACK"
-        if loopConnection then loopConnection:Disconnect() end
-    else
-        startPlaybackLoop()
-    end
-end)
-
-ClearBtn.MouseButton1Click:Connect(function()
-    if recording or playing then return end
-    frames={}
-    currentFrame=1
-    updateFrameCounter()
-end)
-
--- ===== WALLHOP =====
-UserInputService.JumpRequest:Connect(function()
-    if not WALLHOP_ENABLED then return end
-    if os.clock()-lastWallhopTime<WALLHOP_COOLDOWN then return end
-    local ch=LocalPlayer.Character
-    local h=ch and ch:FindFirstChildOfClass("Humanoid")
-    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
-    if not (h and hrp) then return end
-    local dirs={Vector3.new(3,0,0),Vector3.new(-3,0,0),Vector3.new(0,0,3),Vector3.new(0,0,-3)}
-    local hit=nil
-    for _,d in ipairs(dirs) do
-        local params=RaycastParams.new()
-        params.FilterType=Enum.RaycastFilterType.Exclude
-        params.FilterDescendantsInstances={ch}
-        local r=workspace:Raycast(hrp.Position,d,params)
-        if r then hit=r break end
-    end
-    if hit then
-        lastWallhopTime=os.clock()
-        h:ChangeState(Enum.HumanoidStateType.Jumping)
-        hrp.CFrame=hrp.CFrame*CFrame.Angles(0,-1,0)
-        task.wait(0.15)
-        hrp.CFrame=hrp.CFrame*CFrame.Angles(0,1,0)
-    end
-end)
-
--- ===== LF / FLICK =====
+-- ===== LF / FLICK BUTTONS =====
 local lfBtn=Instance.new("TextButton")
-lfBtn.Name="LFButton"
-lfBtn.Size=UDim2.new(0,70,0,70)
+lfBtn.Name="LFButton" lfBtn.Size=UDim2.new(0,70,0,70)
 lfBtn.Position=UDim2.new(0.85,0,0.5,0)
-lfBtn.BackgroundColor3=Color3.fromRGB(30,30,40)
-lfBtn.BackgroundTransparency=0.4
-lfBtn.Text="LF"
-lfBtn.TextColor3=Color3.fromRGB(255,255,255)
-lfBtn.Font=Enum.Font.GothamBold
-lfBtn.TextSize=22
-lfBtn.BorderSizePixel=0
-lfBtn.AutoButtonColor=false
-lfBtn.Active=true
-lfBtn.Parent=ScreenGui
+lfBtn.BackgroundColor3=Color3.fromRGB(30,30,40) lfBtn.BackgroundTransparency=0.4
+lfBtn.Text="LF" lfBtn.TextColor3=Color3.fromRGB(255,255,255)
+lfBtn.Font=Enum.Font.GothamBold lfBtn.TextSize=22 lfBtn.BorderSizePixel=0
+lfBtn.AutoButtonColor=false lfBtn.Active=true lfBtn.Parent=ScreenGui
 pcall(function() Instance.new("UICorner",lfBtn).CornerRadius=UDim.new(0,20) end)
 
 local flickBtn=Instance.new("TextButton")
-flickBtn.Name="FlickButton"
-flickBtn.Size=UDim2.new(0,70,0,70)
+flickBtn.Name="FlickButton" flickBtn.Size=UDim2.new(0,70,0,70)
 flickBtn.Position=UDim2.new(0.85,0,0.65,0)
-flickBtn.BackgroundColor3=Color3.fromRGB(30,40,30)
-flickBtn.BackgroundTransparency=0.4
-flickBtn.Text="FLICK"
-flickBtn.TextColor3=Color3.fromRGB(255,255,255)
-flickBtn.Font=Enum.Font.GothamBold
-flickBtn.TextSize=16
-flickBtn.BorderSizePixel=0
-flickBtn.AutoButtonColor=false
-flickBtn.Active=true
-flickBtn.Parent=ScreenGui
+flickBtn.BackgroundColor3=Color3.fromRGB(30,40,30) flickBtn.BackgroundTransparency=0.4
+flickBtn.Text="FLICK" flickBtn.TextColor3=Color3.fromRGB(255,255,255)
+flickBtn.Font=Enum.Font.GothamBold flickBtn.TextSize=16 flickBtn.BorderSizePixel=0
+flickBtn.AutoButtonColor=false flickBtn.Active=true flickBtn.Parent=ScreenGui
 pcall(function() Instance.new("UICorner",flickBtn).CornerRadius=UDim.new(0,20) end)
 
 local function makeDraggable(button,onTap)
     button.InputBegan:Connect(function(input)
         if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-            local dragStart=input.Position
-            local startPos=button.Position
-            local moved=false
-            local moveConn
+            local dragStart=input.Position local startPos=button.Position
+            local moved=false local moveConn
             moveConn=UserInputService.InputChanged:Connect(function(m)
                 if m.UserInputType==Enum.UserInputType.MouseMovement or m.UserInputType==Enum.UserInputType.Touch then
                     local delta=m.Position-dragStart
@@ -1401,25 +799,19 @@ end
 local function stopFling()
     flinging=false
     if flingThread then pcall(task.cancel,flingThread) flingThread=nil end
-    lfBtn.BackgroundColor3=Color3.fromRGB(30,30,40)
-    lfBtn.Text="LF"
+    lfBtn.BackgroundColor3=Color3.fromRGB(30,30,40) lfBtn.Text="LF"
 end
 local function startFling()
     if flinging then stopFling() return end
-    local ch=LocalPlayer.Character
-    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+    local ch=LocalPlayer.Character local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
     local h=ch and ch:FindFirstChildOfClass("Humanoid")
     if not hrp or not h then return end
-    flinging=true
-    lfBtn.BackgroundColor3=Color3.fromRGB(120,20,20)
-    lfBtn.Text="STOP"
+    flinging=true lfBtn.BackgroundColor3=Color3.fromRGB(120,20,20) lfBtn.Text="STOP"
     hrp.AssemblyLinearVelocity=Vector3.new(hrp.AssemblyLinearVelocity.X,JUMP_POWER,hrp.AssemblyLinearVelocity.Z)
     h:ChangeState(Enum.HumanoidStateType.Jumping)
     flingThread=task.spawn(function()
-        local t0=tick()
-        local cam=workspace.CurrentCamera
-        local baseYaw=nil
-        local north=true
+        local t0=tick() local cam=workspace.CurrentCamera
+        local baseYaw=nil local north=true
         while flinging do
             task.wait(1/FLING_SPEED)
             if not flinging then break end
@@ -1445,18 +837,13 @@ makeDraggable(lfBtn,startFling)
 local function stopFlick()
     flicking=false
     if flickThread then pcall(task.cancel,flickThread) flickThread=nil end
-    flickBtn.BackgroundColor3=Color3.fromRGB(30,40,30)
-    flickBtn.Text="FLICK"
+    flickBtn.BackgroundColor3=Color3.fromRGB(30,40,30) flickBtn.Text="FLICK"
 end
 local function startFlick()
     if flicking then stopFlick() return end
-    flicking=true
-    flickBtn.BackgroundColor3=Color3.fromRGB(20,100,20)
-    flickBtn.Text="STOP"
+    flicking=true flickBtn.BackgroundColor3=Color3.fromRGB(20,100,20) flickBtn.Text="STOP"
     flickThread=task.spawn(function()
-        local cam=workspace.CurrentCamera
-        local baseYaw=nil
-        local north=true
+        local cam=workspace.CurrentCamera local baseYaw=nil local north=true
         while flicking do
             task.wait(1/FLING_SPEED)
             if not flicking then break end
@@ -1474,41 +861,25 @@ makeDraggable(flickBtn,startFlick)
 
 -- ===== TRAJECTORY =====
 local function clearTrajectory()
-    for _,p in ipairs(trajectoryParts) do
-        if p and p.Parent then p:Destroy() end
-    end
+    for _,p in ipairs(trajectoryParts) do if p and p.Parent then p:Destroy() end end
     trajectoryParts={}
 end
 local function makeTrajSegment(from,to,tr)
-    local d=to-from
-    local len=d.Magnitude
+    local d=to-from local len=d.Magnitude
     if len<0.001 then return end
     local p=Instance.new("Part")
     p.Size=Vector3.new(TRAJ_THICKNESS,TRAJ_THICKNESS,len)
-    p.Anchored=true
-    p.CanCollide=false
-    p.CanQuery=false
-    p.CanTouch=false
-    p.Material=Enum.Material.Neon
-    p.Color=TRAJ_COLOR
-    p.Transparency=tr
-    p.CFrame=CFrame.new(from+d*0.5,to)
-    p.Parent=workspace
+    p.Anchored=true p.CanCollide=false p.CanQuery=false p.CanTouch=false
+    p.Material=Enum.Material.Neon p.Color=TRAJ_COLOR p.Transparency=tr
+    p.CFrame=CFrame.new(from+d*0.5,to) p.Parent=workspace
     table.insert(trajectoryParts,p)
 end
 local function makeTrajDot(pos,size)
     local d=Instance.new("Part")
-    d.Shape=Enum.PartType.Ball
-    d.Size=Vector3.new(size,size,size)
-    d.Anchored=true
-    d.CanCollide=false
-    d.CanQuery=false
-    d.CanTouch=false
-    d.Material=Enum.Material.Neon
-    d.Color=TRAJ_COLOR
-    d.Transparency=0.05
-    d.CFrame=CFrame.new(pos)
-    d.Parent=workspace
+    d.Shape=Enum.PartType.Ball d.Size=Vector3.new(size,size,size)
+    d.Anchored=true d.CanCollide=false d.CanQuery=false d.CanTouch=false
+    d.Material=Enum.Material.Neon d.Color=TRAJ_COLOR d.Transparency=0.05
+    d.CFrame=CFrame.new(pos) d.Parent=workspace
     table.insert(trajectoryParts,d)
 end
 local function renderGroundLine(ch,hrp,h)
@@ -1522,9 +893,7 @@ local function renderGroundLine(ch,hrp,h)
     params.FilterType=Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances={ch}
     local steps=math.floor(GROUND_LENGTH/GROUND_STEP)
-    local prev=origin
-    local lastValid=nil
-    local segs={}
+    local prev=origin local lastValid=nil local segs={}
     for i=1,steps do
         local np=origin+dir*(i*GROUND_STEP)
         local down=workspace:Raycast(np+Vector3.new(0,5,0),Vector3.new(0,-20,0),params)
@@ -1538,26 +907,16 @@ local function renderGroundLine(ch,hrp,h)
                 if dy>3 then break end
             end
             table.insert(segs,{from=prev,to=np})
-            prev=np
-            lastValid=np
+            prev=np lastValid=np
         else break end
     end
     local total=#segs
-    for i,seg in ipairs(segs) do
-        makeTrajSegment(seg.from,seg.to,0.1+(i/total)*0.65)
-    end
-    if lastValid then
-        makeTrajDot(lastValid,TRAJ_THICKNESS*2.5)
-    end
+    for i,seg in ipairs(segs) do makeTrajSegment(seg.from,seg.to,0.1+(i/total)*0.65) end
+    if lastValid then makeTrajDot(lastValid,TRAJ_THICKNESS*2.5) end
 end
 local function renderAirParabola(ch,hrp)
-    local pos=hrp.Position
-    local vel=hrp.AssemblyLinearVelocity
-    local g=workspace.Gravity
-    local prev=pos
-    local t=0
-    local hitG=false
-    local gp=nil
+    local pos=hrp.Position local vel=hrp.AssemblyLinearVelocity local g=workspace.Gravity
+    local prev=pos local t=0 local hitG=false local gp=nil
     local params=RaycastParams.new()
     params.FilterType=Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances={ch}
@@ -1567,43 +926,24 @@ local function renderAirParabola(ch,hrp)
         local y=pos.Y+vel.Y*t1-0.5*g*t1*t1
         local z=pos.Z+vel.Z*t1
         local cur=Vector3.new(x,y,z)
-        local seg=cur-prev
-        local len=seg.Magnitude
+        local seg=cur-prev local len=seg.Magnitude
         if len>0.001 then
             local r=workspace:Raycast(prev,seg,params)
-            if r then
-                cur=r.Position
-                gp=cur
-                hitG=true
-                seg=cur-prev
-                len=seg.Magnitude
-            end
+            if r then cur=r.Position gp=cur hitG=true seg=cur-prev len=seg.Magnitude end
         end
-        if len>0.001 then
-            makeTrajSegment(prev,cur,0.1+(i/AIR_STEPS)*0.6)
-        end
-        if i%10==0 and not hitG then
-            makeTrajDot(cur,TRAJ_THICKNESS*2.2)
-        end
-        prev=cur
-        t=t1
+        if len>0.001 then makeTrajSegment(prev,cur,0.1+(i/AIR_STEPS)*0.6) end
+        if i%10==0 and not hitG then makeTrajDot(cur,TRAJ_THICKNESS*2.2) end
+        prev=cur t=t1
         if hitG then break end
         if cur.Y<pos.Y-1000 then break end
     end
     if gp then
         local m=Instance.new("Part")
-        m.Shape=Enum.PartType.Cylinder
-        m.Size=Vector3.new(0.05,2.2,2.2)
-        m.Anchored=true
-        m.CanCollide=false
-        m.CanQuery=false
-        m.CanTouch=false
-        m.Material=Enum.Material.Neon
-        m.Color=TRAJ_COLOR
-        m.Transparency=0.4
+        m.Shape=Enum.PartType.Cylinder m.Size=Vector3.new(0.05,2.2,2.2)
+        m.Anchored=true m.CanCollide=false m.CanQuery=false m.CanTouch=false
+        m.Material=Enum.Material.Neon m.Color=TRAJ_COLOR m.Transparency=0.4
         m.CFrame=CFrame.new(gp+Vector3.new(0,0.05,0))*CFrame.Angles(0,0,math.rad(90))
-        m.Parent=workspace
-        table.insert(trajectoryParts,m)
+        m.Parent=workspace table.insert(trajectoryParts,m)
     end
 end
 local function renderTrajectory()
@@ -1614,12 +954,34 @@ local function renderTrajectory()
     if not (hrp and h) then return end
     clearTrajectory()
     local gr=h.FloorMaterial~=Enum.Material.Air
-    if gr then
-        renderGroundLine(ch,hrp,h)
-    else
-        renderAirParabola(ch,hrp)
-    end
+    if gr then renderGroundLine(ch,hrp,h) else renderAirParabola(ch,hrp) end
 end
+
+-- ===== WALLHOP =====
+UserInputService.JumpRequest:Connect(function()
+    if not WALLHOP_ENABLED then return end
+    if os.clock()-lastWallhopTime<WALLHOP_COOLDOWN then return end
+    local ch=LocalPlayer.Character
+    local h=ch and ch:FindFirstChildOfClass("Humanoid")
+    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+    if not (h and hrp) then return end
+    local dirs={Vector3.new(3,0,0),Vector3.new(-3,0,0),Vector3.new(0,0,3),Vector3.new(0,0,-3)}
+    local hit=nil
+    for _,d in ipairs(dirs) do
+        local params=RaycastParams.new()
+        params.FilterType=Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances={ch}
+        local r=workspace:Raycast(hrp.Position,d,params)
+        if r then hit=r break end
+    end
+    if hit then
+        lastWallhopTime=os.clock()
+        h:ChangeState(Enum.HumanoidStateType.Jumping)
+        hrp.CFrame=hrp.CFrame*CFrame.Angles(0,-1,0)
+        task.wait(0.15)
+        hrp.CFrame=hrp.CFrame*CFrame.Angles(0,1,0)
+    end
+end)
 
 -- ===== MAIN LOOP =====
 local prevVel=Vector3.zero
@@ -1641,10 +1003,11 @@ RunService.Heartbeat:Connect(function(dt)
     local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
     local h=ch and ch:FindFirstChildOfClass("Humanoid")
     local cam=workspace.CurrentCamera
+
     if TRAJECTORY_ENABLED and os.clock()-lastTrajUpdate>0.04 then
-        lastTrajUpdate=os.clock()
-        renderTrajectory()
+        lastTrajUpdate=os.clock() renderTrajectory()
     end
+
     dbgFrameTime.Text="Frame Time: "..string.format("%.6f",dt)
     if hrp then
         dbgRootPos.Text="Root Position: "..fmtVec(hrp.Position)
@@ -1665,21 +1028,24 @@ RunService.Heartbeat:Connect(function(dt)
         dbgZoom.Text="Zoom: "..string.format("%.3f",(cam.CFrame.Position-hrp.Position).Magnitude)
     end
     if not (hrp and h) then return end
+
     local vel=hrp.AssemblyLinearVelocity
     local pos=hrp.Position
     local ignore={ch}
+
     if h.FloorMaterial==Enum.Material.Air then
         if not airStartTime then airStartTime=os.clock() end
         bugAirTime.Text=string.format("Air Time: %.2fs",os.clock()-airStartTime)
     else
-        airStartTime=nil
-        lastOnGroundTime=os.clock()
+        airStartTime=nil lastOnGroundTime=os.clock()
         bugAirTime.Text="Air Time: ground"
     end
     local fall=-vel.Y
     bugFallSpeed.Text=fall>0 and string.format("Fall Speed: %.1f",fall) or "Fall Speed: -"
+
     local delta=(vel-prevVel).Magnitude
     bugVelSpike.Text=string.format("Vel Spike: %.1f",delta)
+
     if vel.Magnitude>FLING_TH and (os.clock()-lastFlingTime)>FLING_CD then
         lastFlingTime=os.clock()
         pushEvent(string.format("FLING %.0f",vel.Magnitude),Color3.fromRGB(255,100,100))
@@ -1687,11 +1053,13 @@ RunService.Heartbeat:Connect(function(dt)
     if delta>VEL_SPIKE_TH then
         pushEvent(string.format("VEL SPIKE +%.0f",delta),Color3.fromRGB(255,200,120))
     end
+
     local upRay=raycast(pos,Vector3.new(0,4,0),ignore)
     if upRay and vel.Y>5 and (os.clock()-lastCeilingHit)>CEILING_CD then
         lastCeilingHit=os.clock()
         pushEvent("CEILING HIT",Color3.fromRGB(255,180,80))
     end
+
     if (os.clock()-lastWallHit)>WALL_CD then
         local dirs={Vector3.new(3,0,0),Vector3.new(-3,0,0),Vector3.new(0,0,3),Vector3.new(0,0,-3)}
         for _,d in ipairs(dirs) do
@@ -1706,8 +1074,53 @@ RunService.Heartbeat:Connect(function(dt)
             end
         end
     end
+
+    if prevPos and (os.clock()-lastWallClipTime)>WALLCLIP_CD then
+        local horiz=Vector3.new(vel.X,0,vel.Z).Magnitude
+        local moved=(pos-prevPos)
+        local movedHoriz=Vector3.new(moved.X,0,moved.Z).Magnitude
+        if horiz>WALLCLIP_VEL_TH and movedHoriz<0.05 and delta>30 then
+            lastWallClipTime=os.clock()
+            pushEvent(string.format("WALL CLIP v=%.0f",horiz),Color3.fromRGB(255,120,200))
+        end
+    end
+
+    if h.FloorMaterial~=Enum.Material.Air and (os.clock()-lastSlopeBoostTime)>SLOPE_CD then
+        local downRay=raycast(pos,Vector3.new(0,-6,0),ignore)
+        if downRay then
+            local n=downRay.Normal
+            local angle=math.deg(math.acos(math.clamp(n.Y,-1,1)))
+            local horiz=Vector3.new(vel.X,0,vel.Z).Magnitude
+            if angle>SLOPE_ANGLE_TH and horiz>25 then
+                lastSlopeBoostTime=os.clock()
+                pushEvent(string.format("SLOPE %.0f",angle),Color3.fromRGB(160,255,160))
+            end
+        end
+    end
+
+    if (os.clock()-lastCornerBoostTime)>CORNER_CD and delta>60 then
+        local d1=raycast(pos,Vector3.new(3,0,0),ignore)
+        local d2=raycast(pos,Vector3.new(0,0,3),ignore)
+        local d3=raycast(pos,Vector3.new(-3,0,0),ignore)
+        local d4=raycast(pos,Vector3.new(0,0,-3),ignore)
+        local count=(d1 and 1 or 0)+(d2 and 1 or 0)+(d3 and 1 or 0)+(d4 and 1 or 0)
+        if count>=2 then
+            lastCornerBoostTime=os.clock()
+            pushEvent(string.format("CORNER +%.0f",delta),Color3.fromRGB(255,160,255))
+        end
+    end
+
+    if (os.clock()-lastTrimpTime)>TRIMP_CD then
+        local sinceGround=os.clock()-lastOnGroundTime
+        if vel.Y>TRIMP_VEL_UP_TH and sinceGround<0.2 then
+            lastTrimpTime=os.clock()
+            pushEvent(string.format("TRIMP %.0f",vel.Y),Color3.fromRGB(180,255,180))
+        end
+    end
+
     prevVel=vel
     prevPos=pos
+
     local horiz=Vector3.new(vel.X,0,vel.Z).Magnitude
     local bhopWindow=os.clock()-lastOnGroundTime
     if h.FloorMaterial~=Enum.Material.Air and bhopWindow<BHOP_WINDOW then
@@ -1715,6 +1128,7 @@ RunService.Heartbeat:Connect(function(dt)
     else
         mvBhop.Text="Bhop: -"
     end
+
     local strafeDot=0
     if horiz>0.5 then
         local moveDir=Vector3.new(vel.X,0,vel.Z).Unit
@@ -1722,11 +1136,13 @@ RunService.Heartbeat:Connect(function(dt)
         strafeDot=moveDir:Dot(camLook)
     end
     mvStrafe.Text=string.format("Strafe: %.2f",strafeDot)
+
     if h.FloorMaterial==Enum.Material.Air and horiz>5 then
         mvAirStrafe.Text=string.format("Air-Strafe: v=%.0f",horiz)
     else
         mvAirStrafe.Text="Air-Strafe: -"
     end
+
     local nearWall=nil
     if h.FloorMaterial==Enum.Material.Air then
         for _,d in ipairs({Vector3.new(3,0,0),Vector3.new(-3,0,0),Vector3.new(0,0,3),Vector3.new(0,0,-3)}) do
@@ -1735,21 +1151,25 @@ RunService.Heartbeat:Connect(function(dt)
         end
     end
     mvWallrun.Text=nearWall and string.format("Wallrun: v=%.0f",horiz) or "Wallrun: -"
+
     mvSpeed.Text=string.format("Speed: %.1f",vel.Magnitude)
     mvGround.Text="Ground: "..tostring(h.FloorMaterial)
+
     if horiz>20 and h.FloorMaterial~=Enum.Material.Air then
         mvSlide.Text=string.format("Slide?: v=%.0f",horiz)
     else
         mvSlide.Text="Slide: -"
     end
+
     if h.FloorMaterial==Enum.Material.Air and vel.Y<0 then
         local timeToGround=-pos.Y/math.min(vel.Y,-0.1)
         mvJumpWin.Text=string.format("Jump Win: %.2fs",math.max(timeToGround,0))
     else
         mvJumpWin.Text="Jump Win: -"
     end
+
     bugState.Text="State: "..(h:GetState().Name or "-")
 end)
 
 updateFrameCounter()
-print("[TAS Recorder v21-FIX] loaded.")
+print("[TAS Recorder v18] loaded — FULL.")
